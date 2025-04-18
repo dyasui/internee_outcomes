@@ -146,3 +146,277 @@ data <- data_raw %>%
     address_state = str_sub(prev_address, 1, 2),
   )
 #+end_src
+
+* Linked Census Records
+** Define and Download
+:PROPERTIES:
+:header-args:R: :session *R:download* :tangle R/download-ipums.R :colnames yes :export no
+:END:
+#+name: load-packages
+#+begin_src R :results silent
+library(ipumsr)
+library(tidyverse)
+#+end_src
+
+I download linked full-count census microdata from the IPUMS [[https://usa.ipums.org/usa/mlp/mlp.shtml][Multigenerational Longitudinal Panel]] for the census years 1940 and 1950.
+The main IPUMS variables I enclure are each respondant's county of residence at the time of being surveyed, as well as demographics including sex, birthyear, race, and birthplace.
+#+name: download-lr-migration-data
+#+begin_src R :results silent
+ipums_samples <- c("us1900m", "us1910m", "us1920c", "us1930d", "us1940b", "us1950b")
+vars = list(
+  "STATEFIP", "STATEICP", "COUNTYICP", "ENUMDIST", "CITY", # geographic variables
+  "SEX", "BIRTHYR", "RACE", "BPL", "MARST",# demographics
+  "CITIZEN", "NATIVITY", "LANGUAGE", "LIT", "EDUC", # assimilation/culture
+  "OCCSCORE", "LABFORCE", "OCC1950", "EMPSTAT", # labor market status
+  "INCTOT", "INCWAGE", "INCBUSFM", "OCCSCORE" # income and SES
+)
+# download data using IPUMS API
+lr_migration_extract <- define_extract_micro(
+  collection = "usa",
+  description = "linked microdata for long-run county migration trends",
+  samples = samples,
+  variables = vars
+) |>
+  submit_extract() |>
+  wait_for_extract() |>
+  download_extract("data")
+#+end_src
+
+To use the latest versions of the MLP linkages from IPUMS, I download the crosswalk files as csv's from https://usa.ipums.org/usa/mlp/mlp_census_crosswalks.shtml.
+
+Microdata extracted from IPUMS using =ipumsr::download_extract()= function
+downloads both the compressed data file (e.g., =usa_00122.dat.gz=)
+and the codebook ddi file which is used to label the variables (e.g., =usa_00122.xml=).
+
+For this project, the files needed are located in the =data/= subdirectory:
+#+begin_example
+├── data/
+│   ├── mlp_1920_1930_v1_2_csv
+│   │   ├── mlp_1920_1930_v1.2.csv
+│   │   └── README_mlp_csv.txt
+│   ├── mlp_1930_1940_v1_2_csv
+│   │   ├── mlp_1930_1940_v1.2.csv
+│   │   └── README_mlp_csv.txt
+│   ├── mlp_1940_1950_v1_2_csv
+│   │   ├── mlp_1940_1950_v1.2.csv
+│   │   └── README_mlp_csv.txt
+│   ├── lr-migration_db.duckdb
+│   ├── nhgis0032_shape.zip
+│   ├── usa_00122.dat.gz
+│   ├── usa_00122.xml
+│   └── ...
+├── R/
+│   ├── download-data.R
+│   ├── erosion.R
+│   ├── maps.R
+│   ├── migration-rates.R
+│   └── ...
+├── README.org
+└── ...
+#+end_example
+
+** Link Data Locally
+:PROPERTIES:
+:HEADER-ARGS:R: :session *R:database* :tangle R/clean-data.R :results silent
+:END:
+
+The original micro data files from IPUMS are too large to fit in memory,
+and the MLP v1.2 linkages are provided as crosswalks which have to be joined to the data.
+I first read both crosswalks and extract microdata into a local database file
+so that I can use SQL operations via the =duckdb= API in R.
+
+#+name: define-objects
+#+begin_src R
+# open database connection with duckdb
+library(ipumsr)
+library(data.table)
+library(dplyr)
+library(dtplyr)
+library(dbplyr)
+library(duckdb)
+database <- dbConnect(duckdb(), dbdir = "data/database.duckdb")
+# data extract file
+ddi <- "data/usa_00122.xml"
+# table name in database
+tbl <- "microdata_1900_1950"
+# crosswalk files for each adjacent census year pair
+cw01_csv <- "data/mlp_1900_1910_v1_2_csv/mlp_1900_1910_v1.2.csv"
+cw12_csv <- "data/mlp_1910_1920_v1_2_csv/mlp_1910_1920_v1.2.csv"
+cw23_csv <- "data/mlp_1920_1930_v1_2_csv/mlp_1920_1930_v1.2.csv"
+cw34_csv <- "data/mlp_1930_1940_v1_2_csv/mlp_1930_1940_v1.2.csv"
+cw45_csv <- "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv"
+cw_list <- c(cw01_csv, cw12_csv, cw23_csv, cw34_csv, cw45_csv)
+#+end_src
+
+**** Database Reading
+To manage how much memory is used at once, I read the ddi file in chunks to the database as its own table.
+I also read the crosswalks in as separate tables in the database.
+
+#+name: write-database
+#+begin_src R 
+# read in ipums extract to database in chunks
+read_ipums_micro_chunked(
+  ddi, # path to ddi .xml file in same location as data download
+  callback = readr::SideEffectChunkCallback$new(
+    function(x, pos) {
+      if (pos == 1) {
+        dbWriteTable(database, tbl, x, overwrite = TRUE)
+      } else {
+        dbWriteTable(database, tbl, x, overwrite = FALSE, append = TRUE)
+      }
+    }
+  ),
+  chunk_size = 1e7 # observations to read per chunk
+)
+#+end_src
+
+#+begin_src R
+# read crosswalk csv files into database
+duckdb_read_csv(database, "cw_1920_1930", cw_1920_1930)
+duckdb_read_csv(database, "cw_1930_1940", cw_1930_1940)
+
+duckdb_read_csv(database, "cw_1900_1910", cw01_csv)
+duckdb_read_csv(database, "cw_1910_1920", cw12_csv)
+duckdb_read_csv(database, "cw_1940_1950", cw45_csv)
+#+end_src
+
+**** MLP Crosswalk Linking
+At this stage, I only need the state and county of each person who is linked across census years.
+For each decade-to-decade comparison (1920 to 1930, and 1930 to 1940),
+I join the state and county location by =HISTID= code for the appropriate year in the crosswalk file.
+Then I count how many linked individuals appear in each county-county migration group
+and drop individuals who do not report a county location in either decade. 
+
+***** TODO Rewrite this function to group by demographic categories
+#+begin_src R
+link_decade_pair <- function(
+  dt_table              # microdata table in DB
+  cw_table,             # name of crosswalk table in DB, e.g. "cw_1920_1930"
+  yr1, yr2,             # start and end year of each decade
+  histid1, histid2,     # e.g. "histid_1920", "histid_1930"
+  st1, c1,              # e.g. "st1920", "c1920"
+  st2, c2,              # e.g. "st1930", "c1930"
+  db_file = "data/database.duckdb", # your DuckDB connection
+  out_csv = NULL        # optional path to write csv
+) {
+  # open the database connection
+  db <- dbConnect(duckdb(), dbdir = db_file)
+  # bring needed microdata into a tibble for joining
+  d1 <- tbl(db, dt_table) |>
+    filter(YEAR == yr1) |> # decade start year
+    select(
+      HISTID, STATEFIP, COUNTYICP, SEX, AGE, RACE,  
+    )
+  d2 <- tbl(db, dt_table) |>
+    filter(YEAR == yr2) |> # decade end year
+    select(
+      HISTID, STATEFIP, COUNTYICP, SEX, AGE, RACE,  
+    )
+  # histid to be used in appropriate cw file
+  cw <- tbl(db, cw_table)
+  hid1 <- paste("histid", yr1, sep = "_")
+  hid2 <- paste("histid", yr2, sep = "_")
+  # join microdata across years by crosswalked HISTIDs
+  results <- cw |>
+    right_join(d1, by = setNames("HISTID", hid1)) |>
+    right_join(d2, by = setNames("HISTID", hid2)) |>
+    filter(!is.na(.data[[st1]]), !is.na(.data[[st2]])) |>
+    group_by(
+      .data[[st1]], .data[[c1]],
+      .data[[st2]], .data[[c2]]
+    ) |>
+    summarize(n = n(), .groups = "drop") |>
+    mutate(
+      !!paste0("ct", substr(st1, 3, 6)) := .data[[st1]] * 10000 + .data[[c1]],
+      !!paste0("ct", substr(st2, 3, 6)) := .data[[st2]] * 10000 + .data[[c2]]
+    ) |>
+    collect()
+  
+  if (!is.null(out_csv)) {
+    write.csv(results, out_csv, row.names = FALSE)
+  }
+  
+  return(results)
+}
+#+end_src
+
+***** Apply decade-leve summary function to all years
+#+name: link-locations
+#+begin_src R :exports results
+# 1900 -> 1910
+loc_counts_1900_1910 <- link_decade_pair(
+  db       = database,
+  cw_table = "cw_1900_1910",
+  t_yr1    = t1900,
+  t_yr2    = t1910,
+  histid1  = "histid_1900",
+  histid2  = "histid_1910",
+  st1      = "st1900",
+  c1       = "c1900",
+  st2      = "st1910",
+  c2       = "c1910",
+  out_csv  = "data/ct00_10.csv"  # e.g. "00_10" for 1900-1910
+)
+
+# 1910 -> 1920
+loc_counts_1910_1920 <- link_decade_pair(
+  db       = database,
+  cw_table = "cw_1910_1920",
+  t_yr1    = t1910,
+  t_yr2    = t1920,
+  histid1  = "histid_1910",
+  histid2  = "histid_1920",
+  st1      = "st1910",
+  c1       = "c1910",
+  st2      = "st1920",
+  c2       = "c1920",
+  out_csv  = "data/ct10_20.csv"
+)
+
+# 1920 -> 1930 (unchanged from your original, just using the function)
+loc_counts_1920_1930 <- link_decade_pair(
+  db       = database,
+  cw_table = "cw_1920_1930",
+  t_yr1    = t1920,
+  t_yr2    = t1930,
+  histid1  = "histid_1920",
+  histid2  = "histid_1930",
+  st1      = "st1920",
+  c1       = "c1920",
+  st2      = "st1930",
+  c2       = "c1930",
+  out_csv  = "data/ct20_30.csv"
+)
+
+# 1930 -> 1940
+loc_counts_1930_1940 <- link_decade_pair(
+  db       = database,
+  cw_table = "cw_1930_1940",
+  t_yr1    = t1930,
+  t_yr2    = t1940,
+  histid1  = "histid_1930",
+  histid2  = "histid_1940",
+  st1      = "st1930",
+  c1       = "c1930",
+  st2      = "st1940",
+  c2       = "c1940",
+  out_csv  = "data/ct30_40.csv"
+)
+
+# 1940 -> 1950
+loc_counts_1940_1950 <- link_decade_pair(
+  db       = database,
+  cw_table = "cw_1940_1950",
+  t_yr1    = t1940,
+  t_yr2    = t1950,
+  histid1  = "histid_1940",
+  histid2  = "histid_1950",
+  st1      = "st1940",
+  c1       = "c1940",
+  st2      = "st1950",
+  c2       = "c1950",
+  out_csv  = "data/ct40_50.csv"
+)
+#+end_src
+
+This procedure leaves me with a local database of all MLP records with links between all consecutive census year pairs from 1900-1950.
