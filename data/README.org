@@ -1,0 +1,148 @@
+* Camp Locations
+
+Go to the [[https://www.arcgis.com/home/item.html?id=787f1fabd34c49308df8fe0d4dc7470f][Behind Barbed Wire]] arcgis page and hit the *Download* button.
+
+Extract the zip file to inside the `data/` subdirectory:
+#+begin_example
+unzip -uo ~/Downloads/BehindBarbedWire_StoryMap_Data.zip -d .data/BehindBarbedWire_StoryMap
+#+end_example
+
+* Camp Internee Records
+
+The internee data file is available in the [[https://catalog.archives.gov/][National Archives]] catalog with the NAID 1264228.
+
+I use the cleaned version of this text file from Jaime Arellano-Bover's online replication package at https://www.openicpsr.org/openicpsr/project/144561/version/V1/view.
+Go to Arellano-Bover (2022) replication repository on OpenICPSR: https://www.openicpsr.org/openicpsr/project/144561/version/V1/view?path=/openicpsr/144561/fcr:versions/V1/Replication_Archive.zip&type=file
+
+Click on ~DOWNLOAD THIS FILE~
+
+Unzip into the data subirectory of this project:
+#+begin_example
+unzip -uo ~/Downloads/Replication_Archive.zip -d ./data/Arellano-Bover_reppkg
+#+end_example
+
+** =compile_WRA.R=
+:PROPERTIES:
+:HEADER-ARGS:R: :tangle R/compile_WRA.R :session *R:internment* :results silent
+:END:
+
+Here is a version of Arellano-Bover's original Stata code to process the WRA form 26 data,
+rewritten in R.
+
+First read in the file as fixed width data using =read_fwf= and set column names. 
+#+begin_src R
+#------------------------------------------------------------------------------#
+#                               README                                         #
+# this file was translated from the original stata do file compile_wra.do      #
+# from the replication files for "displacement, diversity, and mobility:       #
+# careeer impacts of japanese american internment" by jaime arellano-bover     #
+# posted here: https://www.jarellanobover.com/research                         #
+# translation was helped by the stata to r code translator chatgpt model by    #
+# joseph noonan https://chatgpt.com/g/g-ddlktfvbt-stata-to-r-code-translator   #
+#------------------------------------------------------------------------------#
+
+library(tidyverse)
+library(haven)  # for reading stata data_raw files
+
+# Load dataset
+path <- "~/Research/Internment/data/"
+
+column_positions <- fwf_widths(
+  c(10,             8,                 1,             1,                 1,
+    5,              1,                 1,             1,                 1,
+    1,              1,                 2,             1,                 1,
+    1,              1,                 6,             1,                 1,
+    2,              2,                 1,             1,                 1,
+    1,              3,                 3,             3,                 3,
+    3,              6,                 5),
+  col_names =
+  c("last_name",    "first_name",      "initial",     "camp",            "assembly",
+    "prev_address", "brth_cntry_pnts", "fath_occ_us", "fath_occ_abroad", "school_jap",
+    "school_jap2",  "high_educ",       "arrival_us",  "length_jap",      "times_jap",
+    "age_jap",      "military",        "ind_number",  "sex_marrge",      "race",
+    "birth_yr",     "birthplace",      "japsch_ssn",  "educ",            "lang",
+    "rel",          "qual_occ_1",      "qual_occ_2",  "qual_occ_3",      "pot_occ_1",
+    "pot_occ_2",    "file_no",         "file_no_2"))
+
+fw_data <- read_fwf(paste0(path, "WRA.FORM26.PU.txt"), column_positions)
+#+end_src
+
+Remove mistakenly inserted formatting rows and duplicate records.
+#+begin_src R
+data_raw <- fw_data %>%
+  filter(ind_number != "") %>% # Drop records with empty ind_number
+  # Handle duplicates
+  group_by(ind_number, file_no, first_name, last_name) %>%
+  mutate(dup_n = row_number(), .after = last_name) %>%
+  ungroup() %>%
+  filter(dup_n == 1) %>%
+  select(-dup_n)
+#+end_src
+
+Secondary occupation codes
+#+begin_src R
+# Create secondary occupations
+occu_second <- data_raw %>%
+  group_by(ind_number, file_no, first_name, last_name) %>%
+  summarize(qual_occ_1b = list(qual_occ_1), .groups = "drop_last") %>%
+  mutate(qual_occ_1b = unlist(qual_occ_1b))
+
+data_raw <- data_raw %>%
+  left_join(occu_second, by = c("ind_number", "file_no", "first_name", "last_name")) %>%
+  mutate(qual_occ_1b = coalesce(qual_occ_1b, ""))
+#+end_src
+
+Camp and Assembly Center Names
+#+begin_src R
+# Recode camp and assembly columns
+camp_labels <- c(
+  "Manzanar" = 1,
+  "Poston" = 2,
+  "Gila River" = 3,
+  "Tule Lake" = 4,
+  "Minidoka" = 5,
+  "Topaz" = 6,
+  "Heart Mountain" = 7,
+  "Granada" = 8,
+  "Rohwer" = 9,
+  "Jerome" = 10 )
+assembly_labels = c(
+  "none"                                     = 0 , 
+  "Manzanar (up to 6/1/42)"                  = 1 , 
+  "Fresno"                                   = 2 , 
+  "Marysville (Arboga)"                      = 3 , 
+  "Mayor"                                    = 4 , 
+  "Merced"                                   = 5 , 
+  "Pinedale"                                 = 6 , 
+  "Pomona"                                   = 7 , 
+  "Portland Pacific Int. Exposition Grounds" = 8 , 
+  "Puyallup"                                 = 9 , 
+  "Sacramento (Walerga)"                     = 10, 
+  "Salinas"                                  = 11, 
+  "Santa Anita"                              = 12, 
+  "Stockton"                                 = 13, 
+  "Tanforan"                                 = 14, 
+  "Tulare"                                   = 15, 
+  "Turlock"                                  = 16 )
+data <- data_raw %>%
+  mutate(
+    camp = recode(camp, "D" = NA, "I" = NA, "R" = NA),
+    camp = as.numeric(camp),
+    camp = labelled(camp, label = "WRA internment center", labels = camp_labels),
+    assembly = case_when(
+      assembly == "-" ~ "10",
+      assembly == "A" ~ "11",
+      assembly == "B" ~ "12",
+      assembly == "C" ~ "13",
+      assembly == "D" ~ "14",
+      assembly == "E" ~ "15",
+      assembly == "F" ~ "16",
+      assembly %in% c("T", "Z") ~ "",
+      .default = assembly
+    ),
+    assembly = as.numeric(assembly),
+    assembly = labelled(assembly, label = "Assembly Centers", labels = assembly_labels),
+    prev_address = labelled(prev_address, label = "Previous Address"),
+    address_state = str_sub(prev_address, 1, 2),
+  )
+#+end_src
