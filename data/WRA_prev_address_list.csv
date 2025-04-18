@@ -1,0 +1,330 @@
+prev_address, state, county, city
+&&&&&, NA, NA, NA
+1100&, WA, NA, NA
+11110, WA, "Clallam", NA
+11112, WA, "Clallam", "Port Angeles"
+11123, WA, "Grays Harbor", NA
+11130, WA, "Jefferson", NA
+11131, WA, "Jefferson", "Port Townsend"
+11140, WA, "Pacific", NA
+11141, WA, "Pacific", "Raymond"
+11150, WA, "Wahkiakum", "Cathlamet"
+112&0, WA, "Whatcom", NA
+112&3, WA, "Whatcom", NA
+112&4, WA, "Whatcom", "Bellingham"
+112-0, WA, "Thurston", NA
+112-3, WA, "Thurston", "Olympia"
+11200, WA, "Snohomish", NA
+11204, WA, "Snohomish", "Everett"
+11210, WA, "Clark", NA
+11213, WA, "Clark", "Vancouver"
+11222, WA, "Cowlitz", "Kelso"
+11223, WA, "Cowlitz", "Longview"
+11233, WA, "Island", NA
+11240, WA, "Kitsap", NA
+11243, WA, "Kitsap", "Bremerton"
+11250, WA, "Lewis", NA
+11251, WA, "Lewis", "Chehalis"
+11252, WA, "Lewis", "Centralia"
+11261, WA, "Mason", "Shelton"
+11270, WA, "San Juan", "Friday Harbor"
+11280, WA, "Skagit", NA
+11281, WA, "Skagit", NA
+11282, WA, "Skagit", "Anacortes"
+11310, WA, "Benton", NA
+11314, WA, "Benton", NA
+11320, WA, "Chelan",
+11323, WA, "Chelan", "Wenatchee"
+11350, WA, "Klickitat", NA
+11390, WA, "Yakima", NA
+11391, WA, "Yakima", "Toppenish"
+11394, WA, "Yakima", "Yakima"
+11401, WA, "Whitman", NA
+11421, WA, "Asotin", "Clarkston"
+11451, WA, "Franklin", "Pasco"
+11510, WA, "King", NA
+11511, WA, "King", NA
+11512, WA, "King", NA
+11514, WA, "King", "Seattle"
+11520, WA, "Pierce", NA
+11521, WA, "Pierce", NA
+11522, WA, "Pierce", "Puyallup"
+11524, WA, "Pierce", "Tacoma"
+11614, WA, "Spokane", "Spokane"
+11914, WA, NA, NA
+121&1, OR, "Yamhill",
+121-0, OR, "Washington",
+121-1, OR, "Washington",
+12101, OR, "Tillamook",
+12112, OR, "Benton",
+12120, OR, "Clatsop",
+12123, OR, "Clatsop",
+12130, OR, "Columbia",
+12140, OR, "Hood River",
+12141, OR, "Hood River",
+12153, OR, "Lane",
+12160, OR, "Lincoln",
+12170, OR, "Linn",
+12180, OR, "Marion",
+12184, OR, "Marion",
+12190, OR, "Polk",
+12191, OR, "Polk",
+12240, OR, "Jackson",
+12243, OR, "Jackson",
+12320, OR, "Jefferson",
+12360, OR, "Wasco",
+12362, OR, "Wasco",
+12430, OR, "Deschuntes",
+12510, OR, "Clackamas",
+12511, OR, "Clackamas",
+12512, OR, "Clackamas",
+12514, OR, "Clackamas",
+12520, OR, "Multnomah",
+12521, OR, "Multnomah",
+12523, OR, "Multnomah",
+12524, OR, "Multnomah",
+13 10, CA, NA,
+13&10, CA, "San Diego",
+13&11, CA, "San Diego",
+13&12, CA, "San Diego",
+13&13, CA, "San Diego",
+13&14, CA, "San Diego",
+13-10, CA, "Santa Clara",
+13-11, CA, "Santa Clara",
+13-12, CA, "Santa Clara",
+13-13, CA, "Santa Clara",
+13-14, CA, "Santa Clara",
+13010, CA, "Los Angeles",
+13011, CA, "Los Angeles",
+13012, CA, "Los Angeles",
+13013, CA, "Los Angeles",
+13014, CA, "Los Angeles",
+13015, CA, "Los Angeles",
+13017, CA, "Los Angeles",
+1301F, CA, "Los Angeles",
+13020, CA, "Orange",
+13021, CA, "Orange",
+13022, CA, "Orange",
+13023, CA, "Orange",
+13024, CA, "Orange",
+13130, CA, "Lake",
+13140, CA, "Mendocino",
+13141, CA, "Mendocino",
+13143, CA, "Mendocino",
+13150, CA, "Napa",
+13152, CA, "Napa",
+13160, CA, "Sonoma",
+13161, CA, "Sonoma",
+13162, CA, "Sonoma",
+13163, CA, "Sonoma",
+132&0, CA, "Shasta",
+13200, CA, "Plumas",
+13210, CA, "Mono/Alpine",
+13211, CA, "Mono/Alpine",
+13214, CA, "Mono/Alpine",
+13240, CA, "El Dorado",
+13241, CA, "El Dorado",
+13270, CA, "Modoc",
+13272, CA, "Modoc",
+13280, CA, "Nevada",
+13282, CA, "Nevada",
+13290, CA, "Placer",
+13291, CA, "Placer",
+13292, CA, "Placer",
+13310, CA, "Butte",
+13311, CA, "Butte",
+13312, CA, "Butte",
+13313, CA, "Butte",
+13320, CA, "Colusa",
+13340, CA, "Sutter", 
+13341, CA, "Sutter",
+13350, CA, "Tehama",
+13351, CA, "Tehama",
+13360, CA, "Yolo",
+13362, CA, "Yolo",
+13370, CA, "Yuba",
+13372, CA, "Yuba",
+13390, CA, NA,
+13410, CA, "Monterey",
+13411, CA, "Monterey",
+13412, CA, "Monterey",
+13413, CA, "Monterey",
+13414, CA, "Monterey",
+13415, CA, "Monterey",
+13420, CA, "San Benito",
+13421, CA, "San Benito",
+13430, CA, "San Luis Obisbo",
+13431, CA, "San Luis Obisbo",
+13432, CA, "San Luis Obisbo",
+13440, CA, "Santa Cruz",
+13442, CA, "Santa Cruz",
+13443, CA, "Santa Cruz",
+135 2, CA, NA,
+13510, CA, "Fresno",
+13511, CA, "Fresno",
+13512, CA, "Fresno",
+13513, CA, "Fresno",
+13514, CA, "Fresno",
+13520, CA, "Kern",
+13521, CA, "Kern",
+13524, CA, "Kern",
+13530, CA, "Kings",
+13532, CA, "Kings",
+13533, CA, "Kings",
+13540, CA, "Madera",
+13542, CA, "Madera",
+13544, CA, "Madera",
+13550, CA, "Merced",
+13553, CA, "Merced",
+13560, CA, "San Joaquin",
+13561, CA, "San Joaquin",
+13563, CA, "San Joaquin",
+13564, CA, "San Joaquin",
+13569, CA, "San Joaquin",
+13570, CA, "Stanislaus",
+13571, CA, "Stanislaus",
+13573, CA, "Stanislaus",
+13580, CA, "Tulare",
+13581, CA, "Tulare",
+13582, CA, "Tulare",
+13584, CA, "Tulare",
+13610, CA, "Santa Barbara",
+13611, CA, "Santa Barbara",
+13612, CA, "Santa Barbara",
+13614, CA, "Santa Barbara",
+13620, CA, "Ventura",
+13621, CA, "Ventura",
+13622, CA, "Ventura",
+13623, CA, "Ventura",
+13650, CA, NA,
+13710, CA, "Imperial",
+13711, CA, "Imperial",
+13712, CA, "Imperial",
+13713, CA, "Imperial",
+13714, CA, "Imperial",
+1371B, CA, "Imperial",
+13720, CA, "Riverside",
+13721, CA, "Riverside",
+13724, CA, "Riverside",
+13730, CA, "San Bernadino",
+13731, CA, "San Bernadino",
+13732, CA, "San Bernadino",
+13733, CA, "San Bernadino",
+13734, CA, "San Bernadino",
+13810, CA, "Alameda",
+13811, CA, "Alameda",
+13812, CA, "Alameda",
+13813, CA, "Alameda",
+13814, CA, "Alameda",
+13820, CA, "Contra Costa",
+13822, CA, "Contra Costa",
+13823, CA, "Contra Costa",
+13825, CA, "Contra Costa",
+13830, CA, "Marin",
+13831, CA, "Marin",
+13832, CA, "Marin",
+13841, CA, "San Francisco",
+13844, CA, "San Francisco",
+13850, CA, "San Mateo",
+13851, CA, "San Mateo",
+13852, CA, "San Mateo",
+13853, CA, "San Mateo",
+13855, CA, "San Mateo",
+13860, CA, "Solano",
+13863, CA, "Solano",
+13910, CA, "Sacramento",
+13911, CA, "Sacramento",
+13912, CA, "Sacramento",
+13913, CA, "Sacramento",
+13914, CA, "Sacramento",
+13915, CA, "Sacramento",
+13919, CA, "Sacramento",
+1391O, CA, "Sacramento",
+18413, NA, NA, NA
+21053, NM, "Curry", "Clovis"
+21253, NM, "Santa Fe", "Santa Fe"
+22451, CO, "Otero", "Rocky Ford"
+22620, CO, "Weld", "Fort Lupton"
+22623, CO, "Weld", "Greeley"
+23033, ID, "Bannock", "Pocatello"
+23060, ID, "Bingham", "Shelly"
+23061, ID, "Bingham", "Blackfoot"
+23103, ID, "Bonneville", "Idaho Falls"
+24253, MT,  "Lewis and Clark", "Helena"
+24324, MT, "Missoula", "Missoula"
+24342, MT, "Park", "Livingston"
+25030, NV, "Douglas", "Glenbrook"
+25100, NV, "Lyon", "Mason"
+26130, AZ, "Gila", "Winkelman"
+26160, AZ, "Yavapai", "Jerome"
+26210, AZ, "Cochise", NA
+26240, AZ, "Maricopa", NA
+26241, AZ, "Maricopa", NA
+26242, AZ, "Maricopa", "Mesa"
+26244, AZ, "Maricopa", "Phoenix"
+26254, AZ, "Pinal", "Tucson"
+26282, AZ, "Yuma", "Yuma"
+27020, UT, "Box Elder", "Garland"
+27040, UT, "Carbon", "Royal"
+27261, UT, "Wasatch", "Keetley"
+31374, AL, "Jefferson", "Birmingham"
+32604, AR, "Pulaski", "Little Rock"
+3800&, TX, "Harris", "Webster"
+4&221, WI, "Grant", "Lancaster"
+41165, IL, "Cook", "Chicago"
+45134, MI, "Calhoun", "Battle Creek"
+47422, MO, "Henry", "Clinton"
+47953, MO, "St. Louis", "Clayton"
+48284, NE, "Douglas", "Omaha"
+49083, ND, "Burleigh", "Bismarck"
+5-014, VA, "Norfolk", "Norfolk"
+5-023, VA, "Suffolk", "Suffolk"
+53014, FL, "Pinellas", "St. Petersburg"
+57014, NY, "Dutchess", "Poughkeepsie"
+57024, NY, "Chemung", "Elmira"
+57025, NY, "Chemung", "Elmira"
+57035, NY, NA, "New York"
+5900&, PA, "Lackawanna", "Carbondale"
+59014, PA, "York", "York"
+59025, PA, "Philadelphia", "Philadelphia"
+70--&, HI, NA, NA
+70--0, HI, NA, NA
+71--&, HI, "Hawaii",
+71--0, HI, "Hawaii",
+71--1, HI, "Hawaii",
+71--2, HI, "Hawaii",
+71--3, HI, "Hawaii",
+71--4, HI, "Hawaii",
+72--&, HI, "Honolulu",
+72--0, HI, "Honolulu",
+72--1, HI, "Honolulu",
+72--2, HI, "Honolulu",
+72--4, HI, "Honolulu",
+72--5, HI, "Honolulu",
+73&&0, HI, "Kauai",
+73--0, HI, "Kauai",
+73--1, HI, "Kauai",
+73--2, HI, "Kauai",
+73--3, HI, "Kauai",
+73--4, HI, "Kauai",
+74--&, HI, "Maui",
+74--0, HI, "Maui",
+74--1, HI, "Maui",
+74--2, HI, "Maui",
+74--4, HI, "Maui",
+81&&&, HI, NA, NA
+81--2, HI, NA, NA
+81010, AK, "First Judicial Division", NA
+81011, AK, "First Judicial Division", "Ketchikan"
+81012, AK, "First Judicial Division", "Juneau"
+81020, AK, "Second Judicial Division", NA
+81030, AK, "Third Judicial Division", NA
+81031, AK, "Third Judicial Division", "Anchorage"
+81032, AK, "Third Judicial Division", NA
+81033, AK, "Third Judicial Division", NA
+81040, AK, "Fourth Judicial Division", NA
+81041, AK, "Fourth Judicial Division", "Fairbanks"
+82&&4, BC, "Vancouver"
+A3814, NA, NA, NA
+B13-1, NA, NA, NA
+NA,    NA, NA, NA
