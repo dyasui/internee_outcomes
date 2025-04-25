@@ -76,70 +76,101 @@ data_raw <- fw_data |>
   select(-dup_n)
 #+end_src
 
-*** Previous Address
-The county names from the WRA records should match the county names from the NHGIS system for counties in 1940.
+Add clean up demographic variables and label according to documentation.
 #+begin_src R
-nhgis_counties <- read_csv("data/county_codes_cw.csv")
-wra_counties <- read_csv("data/WRA_prev_address_list.csv")
-
-join_counties <- full_join(nhgis_counties, wra_counties, by = c("STATENAM" = "state", "NHGISNAM" = "county"))
-#+end_src
-
-*** Camp and Assembly Center Names
-#+begin_src R
-# Recode camp and assembly columns
-camp_labels <- c(
-  "Manzanar"       = 1,
-  "Poston"         = 2,
-  "Gila River"     = 3,
-  "Tule Lake"      = 4,
-  "Minidoka"       = 5,
-  "Topaz"          = 6,
-  "Heart Mountain" = 7,
-  "Granada"        = 8,
-  "Rohwer"         = 9,
-  "Jerome"         = 10 )
-assembly_labels = c(
-  "none"                                     = 0 , 
-  "Manzanar (up to 6/1/42)"                  = 1 , 
-  "Fresno"                                   = 2 , 
-  "Marysville (Arboga)"                      = 3 , 
-  "Mayor"                                    = 4 , 
-  "Merced"                                   = 5 , 
-  "Pinedale"                                 = 6 , 
-  "Pomona"                                   = 7 , 
-  "Portland Pacific Int. Exposition Grounds" = 8 , 
-  "Puyallup"                                 = 9 , 
-  "Sacramento (Walerga)"                     = 10, 
-  "Salinas"                                  = 11, 
-  "Santa Anita"                              = 12, 
-  "Stockton"                                 = 13, 
-  "Tanforan"                                 = 14, 
-  "Tulare"                                   = 15, 
-  "Turlock"                                  = 16 )
-data <- data_raw |>
+data_labelled <- data_raw |>
   mutate(
-    camp = recode(camp, "D" = NA, "I" = NA, "R" = NA),
-    camp = as.numeric(camp),
-    camp = labelled(camp, label = "WRA internment center", labels = camp_labels),
-    assembly = case_when(
-      assembly == "-" ~ "10",
-      assembly == "A" ~ "11",
-      assembly == "B" ~ "12",
-      assembly == "C" ~ "13",
-      assembly == "D" ~ "14",
-      assembly == "E" ~ "15",
-      assembly == "F" ~ "16",
-      assembly %in% c("T", "Z") ~ "",
-      .default = assembly
-    ),
-    assembly = as.numeric(assembly),
-    assembly = labelled(assembly, label = "Assembly Centers", labels = assembly_labels),
-    prev_address = labelled(prev_address, label = "Previous Address"),
-    address_state = str_sub(prev_address, 1, 2),
+    camp = labelled(as.integer(camp),
+                    c("Manzanar"       = 1,
+                      "Poston"         = 2,
+                      "Gila River"     = 3,
+                      "Tule Lake"      = 4,
+                      "Minidoka"       = 5,
+                      "Topaz"          = 6,
+                      "Heart Mountain" = 7,
+                      "Granada"        = 8,
+                      "Rohwer"         = 9,
+                      "Jerome"         = 10 )
+                    ),
+    assembly = case_when(assembly == "-" ~ "10",
+                         assembly == "A" ~ "11",
+                         assembly == "B" ~ "12",
+                         assembly == "C" ~ "13",
+                         assembly == "D" ~ "14",
+                         assembly == "E" ~ "15",
+                         assembly == "F" ~ "16",
+                         assembly %in% c("T", "Z") ~ "",
+                         .default = assembly),
+    assembly = labelled(as.integer(assembly),
+                        c("none"        = 0 , 
+                          "Manzanar"    = 1 , 
+                          "Fresno"      = 2 , 
+                          "Marysville"  = 3 , 
+                          "Mayor"       = 4 , 
+                          "Merced"      = 5 , 
+                          "Pinedale"    = 6 , 
+                          "Pomona"      = 7 , 
+                          "Portland"    = 8 , 
+                          "Puyallup"    = 9 , 
+                          "Sacramento"  = 10, 
+                          "Salinas"     = 11, 
+                          "Santa Anita" = 12, 
+                          "Stockton"    = 13, 
+                          "Tanforan"    = 14, 
+                          "Tulare"      = 15, 
+                          "Turlock"     = 16 )
+                        ),
+    sex = case_when(sex_marrge %in% c("1", "2", "3", "4", "5", "0") ~ 0, # men
+                    sex_marrge %in% c("6", "7", "8", "9", "-", "&") ~ 1, # women
+                    .default = NA),
+    sex = labelled(as.integer(sex), c("male" = 0, "female" = 1)),
+    marst = case_when(sex_marrge %in% c("1", "6") ~ 1, # single
+                      sex_marrge %in% c("2", "9") ~ 2, # married
+                      sex_marrge %in% c("3", "8") ~ 3, # widowed
+                      sex_marrge %in% c("4", "9") ~ 4, # divorced
+                      sex_marrge == "5" ~ 5, # separated
+                      .default = NA),
+    marst = labelled(as.integer(marst), c("single" = 1,
+                                          "married" = 2,
+                                          "widowed" = 3,
+                                          "divorced" = 4,
+                                          "separated" = 5)),
+    birth_yr = if_else(as.integer(birth_yr) > 42,
+                       as.integer(birth_yr) + 1800, # born after 1842
+                       as.integer(birth_yr) + 1900), # born before or during 1942
   )
 #+end_src
+*** Previous Address
+Group the internees into observable counties.
+#+begin_src R
+# previous address codes transcribed from WRA form 26 documentation
+wra_counties <- read_csv("data/WRA_prev_address_list.csv")
+#+end_src
+The county names from the WRA records should match the county names from the NHGIS system for counties in 1940.
+#+begin_src R
+nhgis_codes <- read_csv("data/county_codes_cw.csv") |>
+  select(STATENAM, NHGISNAM, weight, NHGISST, NHGISCTY, NHGISCTY_1950)
 
+join_counties <- full_join(nhgis_codes, wra_counties,
+                           by = c("STATENAM" = "state", "NHGISNAM" = "county"),
+                           relationship = "many-to-many")
+#+end_src
+
+#+begin_src R
+data_int <- data_labelled |>
+  left_join(join_counties, by = "prev_address")
+#+end_src
+
+Checking the results by county:
+#+begin_src R
+data_int |>
+  count(NHGISST, NHGISCTY, STATENAM, NHGISNAM) |>
+  arrange(desc(n)) |>
+  head(n=100)
+#+end_src
+
+Seems like the counties outside of the west coast are getting double counted in the merge.
+It also seems weird that there's at least 5,000 internees who seem to be coming from Virginia.
 * Linked Census Records
 ** Define and Download
 :PROPERTIES:
