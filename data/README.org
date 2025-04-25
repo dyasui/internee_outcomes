@@ -1,7 +1,64 @@
-* County Codes Crosswalk
+* Data Sources and Downloading
+** County Codes Crosswalk
  =data/county_codes_cw.csv= contains the list of 1940 counties with their state and county codes in NHGIS and ICPSR form.
  It also includes crosswalk wieghts for any possible border changes between 1940 and 1950 generated using the method from [[https://fpeckert.me/eglp/][Eckert et al. (2020)]].
-* Camp Internee Records
+** Historical Census Microdata
+:PROPERTIES:
+:header-args:R: :session *R:ipums* :tangle R/download-ipums.R :colnames yes :export no
+:END:
+#+name: load-packages
+#+begin_src R :results silent
+library(ipumsr)
+library(tidyverse)
+#+end_src
+
+I download linked full-count census microdata from the IPUMS [[https://usa.ipums.org/usa/mlp/mlp.shtml][Multigenerational Longitudinal Panel]] for the census years 1940 and 1950.
+The main IPUMS variables I enclure are each respondant's county of residence at the time of being surveyed, as well as demographics including sex, birthyear, race, and birthplace.
+#+name: download-lr-migration-data
+#+begin_src R :results silent
+ipums_samples <- c("us1940b", "us1950b")
+vars = list(
+  "STATEFIP", "STATEICP", "COUNTYICP", "ENUMDIST", "CITY", # geographic variables
+  "SEX", "BIRTHYR", "RACE", "BPL", "MARST",# demographics
+  "CITIZEN",  "EDUC", # assimilation/culture
+  "LABFORCE", "OCC1950", "EMPSTAT", # labor market status
+  var_spec("NATIVITY",  attached_characteristics = c("mother", "father", "spouse")),
+  var_spec("OCCSCORE", attached_characteristics = c("mother", "father", "spouse")),
+  var_spec("INCTOT", attached_characteristics = c("mother", "father", "spouse")),
+  var_spec("INCWAGE", attached_characteristics = c("mother", "father", "spouse")),
+  "INCBUSFM"
+)
+# download data using IPUMS API
+lr_migration_extract <- define_extract_micro(
+  collection = "usa",
+  description = "linked microdata for internee and control population from 1940 to 1950",
+  samples = ipums_samples,
+  variables = vars
+) |>
+  submit_extract() |>
+  wait_for_extract() |>
+  download_extract("data")
+#+end_src
+
+To use the latest versions of the MLP linkages from IPUMS, I download the crosswalk files as csv's from https://usa.ipums.org/usa/mlp/mlp_census_crosswalks.shtml.
+
+Microdata extracted from IPUMS using =ipumsr::download_extract()= function
+downloads both the compressed data file (e.g., =usa_00122.dat.gz=)
+and the codebook ddi file which is used to label the variables (e.g., =usa_00122.xml=).
+
+For this project, the files needed are located in the =data/= subdirectory:
+#+begin_example
+├── data/
+│   ├── mlp_1940_1950_v1_2_csv
+│   │   ├── mlp_1940_1950_v1.2.csv
+│   │   └── README_mlp_csv.txt
+│   ├── nhgis0032_shape.zip
+│   ├── usa_00123.dat.gz
+│   ├── usa_00123.xml
+│   └── ...
+#+end_example
+
+** WRA Camp Internee Records
 
 The internee data file is available in the [[https://catalog.archives.gov/][National Archives]] catalog with the NAID 1264228.
 
@@ -9,16 +66,15 @@ I use the fixed-width text version of this text file from Jaime Arellano-Bover's
 https://www.openicpsr.org/openicpsr/project/144561/version/V1/view:
 =WRA.FORM26.PU.txt=.
 
+* Data Cleaning
 ** Clean WRA camp records
 :PROPERTIES:
-:HEADER-ARGS:R: :tangle R/compile_WRA.R :session *R:internment* :results silent
+:HEADER-ARGS:R: :tangle R/compile_WRA.R :session *R:internment*
 :END:
-
 Here is a version of Arellano-Bover's original Stata code to process the WRA form 26 data,
 rewritten in R.
-
 The file =WRA.FORM26.PU.txt= is read into R as fixed width data using =read_fwf= from the =readr= package.
-
+*** Variables Names and Labels
 #+begin_src R
 #------------------------------------------------------------------------------#
 #                               README                                         #
@@ -42,7 +98,7 @@ The original form included internee's names, the assembly center and WRA camp th
 the county and city of thier previous address before being brought to the assembly centers,
 as well as demographic information such as their education attainment, birthplace and year, occupation, and father's characteristics.
 
-#+begin_src R
+#+begin_src R :results silent 
 # variables defined by column ranges in original file
 column_positions <- fwf_widths(
   c(10,             8,                 1,             1,                 1,
@@ -65,7 +121,7 @@ fw_data <- read_fwf(paste0(path, "WRA.FORM26.PU.txt"), column_positions)
 #+end_src
 
 There are some rows which need to be removed due to mistakenly inserted formatting rows and duplicate records.
-#+begin_src R
+#+begin_src R :results silent
 data_raw <- fw_data |>
   filter(ind_number != "") |> # Drop records with empty ind_number
   # Handle duplicates
@@ -77,7 +133,7 @@ data_raw <- fw_data |>
 #+end_src
 
 Add clean up demographic variables and label according to documentation.
-#+begin_src R
+#+begin_src R :results silent
 data_labelled <- data_raw |>
   mutate(
     camp = labelled(as.integer(camp),
@@ -158,77 +214,53 @@ join_counties <- full_join(nhgis_codes, wra_counties,
 
 #+begin_src R
 data_int <- data_labelled |>
-  left_join(join_counties, by = "prev_address")
+  left_join(wra_counties, by = "prev_address")
 #+end_src
 
 Checking the results by county:
 #+begin_src R
-data_int |>
-  count(NHGISST, NHGISCTY, STATENAM, NHGISNAM) |>
+intrn_grps <- data_int |>
+  filter(!is.na(state), !is.na(county)) |>
+  count(state, county, sex, birth_yr)
+
+write_csv(intrn_grps, file = "data/internment_groups.csv")
+
+intrn_grps |>
   arrange(desc(n)) |>
-  head(n=100)
+  head(n=25) |> 
+  knitr::kable(format = "org")
 #+end_src
 
-Seems like the counties outside of the west coast are getting double counted in the merge.
-It also seems weird that there's at least 5,000 internees who seem to be coming from Virginia.
-* Linked Census Records
-** Define and Download
-:PROPERTIES:
-:header-args:R: :session *R:ipums* :tangle R/download-ipums.R :colnames yes :export no
-:END:
-#+name: load-packages
-#+begin_src R :results silent
-library(ipumsr)
-library(tidyverse)
-#+end_src
+#+RESULTS:
+|   | state                                        | county      | sex | birth_yr |   n |
+|   | :----------+:-----------+---:+--------:+---: |             |     |          |     |
+|   | California                                   | Los Angeles |   0 |     1921 | 565 |
+|   | California                                   | Los Angeles |   1 |     1921 | 538 |
+|   | California                                   | Los Angeles |   0 |     1922 | 528 |
+|   | California                                   | Los Angeles |   0 |     1923 | 518 |
+|   | California                                   | Los Angeles |   1 |     1920 | 493 |
+|   | California                                   | Los Angeles |   1 |     1923 | 478 |
+|   | California                                   | Los Angeles |   1 |     1919 | 475 |
+|   | California                                   | Los Angeles |   0 |     1925 | 466 |
+|   | California                                   | Los Angeles |   1 |     1925 | 460 |
+|   | California                                   | Los Angeles |   0 |     1920 | 456 |
+|   | California                                   | Los Angeles |   1 |     1922 | 456 |
+|   | California                                   | Los Angeles |   1 |     1924 | 454 |
+|   | California                                   | Los Angeles |   0 |     1924 | 428 |
+|   | California                                   | Los Angeles |   1 |     1918 | 407 |
+|   | California                                   | Los Angeles |   0 |     1926 | 402 |
+|   | California                                   | Los Angeles |   1 |     1917 | 381 |
+|   | California                                   | Los Angeles |   1 |     1926 | 380 |
+|   | California                                   | Los Angeles |   0 |     1927 | 373 |
+|   | California                                   | Los Angeles |   0 |     1888 | 372 |
+|   | California                                   | Los Angeles |   1 |     1916 | 368 |
+|   | California                                   | Los Angeles |   1 |     1915 | 362 |
+|   | California                                   | Los Angeles |   0 |     1918 | 354 |
+|   | California                                   | Los Angeles |   0 |     1919 | 347 |
+|   | California                                   | Los Angeles |   0 |     1915 | 338 |
+|   | California                                   | Los Angeles |   0 |     1941 | 337 |
 
-I download linked full-count census microdata from the IPUMS [[https://usa.ipums.org/usa/mlp/mlp.shtml][Multigenerational Longitudinal Panel]] for the census years 1940 and 1950.
-The main IPUMS variables I enclure are each respondant's county of residence at the time of being surveyed, as well as demographics including sex, birthyear, race, and birthplace.
-#+name: download-lr-migration-data
-#+begin_src R :results silent
-ipums_samples <- c("us1940b", "us1950b")
-vars = list(
-  "STATEFIP", "STATEICP", "COUNTYICP", "ENUMDIST", "CITY", # geographic variables
-  "SEX", "BIRTHYR", "RACE", "BPL", "MARST",# demographics
-  "CITIZEN",  "EDUC", # assimilation/culture
-  "LABFORCE", "OCC1950", "EMPSTAT", # labor market status
-  var_spec("NATIVITY",  attached_characteristics = c("mother", "father", "spouse")),
-  var_spec("OCCSCORE", attached_characteristics = c("mother", "father", "spouse")),
-  var_spec("INCTOT", attached_characteristics = c("mother", "father", "spouse")),
-  var_spec("INCWAGE", attached_characteristics = c("mother", "father", "spouse")),
-  "INCBUSFM"
-)
-# download data using IPUMS API
-lr_migration_extract <- define_extract_micro(
-  collection = "usa",
-  description = "linked microdata for internee and control population from 1940 to 1950",
-  samples = ipums_samples,
-  variables = vars
-) |>
-  submit_extract() |>
-  wait_for_extract() |>
-  download_extract("data")
-#+end_src
-
-To use the latest versions of the MLP linkages from IPUMS, I download the crosswalk files as csv's from https://usa.ipums.org/usa/mlp/mlp_census_crosswalks.shtml.
-
-Microdata extracted from IPUMS using =ipumsr::download_extract()= function
-downloads both the compressed data file (e.g., =usa_00122.dat.gz=)
-and the codebook ddi file which is used to label the variables (e.g., =usa_00122.xml=).
-
-For this project, the files needed are located in the =data/= subdirectory:
-#+begin_example
-├── data/
-│   ├── mlp_1940_1950_v1_2_csv
-│   │   ├── mlp_1940_1950_v1.2.csv
-│   │   └── README_mlp_csv.txt
-│   ├── nhgis0032_shape.zip
-│   ├── usa_00123.dat.gz
-│   ├── usa_00123.xml
-│   └── ...
-#+end_example
-
-** Link Data Locally
+** MLP Crosswalk Links
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:ipums* :tangle R/clean_fc-census.R :results silent
 :END:
@@ -249,7 +281,7 @@ library(dbplyr)
 library(duckdb)
 database <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
 # data extract file
-extract <- "data/usa_00123.xml"
+extract <- "data/fullcount_census/usa_00123.xml"
 ddi <- read_ipums_ddi(extract)
 # table name in database
 tbl <- "ipums_microdata"
@@ -257,7 +289,7 @@ tbl <- "ipums_microdata"
 cw45_csv <- "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv"
 #+end_src
 
-**** Database Reading
+*** Database Reading
 To manage how much memory is used at once, I read the ddi file in chunks to the database as its own table.
 I also read the crosswalks in as separate tables in the database.
 
@@ -283,8 +315,7 @@ read_ipums_micro_chunked(
 # read crosswalk csv files into database
 duckdb_read_csv(database, "mlp_crosswalks", cw45_csv)
 #+end_src
-
-**** MLP Crosswalk Linking
+** MLP Linked Microrecords Sample
 At this stage, I only need the state and county of each person who is linked across census years.
 For each decade-to-decade comparison (1920 to 1930, and 1930 to 1940),
 I join the state and county location by =HISTID= code for the appropriate year in the crosswalk file.
@@ -354,6 +385,8 @@ internee_data <- link_internee(
   histid2  = "histid_1950",
   out_csv  = NULL
 )
+
+readr::write_csv(internee_data, file = "data/linked_internee_sample.csv")
 #+end_src
 
 This procedure leaves me with a dataset of all MLP records of anyone reported as Japanese-American with links between the 1940 and 1950 census.
