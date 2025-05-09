@@ -5,3 +5,8 @@
 # files which are too large for github
 **.dat.gz
 data/fullcount_census/mlp_1940_1950_v1_2_csv/*.csv
+ltximg
+data/#README.org#
+data/.#README.org
+data/README.org~
+data/ipums_db.duckdb
