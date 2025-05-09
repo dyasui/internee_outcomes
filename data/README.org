@@ -211,13 +211,73 @@ data_labelled <- data_raw |>
                        as.integer(birth_yr) + 1800, # arrived after 1842
                        as.integer(birth_yr) + 1900), # arrived before or during 1942
     nativity = case_when(
-      ~ 1, # both parents native-born
-      ~ 2, # foreigh father, native mother
-      ~ 3, # native father, foriegn mother
-      ~ 4, # both parents foreign-born
-      ~ 5 # is foreign born themselves
+      bpl_pop == 1 & bpl_mom == 1 ~ 1,  # both parents native-born
+      bpl_pop == 2 & bpl_mom == 1 ~ 2,  # foreign father, native mother
+      bpl_pop == 1 & bpl_mom == 2 ~ 3,  # native father, foreign mother
+      bpl_pop == 2 & bpl_mom == 2 ~ 4,  # both parents foreign-born
+      birthplace %in% 0:74 ~ 5,       # is foreign born themselves
+      TRUE ~ NA_real_                    # for any other cases, assign NA
     ),
-    educ_bach = ifelse(educ_high %in% c("A", "B", "C", "D", "E", "F", "G", "H", "I", "4"), 1, 0),
+    educ_bach = ifelse(educ %in% c("A", "B", "C", "D", "E", "F", "G", "H", "I", "4"), 1, 0),
+    bpl = case_when(
+      birthplace == 31 ~ 001,  # Alabama	
+      birthplace == 81 ~ 002,  # Alaska
+      birthplace == 26 ~ 004,  # Arizona
+      birthplace == 32 ~ 005,  # Arkansas
+      birthplace == 13 ~ 006,  # California
+      birthplace == 22 ~ 008,  # Colorado
+      birthplace == 61 ~ 009,  # Connecticut
+      birthplace == 52 ~ 010,  # Delaware
+      birthplace == 51 ~ 011,  # District of Columbia
+      birthplace == 53 ~ 012,  # Florida
+      birthplace == 54 ~ 013,  # Georgia
+      birthplace %in% 70:74 ~ 015,  # Hawaii
+      birthplace == 23 ~ 016,  # Idaho
+      birthplace == 41 ~ 017,  # Illinois
+      birthplace == 42 ~ 018,  # Indiana
+      birthplace == 43 ~ 019,  # Iowa
+      birthplace == 44 ~ 020,  # Kansas
+      birthplace == 33 ~ 021,  # Kentucky
+      birthplace == 34 ~ 022,  # Louisiana
+      birthplace == 62 ~ 023,  # Maine
+      birthplace == 55 ~ 024,  # Maryland
+      birthplace == 63 ~ 025,  # Massachusetts
+      birthplace == 45 ~ 026,  # Michigan
+      birthplace == 46 ~ 027,  # Minnesota
+      birthplace == 35 ~ 028,  # Mississippi
+      birthplace == 47 ~ 029,  # Missouri
+      birthplace == 24 ~ 030,  # Montana
+      birthplace == 48 ~ 031,  # Nebraska
+      birthplace == 25 ~ 032,  # Nevada
+      birthplace == 64 ~ 033,  # New Hampshire
+      birthplace == 56 ~ 034,  # New Jersey
+      birthplace == 21 ~ 035,  # New Mexico
+      birthplace == 57 ~ 036,  # New York
+      birthplace == 58 ~ 037,  # North Carolin
+      birthplace == 49 ~ 038,  # North Dakota
+      birthplace == 40 ~ 039,  # Ohio
+      birthplace == 36 ~ 040,  # Oklahoma
+      birthplace == 12 ~ 041,  # Oregon
+      birthplace == 59 ~ 042,  # Pennsylvania
+      birthplace == 65 ~ 044,  # Rhode Island
+      birthplace == 50 ~ 045,  # South Carolina
+      birthplace == "4-" ~ 046,  # South Dakota
+      birthplace == 37 ~ 047,  # Tennessee
+      birthplace == 38 ~ 048,  # Texas
+      birthplace == 27 ~ 049,  # Utah
+      birthplace == 66 ~ 050,  # Vermont
+      birthplace == "5&" ~ 051,  # Virginia
+      birthplace == 11 ~ 053,  # Washington
+      birthplace == "5-" ~ 054,  # West Virginia
+      birthplace == "4-" ~ 055,  # Wisconsin
+      birthplace == 28 ~ 056,  # Wyoming
+      birthplace == 0 ~ 099,  # United States, ns
+      birthplace %in% 90:99 ~ 501, # Japan
+      birthplace == 82 ~ 150,  # Canada
+      birthplace == 83 ~ 200, # Mexico
+      birthplace == 84 ~ 300, # South America
+      .default = NA
+    ),
   )
 #+end_src
 *** Previous Address
