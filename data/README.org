@@ -1,4 +1,12 @@
 * Data Sources and Downloading
+** WRA Camp Internee Records
+
+The internee data file is available in the [[https://catalog.archives.gov/][National Archives]] catalog with the NAID 1264228.
+
+I use the fixed-width text version of this text file from Jaime Arellano-Bover's online replication package at
+https://www.openicpsr.org/openicpsr/project/144561/version/V1/view:
+=WRA.FORM26.PU.txt=.
+
 ** County Codes Crosswalk
  =data/county_codes_cw.csv= contains the list of 1940 counties with their state and county codes in NHGIS and ICPSR form.
  It also includes crosswalk wieghts for any possible border changes between 1940 and 1950 generated using the method from [[https://fpeckert.me/eglp/][Eckert et al. (2020)]].
@@ -57,14 +65,59 @@ For this project, the files needed are located in the =data/= subdirectory:
 │   └── ...
 #+end_example
 
-** WRA Camp Internee Records
+** MLP Crosswalk Links
+:PROPERTIES:
+:HEADER-ARGS:R: :session *R:ipums* :tangle R/write-db.R :results silent
+:END:
 
-The internee data file is available in the [[https://catalog.archives.gov/][National Archives]] catalog with the NAID 1264228.
+The original micro data files from IPUMS are too large to fit in memory,
+and the MLP v1.2 linkages are provided as crosswalks which have to be joined to the data.
+I first read both crosswalks and extract microdata into a local database file
+so that I can use SQL operations via the =duckdb= API in R.
 
-I use the fixed-width text version of this text file from Jaime Arellano-Bover's online replication package at
-https://www.openicpsr.org/openicpsr/project/144561/version/V1/view:
-=WRA.FORM26.PU.txt=.
+#+name: define-objects
+#+begin_src R
+# open database connection with duckdb
+library(ipumsr)
+library(dplyr)
+library(dbplyr)
+library(duckdb)
+database <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
+# data extract file
+extract <- "data/fullcount_census/usa_00124.xml"
+ddi <- read_ipums_ddi(extract)
+# table name in database
+tbl <- "ipums_microdata"
+# crosswalk files for each adjacent census year pair
+cw45_csv <- "data/fullcount_census/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv"
+#+end_src
 
+*** Database Reading
+To manage how much memory is used at once, I read the ddi file in chunks to the database as its own table.
+I also read the crosswalks in as separate tables in the database.
+
+#+name: write-database
+#+begin_src R :eval false
+# read in ipums extract to database in chunks
+read_ipums_micro_chunked(
+  ddi, # path to ddi .xml file in same location as data download
+  callback = readr::SideEffectChunkCallback$new(
+    function(x, pos) {
+      if (pos == 1) {
+        dbWriteTable(database, tbl, x, overwrite = TRUE)
+      } else {
+        dbWriteTable(database, tbl, x, overwrite = FALSE, append = TRUE)
+      }
+    }
+  ),
+  chunk_size = 1e7 # observations to read per chunk
+)
+#+end_src
+
+#+begin_src R :eval false
+# read crosswalk csv files into database
+duckdb_read_csv(database, "mlp_crosswalks", cw45_csv)
+#+end_src
 * Data Cleaning
 ** Clean WRA camp records
 :PROPERTIES:
@@ -91,6 +144,9 @@ library(haven)  # for reading stata data_raw files
 # Load dataset
 path <- "~/Research/Internment/data/"
 #+end_src
+
+#+RESULTS:
+: ~/Research/Internment/data/
 
 
 The original form included internee's names, the assembly center and WRA camp they were first assigned to,
@@ -175,10 +231,10 @@ data_labelled <- data_raw |>
                           "Tulare"      = 15, 
                           "Turlock"     = 16 )
                         ),
-    sex = case_when(sex_marrge %in% c("1", "2", "3", "4", "5", "0") ~ 0, # men
-                    sex_marrge %in% c("6", "7", "8", "9", "-", "&") ~ 1, # women
+    sex = case_when(sex_marrge %in% c("1", "2", "3", "4", "5", "0") ~ 1, # men
+                    sex_marrge %in% c("6", "7", "8", "9", "-", "&") ~ 2, # women
                     .default = NA),
-    sex = labelled(as.integer(sex), c("male" = 0, "female" = 1)),
+    sex = labelled(as.integer(sex), c("male" = 1, "female" = 2)),
     marst = case_when(sex_marrge %in% c("1", "6") ~ 1, # single
                       sex_marrge %in% c("2", "9") ~ 2, # married
                       sex_marrge %in% c("3", "8") ~ 3, # widowed
@@ -190,9 +246,9 @@ data_labelled <- data_raw |>
                                           "widowed" = 3,
                                           "divorced" = 4,
                                           "separated" = 5)),
-    birth_yr = if_else(as.integer(birth_yr) > 42,
-                       as.integer(birth_yr) + 1800, # born after 1842
-                       as.integer(birth_yr) + 1900), # born before or during 1942
+    birthyr = if_else(as.integer(birth_yr) > 42,
+                      as.integer(birth_yr) + 1800, # born after 1842
+                      as.integer(birth_yr) + 1900), # born before or during 1942
     race = case_when(race %in% c("4", "7", "L", "O", "V", "5", "J", "M", "P", "W", "6", "K", "N", "Q", "X") ~ 5, # japanese including mixed-race
                      race %in% c("8", "S", "T", "U") ~ 1, # white non-japanese 
                      race %in% c("1", "2", NA) ~ NA), # other race or not specified
@@ -282,10 +338,11 @@ data_labelled <- data_raw |>
 #+end_src
 *** Previous Address
 Group the internees into observable counties.
-#+begin_src R
+#+begin_src R :results silent
 # previous address codes transcribed from WRA form 26 documentation
 wra_counties <- read_csv("data/WRA_prev_address_list.csv")
 #+end_src
+
 The county names from the WRA records should match the county names from the NHGIS system for counties in 1940.
 #+begin_src R :results silent
 nhgis_codes <- read_csv("data/county_codes_cw.csv") |>
@@ -299,17 +356,18 @@ join_counties <- left_join(wra_counties, nhgis_codes,
 data_int <- data_labelled |>
   left_join(join_counties, by = "prev_address") |>
   select(ind_number, state, county, NHGISST, NHGISCTY,
-         camp, assembly, race, sex, birth_yr, bpl, bpl_pop, bpl_mom, yr_immig, nativity,
+         camp, assembly, race, sex, birthyr, bpl, bpl_pop, bpl_mom, yr_immig, nativity,
          last_name, first_name)
 #+end_src
 
 #+RESULTS:
 
-Checking the results by county:
+*** Internee Demographic Groups
 #+begin_src R
 intrn_grps <- data_int |>
   filter(!is.na(state)) |>
-  count(state, county, NHGISST, NHGISCTY, race, sex, birth_yr, bpl)
+  count(state, county, NHGISST, NHGISCTY, sex, birthyr, bpl) |>
+  mutate(p = n / sum(n))
 
 write_csv(intrn_grps, file = "data/internment_groups.csv")
 
@@ -320,119 +378,75 @@ intrn_grps |>
 #+end_src
 
 #+RESULTS:
-|   | state                                                                      | county      | NHGISST | NHGISCTY | race | sex | birth_yr | bpl |   n |
-|   | :----------+:-----------+:-------+:--------+----:+---:+--------:+---:+---: |             |         |          |      |     |          |     |     |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1921 |   6 | 458 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1923 |   6 | 457 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1921 |   6 | 446 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1922 |   6 | 443 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1925 |   6 | 420 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1925 |   6 | 411 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1923 |   6 | 404 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1920 |   6 | 401 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1924 |   6 | 398 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1922 |   6 | 390 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1924 |   6 | 384 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1920 |   6 | 380 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1919 |   6 | 375 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1926 |   6 | 364 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1888 | 501 | 351 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1926 |   6 | 343 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1941 |   6 | 334 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1918 |   6 | 329 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1927 |   6 | 328 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1917 |   6 | 300 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1927 |   6 | 293 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1940 |   6 | 287 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1928 |   6 | 285 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1886 | 501 | 284 |
-|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1939 |   6 | 284 |
+|   | state                                                                          | county      | NHGISST | NHGISCTY | sex | birthyr | bpl |   n |         p |
+|   | :----------+:-----------+:-------+:--------+---:+-------:+---:+---:+---------: |             |         |          |     |         |     |     |           |
+|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1921 |   6 | 458 | 0.0042262 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1923 |   6 | 458 | 0.0042262 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1921 |   6 | 447 | 0.0041247 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1922 |   6 | 443 | 0.0040878 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1925 |   6 | 420 | 0.0038755 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1925 |   6 | 411 | 0.0037925 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1923 |   6 | 405 | 0.0037371 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1920 |   6 | 403 | 0.0037187 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1924 |   6 | 398 | 0.0036725 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1922 |   6 | 390 | 0.0035987 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1924 |   6 | 384 | 0.0035434 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1920 |   6 | 381 | 0.0035157 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1919 |   6 | 375 | 0.0034603 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1888 | 501 | 370 | 0.0034142 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1926 |   6 | 364 | 0.0033588 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1926 |   6 | 343 |  0.003165 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1941 |   6 | 334 |  0.003082 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1918 |   6 | 330 | 0.0030451 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1927 |   6 | 328 | 0.0030266 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1917 |   6 | 302 | 0.0027867 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1886 | 501 | 294 | 0.0027129 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1927 |   6 | 293 | 0.0027037 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1940 |   6 | 287 | 0.0026483 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1928 |   6 | 285 | 0.0026298 |
+|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1887 | 501 | 284 | 0.0026206 |
 
 ** 1940 County-Level Japanese Population
 :PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment* :results silent
+:HEADER-ARGS:R: :session *R:internment* :tangle R/predict-internment.R :results silent
 :END:
 #+begin_src R
 library(ipumsr)
+library(dbplyr)
+library(duckdb)
 # data extract file
-JApop1940_extract <- "data/fullcount_census/usa_00064.xml"
-microdt_1940 <- read_ipums_micro(JApop1940_extract)
+db <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
+tbl = "ipums_microdata"
+
+dt40 <- tbl(db, tbl) |>
+  filter(YEAR == 1940, RACE == 5) |>
+  select(STATEFIP, COUNTYICP, SEX, BIRTHYR, BPL)
 #+end_src
 
 #+RESULTS:
 
-Collect all Japanese-American micro-records by county.
+Collect all Japanese-American micro-records by county, sex, birthyear, and birthplace groups.
 
 #+begin_src R
-JAcounty_pop <- microdt_1940 |>
-  group_by(STATEFIP, COUNTYICP) |>
-  summarize(pop = n())
+JApop_groups <- dt40 |>
+  count(STATEFIP, COUNTYICP, SEX, BIRTHYR, BPL) |>
+  collect() |>
+  mutate(
+    # proportion in each demographic group
+    p = n / sum(n),
+    # state-county geography code based on NHGIS
+    NHGISST = str_pad(string = STATEFIP*10, width = 3, side = "left", pad = "0"),
+    NHGISCTY = str_pad(COUNTYICP, width = 4, side = "left", pad = "0") )
 
-internment_prob <- intrn_grps |>
-  group_by(STATENAM, NHGISNAM, NHGISST, NHGISCTY) |> 
-  summarise(internees = sum(n)) |> 
-  mutate(STATEFIP = as.integer(NHGISST) / 10,
-         COUNTYICP = as.integer(NHGISCTY)) |>
-  full_join(JAcounty_pop, by = c("STATEFIP", "COUNTYICP")) |>
-  mutate(p_intern = internees / pop)
+# save results
+readr::write_csv(JApop_groups, file = "data/ja_pop_groups.csv")
 #+end_src
 
-** MLP Crosswalk Links
+** MLP Linked Microrecords
 :PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment* :tangle R/clean_fc-census.R :results silent
+:HEADER-ARGS:R: :session *R:internment* :tangle R/link-census.R :results silent
 :END:
-
-The original micro data files from IPUMS are too large to fit in memory,
-and the MLP v1.2 linkages are provided as crosswalks which have to be joined to the data.
-I first read both crosswalks and extract microdata into a local database file
-so that I can use SQL operations via the =duckdb= API in R.
-
-#+name: define-objects
-#+begin_src R
-# open database connection with duckdb
-library(ipumsr)
-library(data.table)
-library(dplyr)
-library(dtplyr)
-library(dbplyr)
-library(duckdb)
-database <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
-# data extract file
-extract <- "data/fullcount_census/usa_00124.xml"
-ddi <- read_ipums_ddi(extract)
-# table name in database
-tbl <- "ipums_microdata"
-# crosswalk files for each adjacent census year pair
-cw45_csv <- "data/fullcount_census/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv"
-#+end_src
-
-*** Database Reading
-To manage how much memory is used at once, I read the ddi file in chunks to the database as its own table.
-I also read the crosswalks in as separate tables in the database.
-
-#+name: write-database
-#+begin_src R :eval false
-# read in ipums extract to database in chunks
-read_ipums_micro_chunked(
-  ddi, # path to ddi .xml file in same location as data download
-  callback = readr::SideEffectChunkCallback$new(
-    function(x, pos) {
-      if (pos == 1) {
-        dbWriteTable(database, tbl, x, overwrite = TRUE)
-      } else {
-        dbWriteTable(database, tbl, x, overwrite = FALSE, append = TRUE)
-      }
-    }
-  ),
-  chunk_size = 1e7 # observations to read per chunk
-)
-#+end_src
-
-#+begin_src R :eval false
-# read crosswalk csv files into database
-duckdb_read_csv(database, "mlp_crosswalks", cw45_csv)
-#+end_src
-** MLP Linked Microrecords Sample
+Sample
 At this stage, I only need the state and county of each person who is linked across census years.
 For each decade-to-decade comparison (1920 to 1930, and 1930 to 1940),
 I join the state and county location by =HISTID= code for the appropriate year in the crosswalk file.
@@ -440,6 +454,8 @@ Then I count how many linked individuals appear in each county-county migration 
 and drop individuals who do not report a county location in either decade. 
 
 #+begin_src R
+database <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
+tbl <- "ipums_microdata"
 # bring needed microdata into a tibble for joining
 d1 <- tbl(database, tbl) |>
   filter(YEAR == 1940) # decade start year
@@ -450,30 +466,46 @@ d2 <- tbl(database, tbl) |>
 cw <- tbl(database, "mlp_crosswalks")
 
 # join histids to selected data from year 1
-l1 <- d1 |>
-  inner_join(cw, by = c("HISTID" = "histid_1940")
+l1 <- cw |>
+  inner_join(d1, by = c("histid_1940" = "HISTID")) |>
+  collect()
 
 # join histids to selected data from year 2
-l2 <- d2 |>  
-  inner_join(cw, by = c("HISTID" = "histid_1950")
+l2 <- cw |>  
+  inner_join(d2, by = c("histid_1950" = "HISTID")) |>
+  collect()
 
 # join all selected data between years by crosswalked histids
-results <- full_join(l1, l2,
-                     by = c("histid_1940", "histid_1950"),
-                     suffix = c("_1940", "_1950")) |>
-  # get rid of leftover linking varibles
+results <- bind_rows(l1, l2) |>
+  # get rid of leftover linking and technical varibles
+  select(!c("step", "SAMPLE", "SERIAL", "HHWT", "PERWT", 
+            "PERNUM", "GQ", "VERSIONHIST", "CITY", "ENUMDIST")) |>
+  mutate(
+    INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE),
+    INCTOT = ifelse(INCWAGE %in% c(999999,999998), NA, INCTOT)
+  )
+
+# generate new unique ids for each linked person
+histid_pairs <- results |>
+  count(histid_1940, histid_1950) |>
+  filter(n>1) |> # multiple matches
+  mutate(id = row_number()) |>
+  select(!n)
+
+results <- results |>
+  left_join(histid_pairs, by = c("histid_1940", "histid_1950")) |>
+  filter(!is.na(id)) |>
   select(!c("histid_1940", "histid_1950")) |>
-  collect()
+  relocate(id)
 #+end_src
 
 #+RESULTS:
 
 #+name: write-linked-sample
 #+begin_src R :exports results
-readr::write_csv(internee_data, file = "data/linked_internee_sample.csv")
+readr::write_csv(results, file = "data/linked_census_sample.csv")
 #+end_src
 
 This procedure leaves me with a dataset of all MLP records of anyone reported as Japanese-American with links between the 1940 and 1950 census.
 This is about 5,000 linked Japanese-American individuals with observable county locations in 1940 and 1950.
-
 
