@@ -18,18 +18,17 @@ The main IPUMS variables I enclure are each respondant's county of residence at 
 #+begin_src R :results silent
 ipums_samples <- c("us1940b", "us1950b")
 vars = list(
+  var_spec("RACE", case_selections = c("4","5")), # Japanese and Chinese
   "STATEFIP", "STATEICP", "COUNTYICP", "ENUMDIST", "CITY", # geographic variables
-  "SEX", "BIRTHYR", "RACE", "BPL", "MARST",# demographics
+  "SEX", "BIRTHYR", "MARST",# demographics
+  var_spec("BPL", attached_characteristics = c("mother", "father")),
+  var_spec("NATIVITY",  attached_characteristics = c("mother", "father", "spouse")),
   "CITIZEN",  "EDUC", # assimilation/culture
   "LABFORCE", "OCC1950", "EMPSTAT", # labor market status
-  var_spec("NATIVITY",  attached_characteristics = c("mother", "father", "spouse")),
-  var_spec("OCCSCORE", attached_characteristics = c("mother", "father", "spouse")),
-  var_spec("INCTOT", attached_characteristics = c("mother", "father", "spouse")),
-  var_spec("INCWAGE", attached_characteristics = c("mother", "father", "spouse")),
-  "INCBUSFM"
+  "OCCSCORE", "INCTOT", "INCWAGE", "INCBUSFM"
 )
 # download data using IPUMS API
-lr_migration_extract <- define_extract_micro(
+internment_extract <- define_extract_micro(
   collection = "usa",
   description = "linked microdata for internee and control population from 1940 to 1950",
   samples = ipums_samples,
@@ -547,33 +546,33 @@ intrn_grps |>
 #+end_src
 
 #+RESULTS:
-|   | STATENAM                                                        | NHGISNAM    | NHGISST | NHGISCTY | sex | birth_yr |   n |
-|   | :----------+:-----------+:-------+:--------+---:+--------:+---: |             |         |          |     |          |     |
-|   | California                                                      | Los Angeles |      60 |      370 |   0 |     1921 | 565 |
-|   | California                                                      | Los Angeles |      60 |      370 |   1 |     1921 | 538 |
-|   | California                                                      | Los Angeles |      60 |      370 |   0 |     1922 | 528 |
-|   | California                                                      | Los Angeles |      60 |      370 |   0 |     1923 | 518 |
-|   | California                                                      | Los Angeles |      60 |      370 |   1 |     1920 | 493 |
-|   | California                                                      | Los Angeles |      60 |      370 |   1 |     1923 | 478 |
-|   | California                                                      | Los Angeles |      60 |      370 |   1 |     1919 | 475 |
-|   | California                                                      | Los Angeles |      60 |      370 |   0 |     1925 | 466 |
-|   | California                                                      | Los Angeles |      60 |      370 |   1 |     1925 | 460 |
-|   | California                                                      | Los Angeles |      60 |      370 |   0 |     1920 | 456 |
-|   | California                                                      | Los Angeles |      60 |      370 |   1 |     1922 | 456 |
-|   | California                                                      | Los Angeles |      60 |      370 |   1 |     1924 | 454 |
-|   | California                                                      | Los Angeles |      60 |      370 |   0 |     1924 | 428 |
-|   | California                                                      | Los Angeles |      60 |      370 |   1 |     1918 | 407 |
-|   | California                                                      | Los Angeles |      60 |      370 |   0 |     1926 | 402 |
-|   | California                                                      | Los Angeles |      60 |      370 |   1 |     1917 | 381 |
-|   | California                                                      | Los Angeles |      60 |      370 |   1 |     1926 | 380 |
-|   | California                                                      | Los Angeles |      60 |      370 |   0 |     1927 | 373 |
-|   | California                                                      | Los Angeles |      60 |      370 |   0 |     1888 | 372 |
-|   | California                                                      | Los Angeles |      60 |      370 |   1 |     1916 | 368 |
-|   | California                                                      | Los Angeles |      60 |      370 |   1 |     1915 | 362 |
-|   | California                                                      | Los Angeles |      60 |      370 |   0 |     1918 | 354 |
-|   | California                                                      | Los Angeles |      60 |      370 |   0 |     1919 | 347 |
-|   | California                                                      | Los Angeles |      60 |      370 |   0 |     1915 | 338 |
-|   | California                                                      | Los Angeles |      60 |      370 |   0 |     1941 | 337 |
+|   | state                                                                      | county      | NHGISST | NHGISCTY | race | sex | birth_yr | bpl |   n |
+|   | :----------+:-----------+:-------+:--------+----:+---:+--------:+---:+---: |             |         |          |      |     |          |     |     |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1921 |   6 | 458 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1923 |   6 | 457 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1921 |   6 | 446 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1922 |   6 | 443 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1925 |   6 | 420 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1925 |   6 | 411 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1923 |   6 | 404 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1920 |   6 | 401 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1924 |   6 | 398 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1922 |   6 | 390 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1924 |   6 | 384 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1920 |   6 | 380 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1919 |   6 | 375 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1926 |   6 | 364 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1888 | 501 | 351 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1926 |   6 | 343 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1941 |   6 | 334 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1918 |   6 | 329 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1927 |   6 | 328 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1917 |   6 | 300 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1927 |   6 | 293 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1940 |   6 | 287 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1928 |   6 | 285 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   0 |     1886 | 501 | 284 |
+|   | California                                                                 | Los Angeles |      60 |      370 |    5 |   1 |     1939 |   6 | 284 |
 
 ** 1940 County-Level Japanese Population
 :PROPERTIES:
@@ -625,12 +624,12 @@ library(dbplyr)
 library(duckdb)
 database <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
 # data extract file
-extract <- "data/fullcount_census/usa_00123.xml"
+extract <- "data/fullcount_census/usa_00124.xml"
 ddi <- read_ipums_ddi(extract)
 # table name in database
 tbl <- "ipums_microdata"
 # crosswalk files for each adjacent census year pair
-cw45_csv <- "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv"
+cw45_csv <- "data/fullcount_census/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv"
 #+end_src
 
 *** Database Reading
@@ -666,70 +665,37 @@ I join the state and county location by =HISTID= code for the appropriate year i
 Then I count how many linked individuals appear in each county-county migration group
 and drop individuals who do not report a county location in either decade. 
 
-***** TODO Rewrite this function to group by demographic categories
 #+begin_src R
-link_internee <- function(
-  db_file = database, # your DuckDB connection
-  dt_table,             # microdata table in DB
-  cw_table,             # name of crosswalk table in DB, e.g. "cw_1920_1930"
-  yr1, yr2,             # start and end year of each decade
-  histid1, histid2,     # e.g. "histid_1920", "histid_1930"
-  out_csv = NULL        # optional path to write csv
-) {
-  # open the database connection
-  db <- dbConnect(duckdb(), dbdir = db_file)
-  # bring needed microdata into a tibble for joining
-  d1 <- tbl(db, dt_table) |>
-    filter(YEAR == yr1, RACE == 5) |> # decade start year
-    select(
-      HISTID, STATEFIP, COUNTYICP, ENUMDIST, CITY, SEX, MARST, BIRTHYR, RACE, SEX, LABFORCE, INCWAGE, OCC1950, EDUC, CITIZEN, NATIVITY, NATIVITY_MOM, NATIVITY_POP
-    )
-  d2 <- tbl(db, dt_table) |>
-    filter(YEAR == yr2, RACE == 5) |> # decade end year
-    select(
-      # make variable selection for linked dataset
-      HISTID, STATEFIP, COUNTYICP, CITY, SEX, MARST, BIRTHYR, RACE, SEX, LABFORCE, INCWAGE, INCTOT, OCC1950, EDUC, CITIZEN, NATIVITY, NATIVITY_MOM, NATIVITY_POP
-    )
-  # histid to be used in appropriate cw file
-  cw <- tbl(db, cw_table) |>
-    rename(hid1 = paste("histid", yr1, sep = "_"), hid2 = paste("histid", yr2, sep = "_"))
-  # join histids to selected data from year 1
-  l1 <- d1 |>
-    rename(hid1 = HISTID) |>
-    inner_join(cw, by = "hid1")
-  # join histids to selected data from year 2
-  l2 <- d2 |>  
-    rename(hid2 = HISTID) |>
-    inner_join(cw, by = "hid2")
-  # join all selected data between years by crosswalked histids
-  results <- full_join(l1, l2, by = c("hid1", "hid2"), suffix = c("_1940", "_1950")) |>
-    # get rid of leftover linking varibles
-    select(!c("hid1", "hid2")) |>
-    collect()
-  
-  if (!is.null(out_csv)) {
-    write.csv(results, out_csv, row.names = FALSE)
-  }
-  
-  return(results)
-}
+# bring needed microdata into a tibble for joining
+d1 <- tbl(database, tbl) |>
+  filter(YEAR == 1940) # decade start year
+d2 <- tbl(database, tbl) |>
+  filter(YEAR == 1950) # decade end year
+
+# histid to be used in appropriate cw file
+cw <- tbl(database, "mlp_crosswalks")
+
+# join histids to selected data from year 1
+l1 <- d1 |>
+  inner_join(cw, by = c("HISTID" = "histid_1940")
+
+# join histids to selected data from year 2
+l2 <- d2 |>  
+  inner_join(cw, by = c("HISTID" = "histid_1950")
+
+# join all selected data between years by crosswalked histids
+results <- full_join(l1, l2,
+                     by = c("histid_1940", "histid_1950"),
+                     suffix = c("_1940", "_1950")) |>
+  # get rid of leftover linking varibles
+  select(!c("histid_1940", "histid_1950")) |>
+  collect()
 #+end_src
 
-***** Apply decade-level summary function to all years
-#+name: link-locations
-#+begin_src R :exports results
-# 1940 -> 1950
-internee_data <- link_internee(
-  db_file  = "data/ipums_db.duckdb",
-  dt_table = "ipums_microdata",
-  cw_table = "mlp_crosswalks",
-  yr1      = 1940,
-  yr2      = 1950,
-  histid1  = "histid_1940",
-  histid2  = "histid_1950",
-  out_csv  = NULL
-)
+#+RESULTS:
 
+#+name: write-linked-sample
+#+begin_src R :exports results
 readr::write_csv(internee_data, file = "data/linked_internee_sample.csv")
 #+end_src
 
