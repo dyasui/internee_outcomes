@@ -1,0 +1,354 @@
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND THEMES
+%----------------------------------------------------------------------------------------
+\documentclass{beamer}
+% Load a bunch of useful packages:
+\usepackage{amssymb,amsmath,amsfonts,mathtools} % useful math fonts and symbols
+\usepackage{geometry} % allows changing margins and sizes of stuff
+\usepackage{hyperref} % allows referencing of lines of text, urls, figures etc
+\usepackage{natbib} % allows citation referencing from a .bib file
+\bibliographystyle{apalike} % American Psychological Association style guide
+\usepackage{graphicx} % to include graphics from the figures folder with helpful formating options
+%---------------------------------------------%
+\usepackage{color} % custom color definitions:%
+    %UOregon colors:                          %
+    \definecolor{UOGreen}{RGB}{18, 71, 52}    %
+    \definecolor{UOYellow}{RGB}{254, 225, 35} %
+    %Secondary official colors:               %
+    \definecolor{LegacyGreen}{HTML}{104735}   %
+    \definecolor{GrassGreen}{HTML}{489D46}    %
+    \definecolor{LimeGreen}{HTML}{8ABB40}     %
+    \definecolor{Chartreuse}{HTML}{E2E11B}    %
+    \definecolor{Berry}{HTML}{8D1D58}         %
+    \definecolor{DarkBlue}{HTML}{004F6E}      %
+    \definecolor{LightBlue}{HTML}{00A5B5}     %
+%----------------------------------------------
+\usepackage{setspace} % to specify single, double or one-half spacing of text
+\usepackage{indentfirst} % indent first line of a text paragraph
+\usepackage{multicol} %multipage ability
+\usepackage{ulem} % \ul (underline) command which will break over line ends
+\usepackage{amsthm} % allows standarized theorem commands
+\setbeamertemplate{theorems}[numbered]
+\theoremstyle{plain}
+\newtheorem{assume}{Assumption}
+\usepackage{breqn} %automatic line breaking
+\normalem
+
+\usetheme{Frankfurt}
+%UOregon colors:
+\definecolor{UOGreen}{RGB}{18, 71, 52}
+\definecolor{UOYellow}{RGB}{254, 225, 35}
+%Secondary official colors:
+\definecolor{LegacyGreen}{HTML}{104735}
+\definecolor{GrassGreen}{HTML}{489D46}
+\definecolor{LimeGreen}{HTML}{8ABB40}
+\definecolor{Chartreuse}{HTML}{E2E11B}
+\definecolor{Berry}{HTML}{8D1D58}
+\definecolor{DarkBlue}{HTML}{004F6E}
+\definecolor{LightBlue}{HTML}{00A5B5}
+\usefonttheme{professionalfonts}
+\fontfamily{ppl}\selectfont
+\usecolortheme[named=LegacyGreen]{structure}
+\setbeamertemplate{footline}[frame number]
+\setbeamertemplate{headline}{} %Removes Section Index on top of slide
+\hypersetup{
+    colorlinks=true,
+    linkcolor=GrassGreen,
+    filecolor=magenta,      
+    urlcolor={LightBlue},
+    pdftitle={Overleaf Example},
+    pdfpagemode=FullScreen
+}
+
+%----------------------------------------------------------------------------------------
+%	TITLE PAGE
+%----------------------------------------------------------------------------------------
+
+% The title
+\title{Forced Removal or Economic Mobility?}
+\subtitle{Wage Effects of Japanese Internment}
+\author{Dante Yasui}
+\institute{Presented in Dept. of Economics Grad Group}
+\date{\today}
+\titlegraphic{\includegraphics[scale=.4]{figures/UOSignature-356.png}}
+
+\begin{document}
+
+\maketitle
+
+%---------------------------------------------------------------------------
+\section{Introduction}
+%---------------------------------------------------------------------------
+
+\begin{frame}{Japanese Internment as Natural Experiment}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.7\linewidth]{figures/PioCrtInternmentMap.jpg}
+    \end{figure}
+    {\footnotesize \href{https://pioneercourthouse.org/gallery-Japanese-American-Internment.html}{Source}}
+\end{frame}
+
+\begin{frame}{Pre-Internment Japanese Distribution}\label{ctmap}
+    \begin{figure}
+        \centering
+        \includegraphics[width=.85\linewidth]{figures/county_JAmap.png}
+        \label{fig:county40map}
+    \end{figure}
+\end{frame}
+
+%---------------------------------------------------------------------------
+\section{Research Question}
+%---------------------------------------------------------------------------
+
+\begin{frame}{Research Question}\label{rq_slide}
+    \begin{block}{Research Question:}
+        \textbf{How were internee labor market outcomes affected after their release?}
+    \end{block}
+    \begin{itemize}
+        \item WRA camps and resettlement lead to shift in Japanese Population \hyperlink{areaplot}{\beamergotobutton{Plot}}
+        \item Variation in camp areas by local median incomes \hyperlink{stincomemap}{\beamergotobutton{Map}}
+        \item Camps assigned by geography and capacity; not economic characteristics \hyperlink{campplcmap}{\beamergotobutton{Map}}
+    \end{itemize}
+\end{frame}
+
+%---------------------------------------------------------------------------
+\section{Significance and Contribution}
+%---------------------------------------------------------------------------
+
+\begin{frame}{Related Literature}
+    \begin{block}{Effects on Japanese American Internees:}
+        \begin{itemize}
+            \item Internment caused labor market withdrawl leading to reduction of working-age male earnings by 9-13\% in 1970 \citep{chin_longrun_2005}
+            \item Internment may have lead to higher long-term wages due to re-optimization and camp diversity (Arellano-Bover 2022).
+            \item Camp assignment induced resettlement and those moved to richer areas did better then those moved to poorer areas in 1980s \citep{shoag_causal_2016}
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+%---------------------------------------------------------------------------
+\section{Methods}
+%---------------------------------------------------------------------------
+
+\begin{frame}{Data}
+    \textbf{Sources:} 
+    \begin{itemize}
+        \item 1940 and 1950 full count census via IPUMS \citep{ruggles_steven_ipums_2020}
+          \begin{itemize}
+            \item I use IPUMS' linked data: the Multigenerational Longitudinal Panel (MLP)
+           \end{itemize}
+        \item Wartime Relocation Authority (WRA) camp records via National Archives
+    \end{itemize}
+    \textbf{Variables:}
+    \begin{itemize}
+    \item Outcomes: wages, employment, occupation
+    \item Time-Invariant: birth year, birthplace, sex, etc
+    \item Location: either census address or 1942 address prior to EO9066 evacuations
+    \item Treatment: predicted internment status
+    \end{itemize}
+\end{frame}
+
+    \begin{frame}{Methods}
+      \begin{block}{Predicted Internment Status}
+        Using known proportions of demographic categories within WRA and census,
+        we can estimate the probability of internment using Bayes Rule:
+        $$
+        Pr(I_i=1|Z_i,c_i^{40}) = \frac{Pr(z_i,c_i^{40}|I_i=1) \cdot Pr(I_i=1)}{Pr(z_i,c_i^{40})}
+        $$
+        \begin{itemize}
+        \item $Pr(z_i,c_i^{40}|I_i=1)$: proportion of internees in each county-demographic
+        \item $Pr(I_i=1)$: fraction of internees over 1940 Japanese American population
+        \item $Pr(z_i,s_i^{40})$: proportion of Japanese Americans in each county-demographic in 1940 census
+        \end{itemize}
+      \end{block}
+    \end{frame}
+
+    \begin{frame}
+      \begin{table}
+        \begin{tabular}{lrrrr}
+          \textbf{YEAR:} & \multicolumn{2}{c}{1940} & \multicolumn{2}{c}{1950} \\
+          \underline{variable} & Chinese & Japanese & Chinese & Japanese \\
+          $\hat{E}[\text{internment}]$: & 0 &  0.66 & 0 &  0.64 \\
+          Percent Female: &  0.33 &  0.45 &  0.34 &  0.45 \\
+          Average BirthYear: & 1912 & 1908 & 1913 & 1908 \\
+          Employed: & 0.37 & 0.42 &  0.50 & 0.52 \\
+          Some College: & 0.05 & 0.05 & 0.036 & 0.03 \\
+        \end{tabular}
+      \end{table}
+    \end{frame}
+
+    \begin{frame}{Summary Statistics}
+      \begin{table}[!t]                                        
+        \fontsize{12.0pt}{14.4pt}\selectfont                     
+        \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lcc}  
+          \textbf{Characteristic} & \textbf{4}\\                   
+          N = 6,448\textsuperscript{\textit{1}} & \textbf{5}\\     
+          N = 4,631\textsuperscript{\textit{1}} \\                 
+          \midrule\addlinespace[2.5pt]                             
+          pr\_intern & 0.00 (0.00, 0.00) & 0.84 (0.40, 1.00) \\    
+          female & 2,157 (33\%) & 2,101 (45\%) \\                  
+          BIRTHYR & 1,912 (1,899, 1,930) & 1,904 (1,892, 1,927) \\ 
+          employed & 2,388 (37\%) & 1,947 (42\%) \\                
+          college & 340 (5.3\%) & 244 (5.3\%) \\                   
+          foreign & 181 (2.8\%) & 149 (3.2\%) \\                   
+        \end{tabular*}                                           
+        \begin{minipage}{\linewidth}                             
+          \textsuperscript{\textit{1}}Median (Q1, Q3); n (\%)\\    
+        \end{minipage}                                           
+      \end{table}                                              
+    \end{frame}
+
+    \begin{frame}
+      \begin{figure}
+        \centering
+        \includegraphics[width=0.7\linewidth]{figures/did_plot.png}
+      \end{figure}
+    \end{frame}
+    
+    \begin{frame}{Methods}\label{methods}
+      \begin{block}{Difference-in-Differences \hyperlink{DiDmethod}{\beamergotobutton{Diff-in-Diff}}}
+        Assuming that Chinese and Japanese Americans would have experienced similar wage trends without internment:
+        $$y_{it} = \alpha_t + X_{it}' \gamma + \delta \hat{E}[I_i|Z_i,c_i^t] + \beta (\hat{E}[I_i|Z_i,c_i^t] \times Post_t) + \epsilon_{it}$$
+      \end{block}
+        \begin{itemize}
+        \item $y_{it}$: real wages earned by individual $i$ in year $t$
+        \item $\hat{E}[I_i|Z_i,c_i^t]$: Predicted internhment status
+        \item $Post_t$: treatment has an effect in 1950, but not 1940
+        \item $X_{it}$: Time-variant controls (educ, marst, etc)
+        \end{itemize}
+        $\beta$ : DiD estimate between internees and non-internees, pre vs post internment
+    \end{frame}
+
+    \begin{frame}{Diff-in-Diff}
+      \begin{block}{Identifying assumption:}
+        The only reason an internee would resettle and stay in destination $k$ is through the internment and resettlement mechanism
+      \end{block} 
+      \begin{itemize}
+      \item Possibly violated if internees did have some degree of choice and ability to move between release and 1950 census
+      \end{itemize}
+    \end{frame}
+
+    \begin{frame}
+      \begingroup
+      \centering
+      \begin{tabular}{lcccc}
+        \tabularnewline \midrule \midrule
+        Dependent Variable: & \multicolumn{4}{c}{INCWAGE}\\
+        Model:                & (1)            & (2)            & (3)            & (4)\\  
+        \midrule
+        \emph{Variables}\\
+        Constant              & 334.0$^{***}$  & -1,591.9       &                &   \\   
+        & (9.644)        & (1,030.1)      &                &   \\   
+        did                   & 170.9$^{***}$  & 189.8$^{***}$  & 36.45          & 62.72\\   
+        & (33.62)        & (32.36)        & (40.87)        & (33.43)\\   
+        pr\_intern            & -121.7$^{***}$ & -62.10$^{***}$ & -39.38$^{***}$ & -27.95$^{***}$\\   
+        & (18.54)        & (18.17)        & (7.830)        & (6.908)\\   
+        as\_factor(YEAR)1950  & 174.9$^{***}$  & 203.0$^{***}$  & 295.3$^{***}$  & 321.8$^{***}$\\   
+        & (17.99)        & (17.99)        & (40.59)        & (35.45)\\   
+        female                &                & -347.9$^{***}$ &                & -287.3$^{***}$\\   
+        &                & (13.65)        &                & (7.192)\\   
+        BIRTHYR               &                & 0.9884$^{*}$   &                & 0.8518$^{***}$\\   
+        &                & (0.5377)       &                & (0.2067)\\   
+        college               &                & 233.5$^{***}$  &                & 129.3$^{***}$\\   
+        &                & (22.34)        &                & (11.67)\\   
+        married               &                & 174.6$^{***}$  &                & 173.2$^{***}$\\   
+        &                & (17.64)        &                & (7.610)\\   
+        \midrule
+        \emph{Fixed-effects}\\
+        as\_factor(state)     &                &                & Yes            & Yes\\  
+        \midrule
+        \emph{Fit statistics}\\
+        Observations          & 10,309         & 10,309         & 4,720          & 4,720\\  
+        R$^2$                 & 0.02777        & 0.10337        & 0.05570        & 0.10621\\  
+        Within R$^2$          &                &                & 0.05040        & 0.10120\\  
+        \midrule \midrule
+        \multicolumn{5}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+      \end{tabular}
+      \par\endgroup
+    \end{frame}
+
+    \begin{frame}
+      \begingroup
+      \centering
+      \begin{tabular}{lccc}
+        \tabularnewline \midrule \midrule
+        Dependent Variables:  & employed        & OCCSCORE        & college\\  
+        Model:                & (1)             & (2)             & (3)\\  
+        \midrule
+        \emph{Variables}\\
+        Constant              & 8.696$^{***}$   & 162.2$^{***}$   & $-3.96\times 10^{-14}$\\    
+        & (0.4347)        & (12.58)         & ($1.19\times 10^{-13}$)\\    
+        did                   & -0.0739$^{***}$ & -1.977$^{***}$  & $-3.38\times 10^{-17}$\\    
+        & (0.0138)        & (0.3988)        & ($3.78\times 10^{-15}$)\\    
+        pr\_intern            & 0.0779$^{***}$  & -1.797$^{***}$  & $-1.48\times 10^{-16}$\\    
+        & (0.0098)        & (0.2840)        & ($2.69\times 10^{-15}$)\\    
+        as\_factor(YEAR)1950  & 0.1396$^{***}$  & 2.335$^{***}$   & $-2.11\times 10^{-17}$\\    
+        & (0.0068)        & (0.1968)        & ($1.87\times 10^{-15}$)\\    
+        female                & -0.3449$^{***}$ & -9.011$^{***}$  & $2.84\times 10^{-16}$\\    
+        & (0.0059)        & (0.1720)        & ($1.63\times 10^{-15}$)\\    
+        BIRTHYR               & -0.0044$^{***}$ & -0.0802$^{***}$ & $8.12\times 10^{-17}$\\    
+        & (0.0002)        & (0.0065)        & ($6.2\times 10^{-17}$)\\    
+        college               & 0.1216$^{***}$  & 8.288$^{***}$   & 1$^{***}$\\   
+        & (0.0139)        & (0.4033)        & ($3.83\times 10^{-15}$)\\    
+        married               & 0.2354$^{***}$  & 7.285$^{***}$   & $2.87\times 10^{-16}$\\    
+        & (0.0083)        & (0.2396)        & ($2.27\times 10^{-15}$)\\    
+        \midrule
+        \emph{Fit statistics}\\
+        Observations          & 22,158          & 22,158          & 22,158\\  
+        R$^2$                 & 0.28101         & 0.24857         & 1\\  
+        Adjusted R$^2$        & 0.28078         & 0.24833         & 1\\  
+        \midrule \midrule
+        \multicolumn{4}{l}{\emph{IID standard-errors in parentheses}}\\
+        \multicolumn{4}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+      \end{tabular}
+      \par\endgroup
+    \end{frame}
+    
+    \section{Conclusion}
+
+    \begin{frame}[plain]{}
+      \tiny
+      \bibliography{InternRefs}
+      \addtocounter{framenumber}{-1}
+    \end{frame}
+
+    \section{maps}
+
+    \begin{frame}[plain]\label{wrapmap}
+      \begin{figure}
+        \centering
+        \includegraphics[width=.95\linewidth]{figures/wrap_maps.png}
+      \end{figure}
+      \addtocounter{framenumber}{-1}
+    \end{frame}
+
+    \begin{frame}[plain]\label{areaplot}
+      \begin{figure}
+        \caption{Regional Trends in Japanese Population Concentration \hyperlink{rq_slide}{\beamerreturnbutton{Back}}}
+        \centering
+        \includegraphics[width=.65\linewidth]{figures/shareareaplot.png}
+        \label{fig:areaplot}
+      \end{figure}
+      \addtocounter{framenumber}{-1}
+    \end{frame}
+
+    \begin{frame}[plain]\label{stincomemap}
+      \begin{figure}
+        \centering
+        \includegraphics[height=.6\linewidth]{figures/st_income_map.png}
+      \end{figure}
+      \hyperlink{rq_slide}{\beamerreturnbutton{Back}}
+      \addtocounter{framenumber}{-1}
+    \end{frame}
+    
+    \begin{frame}[plain]\label{campplcmap}
+      \begin{figure}
+        \centering
+        \includegraphics[height=.6\linewidth]{figures/RDmap.png}
+      \end{figure}
+      \hyperlink{rq_slide}{\beamerreturnbutton{Back}}
+                {\footnotesize \href{http://resource.nlm.nih.gov/01130040R}{Source}}
+                \addtocounter{framenumber}{-1}
+    \end{frame}
+
+\end{document}
+

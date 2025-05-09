@@ -2,11 +2,20 @@
 #+author: Dante Yasui
 
 * Predicted Internment Status
+:PROPERTIES:
+:HEADER-ARGS:R: :tangle R/predict_internment.R :session *R:internment*
+:END:
 Estimating Predicted Internment Status using Bayes Rule:
 $$Pr(I_i=1|Z_i,s_i^{40}) = \frac{Pr(z_i,s_i^{40}|I_i=1) \cdot Pr(I_i=1)}{Pr(z_i,s_i^{40})}$$
 ** $Pr(z_i,s_i^{40}|I_i=1)$ : proportion of internees with in each demographic group
 For the time-invariant $z_i$ characteristics, I use the internees recorded county of residence, sex, birth year, birthplace, and race.
 These internee demographic groups are save in the file =data/internment_groups.csv=.
+#+begin_src R
+pr_z_I <- read_csv("data/internment_groups.csv")
+#+end_src
+
+#+RESULTS:
+
 ** $Pr(I_i=1)$ : Fraction of internees out of entire 1940 Japanese population
 $$\frac{\text{number in WRA file}}{\text{number of JA in 1940 full-count census}}$$
 There are a total of 126,701 individuals with a reported race of Japanese in the full-count 1940 census.
@@ -14,5 +23,263 @@ In the WRA records, there are 109,518 names of interned individuals.
 However, of those 83 are reported as White and 920 are missing a race category.
 Therefore, I use 108,525 as the numerator of the fraction above.
 $\hat{E}[I_i] = \frac{108,525}{126,701} = 0.856544$
-** $Pr(z_i,s_i^{40})$
+#+begin_src R
+pr_I <- 108525/126701
+#+end_src
 
+#+RESULTS:
+: 0.8565441472443
+
+** $Pr(z_i,s_i^{40})$: proportion of Japanese Americans in each demographic group in 1940 census
+#+begin_src R
+pr_z <- read_csv("data/ja_pop_groups.csv")
+#+end_src
+
+#+RESULTS:
+** Proportion of Predicted Internees in Each Demographic Group
+Combine internee records with census records and calculate predicted internment probability using Bayes' Rule formulation from above:
+#+begin_src R
+dt <- left_join(pr_z_I, pr_z,
+                by = c("NHGISST", "NHGISCTY",
+                       "sex"="SEX", "birthyr"="BIRTHYR", "bpl"="BPL"),
+                suffix = c("_z_I","_z")) |>
+  mutate(pr_intern = ifelse(is.na(p_z_I), 0, (p_z_I * pr_I) / p_z))
+#+end_src
+
+#+RESULTS:
+
+This results in many demographic groups earning an expected internment probability of greater than one, so I make cap these values at one.
+#+begin_src R
+dt <- dt |>
+  mutate(pr_intern = ifelse(pr_intern > 1, 1, pr_intern))
+
+write_csv(dt, file = "data/pr_intern_status.csv")
+#+end_src
+
+#+RESULTS:
+
+* Internee Outcomes
+:PROPERTIES:
+:HEADER-ARGS:R: :tangle R/outcomes.R :session *R:internment*
+:END:
+#+begin_src R
+mlp_panel <- read_csv("data/linked_census_sample.csv")
+intrn_stat <- read_csv("data/pr_intern_status.csv")
+
+# assign predicted internment status by 1940 location and demographic group
+df <- left_join(mlp_panel, intrn_stat,
+                        by = c("STATEFIP", "COUNTYICP",
+                               "SEX"="sex", "BIRTHYR"="birthyr",
+                               "BPL"="bpl")) |>
+  # assign did internment status
+  mutate(pr_intern = case_when(
+           RACE != 5 ~ 0, # Chinese not interned
+           !is.na(pr_intern) ~ pr_intern,
+           is.na(pr_intern) ~ 0,
+           .default = 0),
+         did = pr_intern * (YEAR==1950),
+         group = case_when(RACE == 4 ~ 0,
+                           RACE == 5 & pr_intern == 0 ~ 1,
+                           RACE == 5 & pr_intern == 1 ~ 2,
+                           RACE == 5 & pr_intern < 1 & pr_intern > 0 ~ 3,
+                           ),
+         group = labelled(group, c("Chinese"=0, "Non-Interned Japanese"=1,
+                                   "Interned Japanese"=2, "Likely Interned Japanese"=3))
+         )
+
+group_averages <- df |>
+  group_by(group, YEAR) |>
+  summarise(INCWAGE = mean(INCWAGE, na.rm=T))
+#+end_src
+
+#+RESULTS:
+| 0 | 1940 | 348.815441176471 |
+| 0 | 1950 | 526.517156862745 |
+| 1 | 1940 | 238.478618421053 |
+| 1 | 1950 | 361.564102564103 |
+| 2 | 1940 | 206.063681592039 |
+| 2 | 1950 | 506.450574712644 |
+| 3 | 1940 | 244.213702074167 |
+| 3 | 1950 | 597.622627737226 |
+** Summary Statistics
+#+begin_src R :colname true
+df |>
+  group_by(YEAR, RACE) |>
+  summarise(
+    pr_intern = mean(pr_intern, na.rm=T),
+    pct_female = mean(female, na.rm=T),
+    avg_birthyr = mean(BIRTHYR, na.rm=T),
+    pct_employed = mean(employed, na.rm=T),
+    pct_college = mean(college, na.rm=T),
+    pct_foreign = mean(foreign, na.rm=T) ) |>
+  t() |>
+  as_tibble()
+#+end_src
+
+#+RESULTS:
+|               1940 |               1940 |               1950 |               1950 |
+|                  4 |                  5 |                  4 |                  5 |
+|                  0 |  0.662813385062075 |                  0 |  0.635140535763073 |
+|  0.334522332506207 |  0.453681710213777 |  0.335093167701865 |  0.453546022849753 |
+|    1912.9199751861 |   1907.73914921183 |   1913.07049689441 |   1907.90019400733 |
+|  0.370347394540943 |   0.42042755344418 |  0.503571428571428 |  0.519724078465185 |
+|   0.05272952853598 | 0.0526884042323474 | 0.0355590062111801 | 0.0323345548609615 |
+| 0.0280707196029779 |  0.032174476354999 |   0.10527950310559 |  0.119637852985557 |
+
+#+begin_src R 
+df |> filter(YEAR==1940) |>
+  tbl_summary(include = c(pr_intern, female, BIRTHYR, employed, college, foreign),
+              by = RACE) |>
+  as_gt() |>
+  gt::as_latex()
+#+end_src
+
+#+RESULTS:
+| \begin{table}[!t]                                        |
+| \fontsize{12.0pt}{14.4pt}\selectfont                     |
+| \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lcc}  |
+| \toprule                                                 |
+| \textbf{Characteristic} & \textbf{4}\\                   |
+| N = 6,448\textsuperscript{\textit{1}} & \textbf{5}\\     |
+| N = 4,631\textsuperscript{\textit{1}} \\                 |
+| \midrule\addlinespace[2.5pt]                             |
+| pr\_intern & 0.00 (0.00, 0.00) & 0.84 (0.40, 1.00) \\    |
+| female & 2,157 (33\%) & 2,101 (45\%) \\                  |
+| BIRTHYR & 1,912 (1,899, 1,930) & 1,904 (1,892, 1,927) \\ |
+| employed & 2,388 (37\%) & 1,947 (42\%) \\                |
+| college & 340 (5.3\%) & 244 (5.3\%) \\                   |
+| foreign & 181 (2.8\%) & 149 (3.2\%) \\                   |
+| \bottomrule                                              |
+| \end{tabular*}                                           |
+| \begin{minipage}{\linewidth}                             |
+| \textsuperscript{\textit{1}}Median (Q1, Q3); n (\%)\\    |
+| \end{minipage}                                           |
+| \end{table}                                              |
+|                                                          |
+
+** Diff-in-Diff
+*** Wages
+#+begin_src R :exports results :results graphics file :file figures/did_plot.png :width 16 :height 12 :res 200 :units cm
+df |>
+  ggplot(aes(x=YEAR, y = INCWAGE, color = as_factor(group))) +
+  geom_line(data = group_averages, aes(x=YEAR, y = INCWAGE, group = group), size=1, linetype = "dashed") +
+  scale_color_manual(values=c("#003049", "#D62828", "#F77F00", "#FCBF49")) +
+  scale_x_discrete("YEAR") +
+  theme_minimal() +
+  labs(title="Interned Japanese Experienced Higher Wage Growth",
+       x="Year",
+       y="Wages (1940 dollars)",
+       caption="") +
+  theme(legend.title = element_blank(),
+        legend.position = "bottom")
+#+end_src
+
+#+RESULTS:
+[[file:figures/did_plot.png]]
+
+#+begin_src R :results output latex :exports results
+library(fixest)
+reg_did <- feols(INCWAGE ~ did + pr_intern + as_factor(YEAR), data = df)
+reg_did_cont <- feols(INCWAGE ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married, data = df)
+reg_did_state_fe <- feols(INCWAGE ~ did + pr_intern + as_factor(YEAR) | as_factor(state), data = df)
+reg_did_cont_fe <- feols(INCWAGE ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married | as_factor(state), data = df)
+etable(reg_did, reg_did_cont, reg_did_state_fe, reg_did_cont_fe, tex = TRUE)
+#+end_src
+
+#+RESULTS:
+#+begin_export latex
+NOTE: 11,849 observations removed because of NA values (LHS: 11,849).
+NOTE: 11,849 observations removed because of NA values (LHS: 11,849).
+NOTE: 17,438 observations removed because of NA values (LHS: 11,849, Fixed-effects: 12,418).
+NOTE: 17,438 observations removed because of NA values (LHS: 11,849, Fixed-effects: 12,418).
+\begingroup
+\centering
+\begin{tabular}{lcccc}
+   \tabularnewline \midrule \midrule
+   Dependent Variable: & \multicolumn{4}{c}{INCWAGE}\\
+   Model:                & (1)            & (2)            & (3)            & (4)\\  
+   \midrule
+   \emph{Variables}\\
+   Constant              & 334.0$^{***}$  & -1,591.9       &                &   \\   
+                         & (9.644)        & (1,030.1)      &                &   \\   
+   did                   & 170.9$^{***}$  & 189.8$^{***}$  & 36.45          & 62.72\\   
+                         & (33.62)        & (32.36)        & (40.87)        & (33.43)\\   
+   pr\_intern            & -121.7$^{***}$ & -62.10$^{***}$ & -39.38$^{***}$ & -27.95$^{***}$\\   
+                         & (18.54)        & (18.17)        & (7.830)        & (6.908)\\   
+   as\_factor(YEAR)1950  & 174.9$^{***}$  & 203.0$^{***}$  & 295.3$^{***}$  & 321.8$^{***}$\\   
+                         & (17.99)        & (17.99)        & (40.59)        & (35.45)\\   
+   female                &                & -347.9$^{***}$ &                & -287.3$^{***}$\\   
+                         &                & (13.65)        &                & (7.192)\\   
+   BIRTHYR               &                & 0.9884$^{*}$   &                & 0.8518$^{***}$\\   
+                         &                & (0.5377)       &                & (0.2067)\\   
+   college               &                & 233.5$^{***}$  &                & 129.3$^{***}$\\   
+                         &                & (22.34)        &                & (11.67)\\   
+   married               &                & 174.6$^{***}$  &                & 173.2$^{***}$\\   
+                         &                & (17.64)        &                & (7.610)\\   
+   \midrule
+   \emph{Fixed-effects}\\
+   as\_factor(state)     &                &                & Yes            & Yes\\  
+   \midrule
+   \emph{Fit statistics}\\
+   Observations          & 10,309         & 10,309         & 4,720          & 4,720\\  
+   R$^2$                 & 0.02777        & 0.10337        & 0.05570        & 0.10621\\  
+   Within R$^2$          &                &                & 0.05040        & 0.10120\\  
+   \midrule \midrule
+   \multicolumn{5}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+\end{tabular}
+\par\endgroup
+#+end_export
+
+*** Other Outcomes
+#+begin_src R
+wide_df <- df |>
+  pivot_wider(id_cols = id, names_from = YEAR, values_from = STATEICP:group) |>
+  mutate(lf_drop = case_when(EMPSTAT_1940 == 1 & EMPSTAT_1950 !=1),
+         OCCSCORE
+#+end_src
+
+#+RESULTS:
+
+
+#+begin_src R
+reg_emp <- feols(employed ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married, data = df)
+reg_occ <- feols(OCCSCORE ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married, data = df)
+reg_edu <- feols(college ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married, data = df)
+etable(reg_emp, reg_occ, reg_edu, tex = TRUE)
+#+end_src
+
+#+RESULTS:
+| \begingroup                                                                          |
+| \centering                                                                           |
+| \begin{tabular}{lccc}                                                                |
+| \tabularnewline \midrule \midrule                                                    |
+| Dependent Variables:  & employed        & OCCSCORE        & college\\                |
+| Model:                & (1)             & (2)             & (3)\\                    |
+| \midrule                                                                             |
+| \emph{Variables}\\                                                                   |
+| Constant              & 8.696$^{***}$   & 162.2$^{***}$   & $-3.96\times 10^{-14}$\\ |
+| & (0.4347)        & (12.58)         & ($1.19\times 10^{-13}$)\\                      |
+| did                   & -0.0739$^{***}$ & -1.977$^{***}$  & $-3.38\times 10^{-17}$\\ |
+| & (0.0138)        & (0.3988)        & ($3.78\times 10^{-15}$)\\                      |
+| pr\_intern            & 0.0779$^{***}$  & -1.797$^{***}$  & $-1.48\times 10^{-16}$\\ |
+| & (0.0098)        & (0.2840)        & ($2.69\times 10^{-15}$)\\                      |
+| as\_factor(YEAR)1950  & 0.1396$^{***}$  & 2.335$^{***}$   & $-2.11\times 10^{-17}$\\ |
+| & (0.0068)        & (0.1968)        & ($1.87\times 10^{-15}$)\\                      |
+| female                & -0.3449$^{***}$ & -9.011$^{***}$  & $2.84\times 10^{-16}$\\  |
+| & (0.0059)        & (0.1720)        & ($1.63\times 10^{-15}$)\\                      |
+| BIRTHYR               & -0.0044$^{***}$ & -0.0802$^{***}$ & $8.12\times 10^{-17}$\\  |
+| & (0.0002)        & (0.0065)        & ($6.2\times 10^{-17}$)\\                       |
+| college               & 0.1216$^{***}$  & 8.288$^{***}$   & 1$^{***}$\\              |
+| & (0.0139)        & (0.4033)        & ($3.83\times 10^{-15}$)\\                      |
+| married               & 0.2354$^{***}$  & 7.285$^{***}$   & $2.87\times 10^{-16}$\\  |
+| & (0.0083)        & (0.2396)        & ($2.27\times 10^{-15}$)\\                      |
+| \midrule                                                                             |
+| \emph{Fit statistics}\\                                                              |
+| Observations          & 22,158          & 22,158          & 22,158\\                 |
+| R$^2$                 & 0.28101         & 0.24857         & 1\\                      |
+| Adjusted R$^2$        & 0.28078         & 0.24833         & 1\\                      |
+| \midrule \midrule                                                                    |
+| \multicolumn{4}{l}{\emph{IID standard-errors in parentheses}}\\                      |
+| \multicolumn{4}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\              |
+| \end{tabular}                                                                        |
+| \par\endgroup                                                                        |
