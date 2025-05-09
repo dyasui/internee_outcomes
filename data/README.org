@@ -474,16 +474,14 @@ l1 <- cw |>
 l2 <- cw |>  
   inner_join(d2, by = c("histid_1950" = "HISTID")) |>
   collect()
+#+end_src
 
+#+begin_src R
 # join all selected data between years by crosswalked histids
 results <- bind_rows(l1, l2) |>
   # get rid of leftover linking and technical varibles
   select(!c("step", "SAMPLE", "SERIAL", "HHWT", "PERWT", 
-            "PERNUM", "GQ", "VERSIONHIST", "CITY", "ENUMDIST")) |>
-  mutate(
-    INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE),
-    INCTOT = ifelse(INCWAGE %in% c(999999,999998), NA, INCTOT)
-  )
+            "PERNUM", "GQ", "VERSIONHIST", "CITY", "ENUMDIST"))
 
 # generate new unique ids for each linked person
 histid_pairs <- results |>
@@ -497,6 +495,19 @@ results <- results |>
   filter(!is.na(id)) |>
   select(!c("histid_1940", "histid_1950")) |>
   relocate(id)
+
+# clean up other variables
+results <- results |>
+  mutate(
+    INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE),
+    INCTOT = ifelse(INCTOT %in% c(999999,999998), NA, INCTOT)
+    INCBUSFM = ifelse(INCBUSFM %in% c(999999,999998), NA, INCBUSFM)
+    married = ifelse(MARST %in% 1:2, 1, 0),
+    foreign = ifelse(NATIVITY == 5, 1, 0),
+    college = ifelse(EDUC %in% 7:11, 1, 0),
+    employed = ifelse(EMPSTAT == 1, 1, 0),
+    female = ifelse(SEX==2, 1, 0),
+  )
 #+end_src
 
 #+RESULTS:
