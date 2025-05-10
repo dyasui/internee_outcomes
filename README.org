@@ -6,6 +6,7 @@
 :HEADER-ARGS:R: :tangle R/predict_internment.R :session *R:internment*
 :END:
 Estimating Predicted Internment Status using Bayes Rule:
+
 $$Pr(I_i=1|Z_i,s_i^{40}) = \frac{Pr(z_i,s_i^{40}|I_i=1) \cdot Pr(I_i=1)}{Pr(z_i,s_i^{40})}$$
 ** $Pr(z_i,s_i^{40}|I_i=1)$ : proportion of internees with in each demographic group
 For the time-invariant $z_i$ characteristics, I use the internees recorded county of residence, sex, birth year, birthplace, and race.
@@ -63,6 +64,8 @@ write_csv(dt, file = "data/pr_intern_status.csv")
 :HEADER-ARGS:R: :tangle R/outcomes.R :session *R:internment*
 :END:
 #+begin_src R
+library(tidyverse)
+library(haven)
 mlp_panel <- read_csv("data/linked_census_sample.csv")
 intrn_stat <- read_csv("data/pr_intern_status.csv")
 
@@ -79,12 +82,11 @@ df <- left_join(mlp_panel, intrn_stat,
            .default = 0),
          did = pr_intern * (YEAR==1950),
          group = case_when(RACE == 4 ~ 0,
-                           RACE == 5 & pr_intern == 0 ~ 1,
-                           RACE == 5 & pr_intern == 1 ~ 2,
-                           RACE == 5 & pr_intern < 1 & pr_intern > 0 ~ 3,
+                           RACE == 5 & pr_intern < 0.5 ~ 1,
+                           RACE == 5 & pr_intern > 0.5 ~ 2,
                            ),
          group = labelled(group, c("Chinese"=0, "Non-Interned Japanese"=1,
-                                   "Interned Japanese"=2, "Likely Interned Japanese"=3))
+                                   "Likely Interned Japanese"=2))
          )
 
 group_averages <- df |>
@@ -95,14 +97,12 @@ group_averages <- df |>
 #+RESULTS:
 | 0 | 1940 | 348.815441176471 |
 | 0 | 1950 | 526.517156862745 |
-| 1 | 1940 | 238.478618421053 |
-| 1 | 1950 | 361.564102564103 |
-| 2 | 1940 | 206.063681592039 |
-| 2 | 1950 | 506.450574712644 |
-| 3 | 1940 | 244.213702074167 |
-| 3 | 1950 | 597.622627737226 |
+| 1 | 1940 | 255.198945981555 |
+| 1 | 1950 |  370.43288590604 |
+| 2 | 1940 | 223.696114519427 |
+| 2 | 1950 | 564.379452054794 |
 ** Summary Statistics
-#+begin_src R :colname true
+#+begin_src R :colnames yes
 df |>
   group_by(YEAR, RACE) |>
   summarise(
@@ -111,22 +111,19 @@ df |>
     avg_birthyr = mean(BIRTHYR, na.rm=T),
     pct_employed = mean(employed, na.rm=T),
     pct_college = mean(college, na.rm=T),
-    pct_foreign = mean(foreign, na.rm=T) ) |>
-  t() |>
-  as_tibble()
+    pct_foreign = mean(foreign, na.rm=T) ) 
 #+end_src
 
 #+RESULTS:
-|               1940 |               1940 |               1950 |               1950 |
-|                  4 |                  5 |                  4 |                  5 |
-|                  0 |  0.662813385062075 |                  0 |  0.635140535763073 |
-|  0.334522332506207 |  0.453681710213777 |  0.335093167701865 |  0.453546022849753 |
-|    1912.9199751861 |   1907.73914921183 |   1913.07049689441 |   1907.90019400733 |
-|  0.370347394540943 |   0.42042755344418 |  0.503571428571428 |  0.519724078465185 |
-|   0.05272952853598 | 0.0526884042323474 | 0.0355590062111801 | 0.0323345548609615 |
-| 0.0280707196029779 |  0.032174476354999 |   0.10527950310559 |  0.119637852985557 |
+| YEAR | RACE |         pr_intern |        pct_female |      avg_birthyr |      pct_employed |        pct_college |        pct_foreign |
+|------+------+-------------------+-------------------+------------------+-------------------+--------------------+--------------------|
+| 1940 |    4 |                 0 | 0.334522332506207 |  1912.9199751861 | 0.370347394540943 |   0.05272952853598 | 0.0280707196029779 |
+| 1940 |    5 | 0.662813385062075 | 0.453681710213777 | 1907.73914921183 |  0.42042755344418 | 0.0526884042323474 |  0.032174476354999 |
+| 1950 |    4 |                 0 | 0.335093167701865 | 1913.07049689441 | 0.503571428571428 | 0.0355590062111801 |   0.10527950310559 |
+| 1950 |    5 | 0.635140535763073 | 0.453546022849753 | 1907.90019400733 | 0.519724078465185 | 0.0323345548609615 |  0.119637852985557 |
 
 #+begin_src R 
+library(gtsummary)
 df |> filter(YEAR==1940) |>
   tbl_summary(include = c(pr_intern, female, BIRTHYR, employed, college, foreign),
               by = RACE) |>
@@ -181,8 +178,8 @@ df |>
 library(fixest)
 reg_did <- feols(INCWAGE ~ did + pr_intern + as_factor(YEAR), data = df)
 reg_did_cont <- feols(INCWAGE ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married, data = df)
-reg_did_state_fe <- feols(INCWAGE ~ did + pr_intern + as_factor(YEAR) | as_factor(state), data = df)
-reg_did_cont_fe <- feols(INCWAGE ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married | as_factor(state), data = df)
+reg_did_state_fe <- feols(INCWAGE ~ did + pr_intern + as_factor(YEAR) | as_factor(STATEFIP), data = df)
+reg_did_cont_fe <- feols(INCWAGE ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married | as_factor(STATEFIP), data = df)
 etable(reg_did, reg_did_cont, reg_did_state_fe, reg_did_cont_fe, tex = TRUE)
 #+end_src
 
@@ -190,8 +187,8 @@ etable(reg_did, reg_did_cont, reg_did_state_fe, reg_did_cont_fe, tex = TRUE)
 #+begin_export latex
 NOTE: 11,849 observations removed because of NA values (LHS: 11,849).
 NOTE: 11,849 observations removed because of NA values (LHS: 11,849).
-NOTE: 17,438 observations removed because of NA values (LHS: 11,849, Fixed-effects: 12,418).
-NOTE: 17,438 observations removed because of NA values (LHS: 11,849, Fixed-effects: 12,418).
+NOTE: 11,849 observations removed because of NA values (LHS: 11,849).
+NOTE: 11,849 observations removed because of NA values (LHS: 11,849).
 \begingroup
 \centering
 \begin{tabular}{lcccc}
@@ -200,30 +197,30 @@ NOTE: 17,438 observations removed because of NA values (LHS: 11,849, Fixed-effec
    Model:                & (1)            & (2)            & (3)            & (4)\\  
    \midrule
    \emph{Variables}\\
-   Constant              & 334.0$^{***}$  & -1,591.9       &                &   \\   
+   Constant              & 334.0$^{***}$  & -1,591.9        &                &   \\   
                          & (9.644)        & (1,030.1)      &                &   \\   
-   did                   & 170.9$^{***}$  & 189.8$^{***}$  & 36.45          & 62.72\\   
-                         & (33.62)        & (32.36)        & (40.87)        & (33.43)\\   
-   pr\_intern            & -121.7$^{***}$ & -62.10$^{***}$ & -39.38$^{***}$ & -27.95$^{***}$\\   
-                         & (18.54)        & (18.17)        & (7.830)        & (6.908)\\   
-   as\_factor(YEAR)1950  & 174.9$^{***}$  & 203.0$^{***}$  & 295.3$^{***}$  & 321.8$^{***}$\\   
-                         & (17.99)        & (17.99)        & (40.59)        & (35.45)\\   
-   female                &                & -347.9$^{***}$ &                & -287.3$^{***}$\\   
-                         &                & (13.65)        &                & (7.192)\\   
-   BIRTHYR               &                & 0.9884$^{*}$   &                & 0.8518$^{***}$\\   
-                         &                & (0.5377)       &                & (0.2067)\\   
-   college               &                & 233.5$^{***}$  &                & 129.3$^{***}$\\   
-                         &                & (22.34)        &                & (11.67)\\   
-   married               &                & 174.6$^{***}$  &                & 173.2$^{***}$\\   
-                         &                & (17.64)        &                & (7.610)\\   
+   did                   & 170.9$^{***}$  & 189.8$^{***}$   & 168.4$^{***}$  & 186.9$^{***}$\\   
+                         & (33.62)        & (32.36)        & (19.21)        & (18.07)\\   
+   pr\_intern            & -121.7$^{***}$ & -62.10$^{***}$  & -150.8$^{***}$ & -84.21$^{***}$\\   
+                         & (18.54)        & (18.17)        & (5.807)        & (7.287)\\   
+   as\_factor(YEAR)1950  & 174.9$^{***}$  & 203.0$^{***}$   & 175.3$^{***}$  & 203.6$^{***}$\\   
+                         & (17.99)        & (17.99)        & (15.38)        & (13.09)\\   
+   female                &                & -347.9$^{***}$  &                & -340.8$^{***}$\\   
+                         &                & (13.65)        &                & (13.82)\\   
+   BIRTHYR               &                & 0.9884$^{*}$   &                & 1.041\\   
+                         &                & (0.5377)       &                & (0.7033)\\   
+   college               &                & 233.5$^{***}$  &                & 216.2$^{***}$\\   
+                         &                & (22.34)        &                & (45.63)\\   
+   married               &                & 174.6$^{***}$  &                & 173.3$^{***}$\\   
+                         &                & (17.64)        &                & (21.10)\\   
    \midrule
    \emph{Fixed-effects}\\
-   as\_factor(state)     &                &                & Yes            & Yes\\  
+   as\_factor(STATEFIP)  &                &                & Yes            & Yes\\  
    \midrule
    \emph{Fit statistics}\\
-   Observations          & 10,309         & 10,309         & 4,720          & 4,720\\  
-   R$^2$                 & 0.02777        & 0.10337        & 0.05570        & 0.10621\\  
-   Within R$^2$          &                &                & 0.05040        & 0.10120\\  
+   Observations          & 10,309         & 10,309         & 10,309         & 10,309\\  
+   R$^2$                 & 0.02777        & 0.10337        & 0.04909        & 0.11970\\  
+   Within R$^2$          &                &                & 0.02947        & 0.10154\\  
    \midrule \midrule
    \multicolumn{5}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
 \end{tabular}
@@ -241,7 +238,7 @@ wide_df <- df |>
 #+RESULTS:
 
 
-#+begin_src R
+#+begin_src R :results output latex :exports results
 reg_emp <- feols(employed ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married, data = df)
 reg_occ <- feols(OCCSCORE ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married, data = df)
 reg_edu <- feols(college ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married, data = df)
@@ -249,37 +246,39 @@ etable(reg_emp, reg_occ, reg_edu, tex = TRUE)
 #+end_src
 
 #+RESULTS:
-| \begingroup                                                                          |
-| \centering                                                                           |
-| \begin{tabular}{lccc}                                                                |
-| \tabularnewline \midrule \midrule                                                    |
-| Dependent Variables:  & employed        & OCCSCORE        & college\\                |
-| Model:                & (1)             & (2)             & (3)\\                    |
-| \midrule                                                                             |
-| \emph{Variables}\\                                                                   |
-| Constant              & 8.696$^{***}$   & 162.2$^{***}$   & $-3.96\times 10^{-14}$\\ |
-| & (0.4347)        & (12.58)         & ($1.19\times 10^{-13}$)\\                      |
-| did                   & -0.0739$^{***}$ & -1.977$^{***}$  & $-3.38\times 10^{-17}$\\ |
-| & (0.0138)        & (0.3988)        & ($3.78\times 10^{-15}$)\\                      |
-| pr\_intern            & 0.0779$^{***}$  & -1.797$^{***}$  & $-1.48\times 10^{-16}$\\ |
-| & (0.0098)        & (0.2840)        & ($2.69\times 10^{-15}$)\\                      |
-| as\_factor(YEAR)1950  & 0.1396$^{***}$  & 2.335$^{***}$   & $-2.11\times 10^{-17}$\\ |
-| & (0.0068)        & (0.1968)        & ($1.87\times 10^{-15}$)\\                      |
-| female                & -0.3449$^{***}$ & -9.011$^{***}$  & $2.84\times 10^{-16}$\\  |
-| & (0.0059)        & (0.1720)        & ($1.63\times 10^{-15}$)\\                      |
-| BIRTHYR               & -0.0044$^{***}$ & -0.0802$^{***}$ & $8.12\times 10^{-17}$\\  |
-| & (0.0002)        & (0.0065)        & ($6.2\times 10^{-17}$)\\                       |
-| college               & 0.1216$^{***}$  & 8.288$^{***}$   & 1$^{***}$\\              |
-| & (0.0139)        & (0.4033)        & ($3.83\times 10^{-15}$)\\                      |
-| married               & 0.2354$^{***}$  & 7.285$^{***}$   & $2.87\times 10^{-16}$\\  |
-| & (0.0083)        & (0.2396)        & ($2.27\times 10^{-15}$)\\                      |
-| \midrule                                                                             |
-| \emph{Fit statistics}\\                                                              |
-| Observations          & 22,158          & 22,158          & 22,158\\                 |
-| R$^2$                 & 0.28101         & 0.24857         & 1\\                      |
-| Adjusted R$^2$        & 0.28078         & 0.24833         & 1\\                      |
-| \midrule \midrule                                                                    |
-| \multicolumn{4}{l}{\emph{IID standard-errors in parentheses}}\\                      |
-| \multicolumn{4}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\              |
-| \end{tabular}                                                                        |
-| \par\endgroup                                                                        |
+#+begin_export latex
+\begingroup
+\centering
+\begin{tabular}{lccc}
+   \tabularnewline \midrule \midrule
+   Dependent Variables:  & employed        & OCCSCORE        & college\\  
+   Model:                & (1)             & (2)             & (3)\\  
+   \midrule
+   \emph{Variables}\\
+   Constant              & 8.696$^{***}$   & 162.2$^{***}$   & $-3.96\times 10^{-14}$\\    
+                         & (0.4347)        & (12.58)         & ($1.19\times 10^{-13}$)\\    
+   did                   & -0.0739$^{***}$ & -1.977$^{***}$  & $-3.38\times 10^{-17}$\\    
+                         & (0.0138)        & (0.3988)        & ($3.78\times 10^{-15}$)\\    
+   pr\_intern            & 0.0779$^{***}$  & -1.797$^{***}$  & $-1.48\times 10^{-16}$\\    
+                         & (0.0098)        & (0.2840)        & ($2.69\times 10^{-15}$)\\    
+   as\_factor(YEAR)1950  & 0.1396$^{***}$  & 2.335$^{***}$   & $-2.11\times 10^{-17}$\\    
+                         & (0.0068)        & (0.1968)        & ($1.87\times 10^{-15}$)\\    
+   female                & -0.3449$^{***}$ & -9.011$^{***}$  & $2.84\times 10^{-16}$\\    
+                         & (0.0059)        & (0.1720)        & ($1.63\times 10^{-15}$)\\    
+   BIRTHYR               & -0.0044$^{***}$ & -0.0802$^{***}$ & $8.12\times 10^{-17}$\\    
+                         & (0.0002)        & (0.0065)        & ($6.2\times 10^{-17}$)\\    
+   college               & 0.1216$^{***}$  & 8.288$^{***}$   & 1$^{***}$\\   
+                         & (0.0139)        & (0.4033)        & ($3.83\times 10^{-15}$)\\    
+   married               & 0.2354$^{***}$  & 7.285$^{***}$   & $2.87\times 10^{-16}$\\    
+                         & (0.0083)        & (0.2396)        & ($2.27\times 10^{-15}$)\\    
+   \midrule
+   \emph{Fit statistics}\\
+   Observations          & 22,158          & 22,158          & 22,158\\  
+   R$^2$                 & 0.28101         & 0.24857         & 1\\  
+   Adjusted R$^2$        & 0.28078         & 0.24833         & 1\\  
+   \midrule \midrule
+   \multicolumn{4}{l}{\emph{IID standard-errors in parentheses}}\\
+   \multicolumn{4}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+\end{tabular}
+\par\endgroup
+#+end_export
