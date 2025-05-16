@@ -21,3 +21,6 @@ data/#README.org#
 data/.#README.org
 data/README.org~
 data/ipums_db.duckdb
+.Internment-tabspaces-session.el
+.#\*dashboard\*
+\#\*dashboard\*#

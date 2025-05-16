@@ -1,3 +1,6 @@
+#+STARTUP: show2levels
+#+OPTIONS: toc:2
+
 * Data Sources and Downloading
 ** WRA Camp Internee Records
 
