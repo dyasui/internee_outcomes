@@ -145,7 +145,7 @@ library(tidyverse)
 library(haven)  # for reading stata data_raw files
 
 # Load dataset
-path <- "~/Research/Internment/data/"
+## path <- "~/Research/Internment/data/"
 #+end_src
 
 #+RESULTS:
@@ -175,7 +175,7 @@ column_positions <- fwf_widths(
     "rel",          "qual_occ_1",      "qual_occ_2",  "qual_occ_3",      "pot_occ_1",
     "pot_occ_2",    "file_no",         "file_no_2"))
 
-fw_data <- read_fwf(paste0(path, "WRA.FORM26.PU.txt"), column_positions)
+fw_data <- read_fwf("data/WRA.FORM26.PU.txt", column_positions)
 #+end_src
 
 There are some rows which need to be removed due to mistakenly inserted formatting rows and duplicate records.
@@ -549,12 +549,10 @@ $$Pr(I_i=1|Z_i,s_i^{40}) = \frac{Pr(z_i,s_i^{40}|I_i=1) \cdot Pr(I_i=1)}{Pr(z_i,
 ** $Pr(z_i,s_i^{40}|I_i=1)$ : proportion of internees with in each demographic group
 For the time-invariant $z_i$ characteristics, I use the internees recorded county of residence, sex, birth year, birthplace, and race.
 These internee demographic groups are save in the file =data/internment_groups.csv=.
-#+begin_src R
+#+begin_src R :results silent
 # proportion of each demographic group in internee population
 pr_z_I <- read_csv("data/internment_groups.csv")
 #+end_src
-
-#+RESULTS:
 
 ** $Pr(I_i=1)$ : Fraction of internees out of entire 1940 Japanese population
 $$\frac{\text{number in WRA file}}{\text{number of JA in 1940 full-count census}}$$
@@ -572,7 +570,7 @@ pr_I <- 108525/126701
 : 0.8565441472443
 
 ** $Pr(z_i,s_i^{40})$: proportion of Japanese Americans in each demographic group in 1940 census
-#+begin_src R
+#+begin_src R :results silent
 # proportion of each demographic group in 1940 Japanese population
 pr_z <- read_csv("data/ja_pop_groups.csv")
 #+end_src
@@ -580,22 +578,222 @@ pr_z <- read_csv("data/ja_pop_groups.csv")
 #+RESULTS:
 ** Proportion of Predicted Internees in Each Demographic Group
 Combine internee records with census records and calculate predicted internment probability using Bayes' Rule formulation from above:
-#+begin_src R
-# create county-by-demographic group level dataset
+#+begin_src R :results silent
 dt <- left_join(pr_z_I, pr_z,
                 by = c("NHGISST", "NHGISCTY",
-                       "sex"="SEX", "birthyr"="BIRTHYR", "bpl"="BPL"),
-                suffix = c("_z_I","_z")) |> # internees or 1940 pop indicator
-  # groups with no matching internee groups are assumed not interned
-  mutate(pr_intern = ifelse(is.na(p_z_I), 0, (p_z_I * pr_I) / p_z)) 
+                       "sex"="SEX"),
+                suffix = c("_z_I","_z")) |>
+  mutate(
+    pr_intern = (p_z_I * pr_I) / p_z ,
+    pr_intern_test = n_z_I / n_z
+  )
 #+end_src
 
 #+RESULTS:
 
-Save the resulting dataset of each county level demographic group with the internment proportions to file.
-#+begin_src R
-# save results to disk
+#+begin_src R :results silent
 write_csv(dt, file = "data/pr_intern_status.csv")
 #+end_src
 
+#+begin_src R :exports results :results graphics file :file figures/pr_intern_plot.png :width 16 :height 12 :res 200 :units cm
+ggplot(data = dt) +
+  geom_histogram(aes(x=pr_intern), fill = "blue", alpha = 0.5) +
+  geom_histogram(aes(x=pr_intern_test), fill = "green", alpha = 0.5) +
+  xlim(0,2) +
+  theme_minimal()
+#+end_src
+
 #+RESULTS:
+[[file:figures/pr_intern_plot.png]]
+
+#+begin_src R :colnames yes
+dt |>
+  group_by(state, county) |>
+  summarise(
+    n_interned = sum(n_z_I, na.rm = T),
+    n_1940 = sum(n_z, na.rm = T),
+    prop_interned = round(n_interned / n_1940, 2)
+  ) |>
+  arrange(desc(n_interned))
+#+end_src
+
+#+RESULTS:
+| state            | county                   | n_interned | n_1940 | prop_interned |
+|------------------+--------------------------+------------+--------+---------------|
+| California       | Los Angeles              |      33520 |  36883 |          0.91 |
+| Washington       | King                     |       8598 |   9879 |          0.87 |
+| California       | Sacramento               |       7827 |   6851 |          1.14 |
+| California       | Fresno                   |       5620 |   4547 |          1.24 |
+| California       | San Joaquin              |       4912 |   4489 |          1.09 |
+| California       | San Francisco            |       4792 |   5312 |           0.9 |
+| California       | Alameda                  |       4694 |   5166 |          0.91 |
+| California       | Santa Clara              |       3669 |   4027 |          0.91 |
+| Oregon           | Multnomah                |       2242 |   2409 |          0.93 |
+| California       | Tulare                   |       2202 |   1771 |          1.24 |
+| California       | San Diego                |       1997 |   2089 |          0.96 |
+| Washington       | Pierce                   |       1946 |   2053 |          0.95 |
+| California       | Santa Barbara            |       1938 |   2191 |          0.88 |
+| California       | Orange                   |       1855 |   1859 |             1 |
+| California       | Monterey                 |       1822 |   2237 |          0.81 |
+| California       | Placer                   |       1767 |   1636 |          1.08 |
+| California       | Imperial                 |       1530 |   1640 |          0.93 |
+| California       | Santa Cruz               |       1398 |   1297 |          1.08 |
+| California       | Kern                     |       1241 |    729 |           1.7 |
+| California       | Yolo                     |       1106 |   1091 |          1.01 |
+| California       | San Mateo                |        962 |   1218 |          0.79 |
+| Washington       | Yakima                   |        847 |    812 |          1.04 |
+| California       | Contra Costa             |        765 |    833 |          0.92 |
+| California       | Sonoma                   |        730 |    757 |          0.96 |
+| California       | Solano                   |        724 |    901 |           0.8 |
+| California       | Stanislaus               |        698 |    359 |          1.94 |
+| California       | Ventura                  |        661 |    667 |          0.99 |
+| Hawaii           | Honolulu                 |        620 |      0 |           Inf |
+| California       | Riverside                |        548 |    554 |          0.99 |
+| California       | Yuba                     |        527 |    454 |          1.16 |
+| California       | Kings                    |        485 |    513 |          0.95 |
+| California       | Merced                   |        458 |    717 |          0.64 |
+| California       | San Benito               |        445 |    531 |          0.84 |
+| California       | San Luis Obispo          |        439 |    932 |          0.47 |
+| Oregon           | Hood River               |        416 |    459 |          0.91 |
+| California       | San Bernardino           |        394 |    348 |          1.13 |
+| California       | Sutter                   |        361 |    407 |          0.89 |
+| Washington       | Kitsap                   |        275 |    345 |           0.8 |
+| Hawaii           | Hawaii                   |        240 |      0 |           Inf |
+| California       | Butte                    |        228 |    210 |          1.09 |
+| Arizona          | Maricopa                 |        221 |    516 |          0.43 |
+| California       | Madera                   |        180 |    170 |          1.06 |
+| California       | Colusa                   |        177 |    155 |          1.14 |
+| Oregon           | Marion                   |        176 |    193 |          0.91 |
+| Oregon           | Clackamas                |        163 |    163 |             1 |
+| Oregon           | Washington               |        149 |    235 |          0.63 |
+| Washington       | Clark                    |        129 |    111 |          1.16 |
+| Washington       | Cowlitz                  |        126 |    127 |          0.99 |
+| Alaska           | First Judicial Division  |         96 |      0 |           Inf |
+| Hawaii           | Kauai                    |         94 |      0 |           Inf |
+| Hawaii           | Maui                     |         92 |      0 |           Inf |
+| Washington       | Thurston                 |         84 |     91 |          0.92 |
+| California       | Marin                    |         80 |    149 |          0.54 |
+| Washington       | Klikitat                 |         76 |      0 |           Inf |
+| Oregon           | Wasco                    |         64 |     90 |          0.71 |
+| Oregon           | Clatsop                  |         60 |     99 |          0.61 |
+| Washington       | Skagit                   |         60 |     66 |          0.91 |
+| Washington       | Pacific                  |         59 |     94 |          0.63 |
+| Washington       | Lewis                    |         54 |     62 |          0.87 |
+| Oregon           | Polk                     |         48 |     28 |          1.71 |
+| California       | Mendocino                |         47 |     53 |          0.89 |
+| California       | Tehama                   |         42 |     38 |          1.11 |
+| Oregon           | Jackson                  |         42 |     34 |          1.24 |
+| California       | Napa                     |         38 |     55 |          0.69 |
+| Washington       | Snohomish                |         38 |     57 |          0.67 |
+| Alaska           | Third Judicial Division  |         35 |      0 |           Inf |
+| Washington       | Whatcom                  |         34 |     28 |          1.21 |
+| Oregon           | Columbia                 |         33 |     41 |           0.8 |
+| Washington       | Benton                   |         32 |     73 |          0.44 |
+| Washington       | Chelan                   |         27 |     25 |          1.08 |
+| Washington       | Jefferson                |         24 |     37 |          0.65 |
+| Oregon           | Jefferson                |         23 |     12 |          1.92 |
+| New Mexico       | Curry                    |         20 |     39 |          0.51 |
+| Washington       | Mason                    |         19 |     23 |          0.83 |
+| Washington       | Clallam                  |         13 |     17 |          0.76 |
+| Utah             | Box Elder                |         12 |    274 |          0.04 |
+| Washington       | Grays Harbor             |         11 |      2 |           5.5 |
+| New York         |                          |         10 |      0 |           Inf |
+| Arizona          | Yuma                     |          8 |     13 |          0.62 |
+| California       | Mono/Alpine              |          8 |      0 |           Inf |
+| Arizona          | Pinal                    |          7 |      0 |           Inf |
+| California       |                          |          7 |      0 |           Inf |
+| Hawaii           |                          |          7 |      0 |           Inf |
+| Oregon           | Deschutes                |          7 |     14 |           0.5 |
+| Alaska           | Fourth Judicial Division |          6 |      0 |           Inf |
+| Arizona          | Gila                     |          6 |      4 |           1.5 |
+| California       | El Dorado                |          6 |      3 |             2 |
+| California       | Nevada                   |          6 |      0 |           Inf |
+| California       | Shasta                   |          6 |      3 |             2 |
+| Arizona          | Cochise                  |          5 |      0 |           Inf |
+| New Mexico       | Santa Fe                 |          5 |      1 |             5 |
+| Oregon           | Yamhill                  |          5 |     66 |          0.08 |
+| Utah             | Wasatch                  |          5 |      7 |          0.71 |
+| California       | Modoc                    |          4 |      4 |             1 |
+| Colorado         | Otero                    |          4 |    231 |          0.02 |
+| Illinois         | Cook                     |          4 |    291 |          0.01 |
+| Missouri         | St Louis                 |          4 |     21 |          0.19 |
+| Washington       | San Juan                 |          4 |      2 |             2 |
+| Alaska           | Second Judicial Division |          3 |      0 |           Inf |
+| Idaho            | Bingham                  |          3 |     69 |          0.04 |
+| Nevada           | Lyon                     |          3 |     14 |          0.21 |
+| New York         | Chemung                  |          3 |      1 |             3 |
+| Oregon           | Lane                     |          3 |      1 |             3 |
+| Texas            | Harris                   |          3 |    153 |          0.02 |
+| Washington       | Wahkiakum                |          3 |      0 |           Inf |
+| Washington       | Whitman                  |          3 |     16 |          0.19 |
+| Colorado         | Weld                     |          2 |    279 |          0.01 |
+| Florida          | Pinellas                 |          2 |     21 |           0.1 |
+| North Dakota     | Burleigh                 |          2 |      1 |             2 |
+| Oregon           | Benton                   |          2 |      0 |           Inf |
+| Oregon           | Lincoln                  |          2 |      4 |           0.5 |
+| Oregon           | Linn                     |          2 |      4 |           0.5 |
+| Pennsylvania     | York                     |          2 |      1 |             2 |
+| Virginia         | Norfolk                  |          2 |      0 |           Inf |
+| Washington       | Franklin                 |          2 |     45 |          0.04 |
+| Washington       | Island                   |          2 |      0 |           Inf |
+| Washington       |                          |          2 |      0 |           Inf |
+| Wisconsin        | Grant                    |          2 |      0 |           Inf |
+| Alabama          | Jefferson                |          1 |      0 |           Inf |
+| Arizona          | Yavapai                  |          1 |      3 |          0.33 |
+| Arkansas         | Pulaski                  |          1 |      0 |           Inf |
+| British Columbia | Vancouver                |          1 |      0 |           Inf |
+| California       | Lake                     |          1 |      1 |             1 |
+| California       | Plumas                   |          1 |      1 |             1 |
+| Idaho            | Bannock                  |          1 |    103 |          0.01 |
+| Idaho            | Bonneville               |          1 |    117 |          0.01 |
+| Michigan         | Calhoun                  |          1 |      8 |          0.12 |
+| Missouri         | Henry/Rives              |          1 |      0 |           Inf |
+| Montana          | Lewis and Clark          |          1 |     12 |          0.08 |
+| Montana          | Missoula                 |          1 |      0 |           Inf |
+| Montana          | Park                     |          1 |     24 |          0.04 |
+| Nebraska         | Douglas                  |          1 |     25 |          0.04 |
+| Nevada           | Douglas                  |          1 |      3 |          0.33 |
+| New York         | Dutchess                 |          1 |     10 |           0.1 |
+| Oregon           | Tillamook                |          1 |      0 |           Inf |
+| Pennsylvania     | Lackawanna               |          1 |      0 |           Inf |
+| Pennsylvania     | Philadelphia             |          1 |     58 |          0.02 |
+| Utah             | Carbon                   |          1 |    126 |          0.01 |
+| Virginia         | Suffolk City             |          1 |      0 |           Inf |
+| Washington       | Asotin                   |          1 |      0 |           Inf |
+| Washington       | Spokane                  |          1 |    154 |          0.01 |
+
+* Linked Internee Sample
+:PROPERTIES:
+:HEADER-ARGS:R: :tangle R/collect_sample.R :session *R:internment*
+:END:
+#+begin_src R 
+library(tidyverse)
+library(haven)
+mlp_panel <- read_csv("data/linked_census_sample.csv")
+intrn_stat <- read_csv("data/pr_intern_status.csv")
+
+# assign predicted internment status by 1940 location and demographic group
+df <- left_join(mlp_panel, intrn_stat,
+                        by = c(
+                          "STATEFIP_1940"="STATEFIP",
+                          "COUNTYICP_1940"="COUNTYICP",
+                          "SEX"="sex")) |>
+  # assign did internment status
+  mutate(
+    pr_intern = replace_na(pr_intern, 0),
+    race = case_when(RACE == 4 ~ "Chinese",
+                     RACE == 5 ~ "Japanese"),
+    post = ifelse(YEAR==1950, 1, 0), # post-treatment
+    treat = case_when(
+      race == "Chinese" ~ 0,
+      pr_intern >= 0.9 & race == "Japanese" ~ 1, #treatment group
+      pr_intern == 0 & race == "Japanese" ~ 0, #treatment group
+      .default = NA
+    ), 
+    did = treat * post # treatment status
+    ) 
+write_csv(df, "data/linked_internee_sample.csv")
+#+end_src
+
+#+RESULTS:
+

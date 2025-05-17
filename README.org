@@ -1,53 +1,11 @@
 #+title: Japanese Interment and Immigration 
 #+author: Dante Yasui
 
-* Predicted Internment Status
+* Internee Outcomes
 :PROPERTIES:
-:HEADER-ARGS:R: :tangle R/predict_internment.R :session *R:internment*
+:HEADER-ARGS:R: :tangle R/analysis.R :session *R:internment*
 :END:
-Estimating Predicted Internment Status using Bayes Rule:
 
-$$Pr(I_i=1|Z_i,s_i^{40}) = \frac{Pr(z_i,s_i^{40}|I_i=1) \cdot Pr(I_i=1)}{Pr(z_i,s_i^{40})}$$
-** $Pr(z_i,s_i^{40}|I_i=1)$ : proportion of internees with in each demographic group
-For the time-invariant $z_i$ characteristics, I use the internees recorded county of residence, sex, birth year, birthplace, and race.
-These internee demographic groups are save in the file =data/internment_groups.csv=.
-#+begin_src R
-pr_z_I <- read_csv("data/internment_groups.csv")
-#+end_src
-
-#+RESULTS:
-
-** $Pr(I_i=1)$ : Fraction of internees out of entire 1940 Japanese population
-$$\frac{\text{number in WRA file}}{\text{number of JA in 1940 full-count census}}$$
-There are a total of 126,701 individuals with a reported race of Japanese in the full-count 1940 census.
-In the WRA records, there are 109,518 names of interned individuals.
-However, of those 83 are reported as White and 920 are missing a race category.
-Therefore, I use 108,525 as the numerator of the fraction above.
-$\hat{E}[I_i] = \frac{108,525}{126,701} = 0.856544$
-#+begin_src R
-pr_I <- 108525/126701
-#+end_src
-
-#+RESULTS:
-: 0.8565441472443
-
-** $Pr(z_i,s_i^{40})$: proportion of Japanese Americans in each demographic group in 1940 census
-#+begin_src R
-pr_z <- read_csv("data/ja_pop_groups.csv")
-#+end_src
-
-#+RESULTS:
-** Proportion of Predicted Internees in Each Demographic Group
-Combine internee records with census records and calculate predicted internment probability using Bayes' Rule formulation from above:
-#+begin_src R
-dt <- left_join(pr_z_I, pr_z,
-                by = c("NHGISST", "NHGISCTY",
-                       "sex"="SEX", "birthyr"="BIRTHYR", "bpl"="BPL"),
-                suffix = c("_z_I","_z")) |>
-  mutate(pr_intern = ifelse(is.na(p_z_I), 0, (p_z_I * pr_I) / p_z))
-#+end_src
-
-#+RESULTS:
 
 This results in many demographic groups earning an expected internment probability of greater than one, so I make cap these values at one.
 #+begin_src R
