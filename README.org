@@ -6,50 +6,18 @@
 :HEADER-ARGS:R: :tangle R/analysis.R :session *R:internment*
 :END:
 
-
-This results in many demographic groups earning an expected internment probability of greater than one, so I make cap these values at one.
 #+begin_src R
-dt <- dt |>
-  mutate(pr_intern = ifelse(pr_intern > 1, 1, pr_intern))
-
-write_csv(dt, file = "data/pr_intern_status.csv")
+library(tidyverse)
+df <- read_csv("data/linked_internee_sample.csv") |>
+  select(
+    id, YEAR, STATEFIP, COUNTYICP, female, race, married, BIRTHYR, age,
+    foreign, citizen, generation, homestate,
+    employed, wage, lnwage, OCCSCORE, OCC1950, college,
+    pr_intern, treat, post, did
+    )
 #+end_src
 
 #+RESULTS:
-
-* Internee Outcomes
-:PROPERTIES:
-:HEADER-ARGS:R: :tangle R/outcomes.R :session *R:internment*
-:END:
-#+begin_src R 
-library(tidyverse)
-library(haven)
-mlp_panel <- read_csv("data/linked_census_sample.csv")
-intrn_stat <- read_csv("data/pr_intern_status.csv")
-
-# assign predicted internment status by 1940 location and demographic group
-df <- left_join(mlp_panel, intrn_stat,
-                        by = c("STATEFIP", "COUNTYICP",
-                               "SEX"="sex", "BIRTHYR"="birthyr",
-                               "BPL"="bpl")) |>
-  # assign did internment status
-  mutate(pr_intern = case_when(
-           RACE != 5 ~ 0, # Chinese not interned
-           !is.na(pr_intern) ~ pr_intern,
-           is.na(pr_intern) ~ 0,
-           .default = 0),
-         group = case_when(RACE == 4 ~ 0,
-                           RACE == 5 & pr_intern < 0.5 ~ 1,
-                           RACE == 5 & pr_intern > 0.5 ~ 2,
-                           ),
-         post = ifelse(YEAR==1950, 1, 0), # post-treatment
-         treat = ifelse(group == 2, 1, 0), #treatment group
-         did = treat * post, # treatment status
-         group = labelled(group, c("Chinese"=0, "Non-Interned Japanese"=1,
-                                   "Likely Interned Japanese"=2))
-         )
-
-#+end_src
 
 #+begin_src R :colnames yes
 df |>

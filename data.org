@@ -369,7 +369,7 @@ data_int <- data_labelled |>
 #+begin_src R
 intrn_grps <- data_int |>
   filter(!is.na(state)) |>
-  count(state, county, NHGISST, NHGISCTY, sex, birthyr, bpl) |>
+  count(state, county, NHGISST, NHGISCTY, sex) |>
   mutate(p = n / sum(n))
 
 write_csv(intrn_grps, file = "data/internment_groups.csv")
@@ -381,33 +381,33 @@ intrn_grps |>
 #+end_src
 
 #+RESULTS:
-|   | state                                                                          | county      | NHGISST | NHGISCTY | sex | birthyr | bpl |   n |         p |
-|   | :----------+:-----------+:-------+:--------+---:+-------:+---:+---:+---------: |             |         |          |     |         |     |     |           |
-|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1921 |   6 | 458 | 0.0042262 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1923 |   6 | 458 | 0.0042262 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1921 |   6 | 447 | 0.0041247 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1922 |   6 | 443 | 0.0040878 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1925 |   6 | 420 | 0.0038755 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1925 |   6 | 411 | 0.0037925 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1923 |   6 | 405 | 0.0037371 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1920 |   6 | 403 | 0.0037187 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1924 |   6 | 398 | 0.0036725 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1922 |   6 | 390 | 0.0035987 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1924 |   6 | 384 | 0.0035434 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1920 |   6 | 381 | 0.0035157 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1919 |   6 | 375 | 0.0034603 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1888 | 501 | 370 | 0.0034142 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1926 |   6 | 364 | 0.0033588 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1926 |   6 | 343 |  0.003165 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1941 |   6 | 334 |  0.003082 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1918 |   6 | 330 | 0.0030451 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1927 |   6 | 328 | 0.0030266 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1917 |   6 | 302 | 0.0027867 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1886 | 501 | 294 | 0.0027129 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   2 |    1927 |   6 | 293 | 0.0027037 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1940 |   6 | 287 | 0.0026483 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1928 |   6 | 285 | 0.0026298 |
-|   | California                                                                     | Los Angeles |      60 |      370 |   1 |    1887 | 501 | 284 | 0.0026206 |
+|   | state                                                                | county        | NHGISST | NHGISCTY | sex |     n |         p |
+|   | :----------+:-------------+:-------+:--------+---:+-----:+---------: |               |         |          |     |       |           |
+|   | California                                                           | Los Angeles   |      60 |      370 |   1 | 18151 | 0.1674879 |
+|   | California                                                           | Los Angeles   |      60 |      370 |   2 | 15363 | 0.1417617 |
+|   | Washington                                                           | King          |     530 |      330 |   1 |  4519 |  0.041699 |
+|   | California                                                           | Sacramento    |      60 |      670 |   1 |  4296 | 0.0396412 |
+|   | Washington                                                           | King          |     530 |      330 |   2 |  4078 | 0.0376296 |
+|   | California                                                           | Sacramento    |      60 |      670 |   2 |  3531 | 0.0325822 |
+|   | California                                                           | Fresno        |      60 |      190 |   1 |  3024 | 0.0279039 |
+|   | California                                                           | San Joaquin   |      60 |      770 |   1 |  2960 | 0.0273133 |
+|   | California                                                           | San Francisco |      60 |      750 |   1 |  2638 | 0.0243421 |
+|   | California                                                           | Fresno        |      60 |      190 |   2 |  2595 | 0.0239453 |
+|   | California                                                           | Alameda       |      60 |       10 |   1 |  2445 | 0.0225612 |
+|   | California                                                           | Alameda       |      60 |       10 |   2 |  2249 | 0.0207526 |
+|   | California                                                           | San Francisco |      60 |      750 |   2 |  2154 |  0.019876 |
+|   | California                                                           | San Joaquin   |      60 |      770 |   2 |  1952 |  0.018012 |
+|   | California                                                           | Santa Clara   |      60 |      850 |   1 |  1854 | 0.0171077 |
+|   | California                                                           | Santa Clara   |      60 |      850 |   2 |  1815 | 0.0167479 |
+|   | California                                                           | Tulare        |      60 |     1070 |   1 |  1280 | 0.0118112 |
+|   | Oregon                                                               | Multnomah     |     410 |      510 |   1 |  1166 | 0.0107592 |
+|   | California                                                           | San Diego     |      60 |      730 |   1 |  1103 | 0.0101779 |
+|   | California                                                           | Santa Barbara |      60 |      830 |   1 |  1081 | 0.0099749 |
+|   | Oregon                                                               | Multnomah     |     410 |      510 |   2 |  1076 | 0.0099288 |
+|   | Washington                                                           | Pierce        |     530 |      530 |   1 |  1058 | 0.0097627 |
+|   | California                                                           | Orange        |      60 |      590 |   1 |  1031 | 0.0095135 |
+|   | California                                                           | Monterey      |      60 |      530 |   1 |   975 | 0.0089968 |
+|   | California                                                           | Placer        |      60 |      610 |   1 |   975 | 0.0089968 |
 
 ** 1940 County-Level Japanese Population
 :PROPERTIES:
@@ -423,7 +423,7 @@ tbl = "ipums_microdata"
 
 dt40 <- tbl(db, tbl) |>
   filter(YEAR == 1940, RACE == 5) |>
-  select(STATEFIP, COUNTYICP, SEX, BIRTHYR, BPL)
+  select(STATEFIP, COUNTYICP, SEX)
 #+end_src
 
 #+RESULTS:
@@ -432,7 +432,7 @@ Collect all Japanese-American micro-records by county, sex, birthyear, and birth
 
 #+begin_src R
 JApop_groups <- dt40 |>
-  count(STATEFIP, COUNTYICP, SEX, BIRTHYR, BPL) |>
+  count(STATEFIP, COUNTYICP, SEX) |>
   collect() |>
   mutate(
     # proportion in each demographic group
@@ -508,22 +508,41 @@ results <- results |>
 results <- results |>
   mutate(
     # replace missing values with NAs and adjust all dollar amounts to 1940 levels
-    across(c(INCWAGE, INCTOT, INCBUSFM)),
-    ~ case_when(
-      . %in% c(999999,999998) ~ NA,
-      YEAR == 1950 ~ . * 0.59, # deflated dollars to 1940 standards
-      .default = .
-    ),
+    across(c(INCWAGE, INCTOT, INCBUSFM),
+           ~ case_when(.x %in% c(999999,999998) ~ NA,
+                             YEAR == 1950 ~ .x * 0.59, # deflated dollars to 1940 standards
+                             .default = .x)
+           ),
     married = ifelse(MARST %in% 1:2, 1, 0),
     foreign = ifelse(NATIVITY == 5, 1, 0),
     college = ifelse(EDUC %in% 7:11, 1, 0),
     employed = ifelse(EMPSTAT == 1, 1, 0),
     female = ifelse(SEX==2, 1, 0),
     OCC1950 = ifelse(OCC1950 %in% 979:999, NA, OCC1950),
+    age = YEAR - BIRTHYR,
+    female = ifelse(SEX == 2, 1, 0),
+    wage = ifelse(is.na(INCWAGE), 0, INCWAGE),
+    lnwage = log(INCWAGE),
+    citizen = ifelse(CITIZEN %in% c(0, 1, 2), 1, 0),
+    homestate = ifelse(BPL == STATEFIP, 1, 0),
+    generation = case_when(
+      NATIVITY == 5 ~ "first", # foriegn born
+      NATIVITY %in% 2:4 ~ "second", # both or either parent foriegn born
+      NATIVITY == 1 & (NATIVITY_POP %in% 2:4 | NATIVITY_MOM %in% 2:4) ~ "third",
+      ## .default == NA
+    )
   )
 #+end_src
 
 #+RESULTS:
+
+#+begin_src R :results silent
+results_wide <- results |>
+  select(id, YEAR, STATEFIP, COUNTYICP) |>
+  pivot_wider(id_cols = id, names_from = YEAR, names_sep = "_", values_from = c(STATEFIP, COUNTYICP))
+
+results <- left_join(results, results_wide, by = "id")
+#+end_src
 
 #+name: write-linked-sample
 #+begin_src R :exports results
