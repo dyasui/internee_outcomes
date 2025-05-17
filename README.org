@@ -19,6 +19,7 @@ df <- read_csv("data/linked_internee_sample.csv") |>
 
 #+RESULTS:
 
+** Summary Statistics
 #+begin_src R :colnames yes
 df |>
   group_by(treat, race, YEAR) |>
@@ -42,23 +43,27 @@ df |>
 |       | Japanese | 1940 | 1695 | 224.01 |    11.55 |      0.76 |   0.18 | 33.04 |    0.07 |    0.03 |     0.54 |
 |       | Japanese | 1950 | 1695 | 182.19 |    10.92 |      0.76 |   0.18 | 42.89 |    0.04 |    0.11 |      0.6 |
 
+*** Linking Problems!
 
-#+RESULTS:
-| variable  | var_type    | row_type | var_label | label     | stat_1               | stat_2               |
-|-----------+-------------+----------+-----------+-----------+----------------------+----------------------|
-| pr_intern | continuous  | label    | pr_intern | pr_intern | 0.00 (0.00, 0.00)    | 0.84 (0.40, 1.00)    |
-| female    | dichotomous | label    | female    | female    | 2,157 (33%)          | 2,101 (45%)          |
-| BIRTHYR   | continuous  | label    | BIRTHYR   | BIRTHYR   | 1,912 (1,899, 1,930) | 1,904 (1,892, 1,927) |
-| employed  | dichotomous | label    | employed  | employed  | 2,388 (37%)          | 1,947 (42%)          |
-| college   | dichotomous | label    | college   | college   | 340 (5.3%)           | 244 (5.3%)           |
-| foreign   | dichotomous | label    | foreign   | foreign   | 181 (2.8%)           | 149 (3.2%)           |
+I restricted to only people who are linked in MLP, but it seems like there are some records with the same =HISTID= but which seem like their race is changing.
+
+- 8 people look like they're going from Chinese to Japanese
+- there are fewer
+
+*** Drop Incorrect Links?
+
+#+begin_src R
+df |>
+  select(id, YEAR, race, BIRTHYR)
+  
+#+end_src
 
 ** Diff-in-Diff
 *** Wages
 #+begin_src R :exports results :results graphics file :file figures/did_plot.png :width 16 :height 12 :res 200 :units cm
 df |>
-  ggplot(aes(x=YEAR, y = INCWAGE, color = as_factor(group))) +
-  geom_line(data = group_averages, aes(x=YEAR, y = INCWAGE, group = group), size=1, linetype = "dashed") +
+  ggplot(aes(x=YEAR, y = INCWAGE, color = as_factor(race))) +
+  geom_line(data = group_averages, aes(x=YEAR, y = INCWAGE, group = c(race,treat)), size=1, linetype = "dashed") +
   scale_color_manual(values=c("#003049", "#D62828", "#F77F00", "#FCBF49")) +
   scale_x_discrete("YEAR") +
   theme_minimal() +
@@ -73,13 +78,8 @@ df |>
 #+RESULTS:
 [[file:figures/did_plot.png]]
 
-#+begin_src R :results output latex :exports results
+#+begin_src R :colnames yes
 library(fixest)
-reg_did <- feols(INCWAGE ~ did + pr_intern + as_factor(YEAR), data = df, cluster = ~as_factor(COUNTYICP), panel.id = ~id+YEAR)
-reg_did_cont <- feols(INCWAGE ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married, data = df)
-reg_did_state_fe <- feols(INCWAGE ~ did + pr_intern + as_factor(YEAR) | as_factor(STATEFIP), data = df)
-reg_did_cont_fe <- feols(INCWAGE ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married | as_factor(STATEFIP), data = df)
-etable(reg_did, reg_did_cont, reg_did_state_fe, reg_did_cont_fe
        ## , tex = TRUE
        )
 #+end_src
