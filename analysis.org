@@ -1,0 +1,232 @@
+* Internee Outcomes
+:PROPERTIES:
+:HEADER-ARGS:R: :tangle R/analysis.R :session *R:internment*
+:END:
+
+#+begin_src R
+library(tidyverse)
+df <- read_csv("data/linked_internee_sample.csv") |>
+  select(
+    id, YEAR, STATEFIP, COUNTYICP, female, race, married, BIRTHYR, age,
+    foreign, citizen, generation, homestate,
+    employed, wage, lnwage, OCCSCORE, OCC1950, college,
+    pr_intern, treat, post, did
+    )
+#+end_src
+
+#+RESULTS:
+
+** Summary Statistics
+#+begin_src R :colnames yes
+df |>
+  group_by(treat, race, YEAR) |>
+  summarise(
+    n = n(),
+    across(c(wage, OCCSCORE, pr_intern, female, age, college, foreign, employed),
+           ~round(mean(., na.rm=T), digits = 2)
+           )
+  )
+#+end_src
+
+#+RESULTS:
+| treat | race     | YEAR |    n |   wage | OCCSCORE | pr_intern | female |   age | college | foreign | employed |
+|-------+----------+------+------+--------+----------+-----------+--------+-------+---------+---------+----------|
+|     0 | Chinese  | 1940 | 6448 | 220.71 |    10.42 |      0.58 |   0.33 | 27.08 |    0.05 |    0.03 |     0.37 |
+|     0 | Chinese  | 1950 | 6440 | 133.43 |    12.92 |      0.58 |   0.34 | 36.93 |    0.04 |    0.11 |      0.5 |
+|     0 | Japanese | 1940 |  778 | 138.77 |     6.25 |         0 |    0.4 |  28.1 |    0.06 |    0.02 |     0.32 |
+|     0 | Japanese | 1950 |  778 |   63.4 |     8.39 |         0 |    0.4 | 38.04 |    0.02 |     0.1 |     0.53 |
+|     1 | Japanese | 1940 | 2158 | 117.23 |     5.83 |      1.06 |   0.69 | 33.15 |    0.04 |    0.04 |     0.36 |
+|     1 | Japanese | 1950 | 2166 | 170.94 |     7.11 |      1.06 |   0.68 | 42.94 |    0.03 |    0.14 |     0.46 |
+|       | Japanese | 1940 | 1695 | 224.01 |    11.55 |      0.76 |   0.18 | 33.04 |    0.07 |    0.03 |     0.54 |
+|       | Japanese | 1950 | 1695 | 182.19 |    10.92 |      0.76 |   0.18 | 42.89 |    0.04 |    0.11 |      0.6 |
+
+*** Linking Problems!
+
+I restricted to only people who are linked in MLP, but it seems like there are some records with the same =HISTID= but which seem like their race is changing.
+
+- 8 people look like they're going from Chinese to Japanese
+- there are fewer
+
+*** Drop Incorrect Links?
+
+#+begin_src R
+df |>
+  select(id, YEAR, race, BIRTHYR)
+  
+#+end_src
+
+** Diff-in-Diff
+*** Wages
+#+begin_src R :exports results :results graphics file :file figures/did_plot.png :width 16 :height 12 :res 200 :units cm
+df |>
+  ggplot(aes(x=YEAR, y = INCWAGE, color = as_factor(race))) +
+  geom_line(data = group_averages, aes(x=YEAR, y = INCWAGE, group = c(race,treat)), size=1, linetype = "dashed") +
+  scale_color_manual(values=c("#003049", "#D62828", "#F77F00", "#FCBF49")) +
+  scale_x_discrete("YEAR") +
+  theme_minimal() +
+  labs(title="Interned Japanese Experienced Higher Wage Growth",
+       x="Year",
+       y="Wages (1940 dollars)",
+       caption="") +
+  theme(legend.title = element_blank(),
+        legend.position = "bottom")
+#+end_src
+
+#+RESULTS:
+[[file:figures/did_plot.png]]
+
+#+begin_src R :colnames yes
+library(fixest)
+
+reg_did_1 <- feols(
+  lnwage ~ did + treat + post + female + age + age^2 + college + married, data = df)
+
+reg_did_2 <- feols(
+  lnwage ~ did + treat + post + female + age + age^2 + college + married |
+    id,
+  data = df)
+
+reg_did_3 <- feols(
+  lnwage ~ did + treat + post + female + age + age^2 + college + married |
+    as_factor(STATEFIP) + id,
+  data = df)
+
+reg_did_4 <- feols(
+  lnwage ~ did + treat + post + female + age + age^2 + college + married |
+    as_factor(STATEFIP),
+  data = df)
+
+etable(reg_did_1, reg_did_2, reg_did_3, reg_did_4
+       ## , tex = TRUE
+       )
+#+end_src
+
+#+RESULTS:
+|                     | reg_did_1            | reg_did_2           | reg_did_3         | reg_did_4           |
+|---------------------+----------------------+---------------------+-------------------+---------------------|
+| Dependent Var.:     | lnwage               | lnwage              | lnwage            | lnwage              |
+|                     |                      |                     |                   |                     |
+| Constant            | 5.250*** (0.1325)    |                     |                   |                     |
+| did                 | 0.1920** (0.0730)    | -0.0075 (0.1957)    | -0.0372 (0.2265)  | 0.1947** (0.0666)   |
+| treat               | -0.0975. (0.0516)    |                     | 0.1136 (1.673)    | -0.0840. (0.0452)   |
+| post                | 0.3776*** (0.0381)   | 0.1515 (0.2317)     | 0.1999 (0.6685)   | 0.3711*** (0.0592)  |
+| female              | -0.4923*** (0.0413)  |                     | 0.8015 (11.65)    | -0.5103*** (0.0515) |
+| age                 | 0.0614*** (0.0071)   | 0.1453*** (0.0377)  | 0.1396 (0.0844)   | 0.0629*** (0.0114)  |
+| age square          | -0.0007*** (8.43e-5) | -0.0014*** (0.0003) | -0.0014* (0.0006) | -0.0007*** (0.0001) |
+| college             | 0.3493*** (0.0479)   | 0.2136 (0.2706)     | 0.2304 (0.3756)   | 0.3374*** (0.0457)  |
+| married             | 0.0746. (0.0399)     | -0.1003 (0.1397)    | -0.1172 (0.6533)  | 0.0632** (0.0226)   |
+| Fixed-Effects:      | -------------------- | ------------------- | ----------------- | ------------------- |
+| id                  | No                   | Yes                 | Yes               | No                  |
+| as_factor(STATEFIP) | No                   | No                  | Yes               | Yes                 |
+| ___________________ | ____________________ | ___________________ | _________________ | ___________________ |
+| S.E. type           | IID                  | by: id              | by: STATEFIP)     | by: STATEFIP)       |
+| Observations        | 3,179                | 3,179               | 3,179             | 3,179               |
+| R2                  | 0.1122               | 0.92523             | 0.92778           | 0.13046             |
+| Within R2           | --                   | 0.17519             | 0.17945           | 0.11198             |
+
+**** level wages
+
+#+begin_src R :colnames yes
+library(fixest)
+
+reg_did_1 <- feols(
+  wage ~ did + treat + post + female + age + age^2 + college + married, data = df)
+
+reg_did_2 <- feols(
+  wage ~ did + treat + post + female + age + age^2 + college + married |
+    id,
+  data = df)
+
+reg_did_3 <- feols(
+  wage ~ did + treat + post + female + age + age^2 + college + married |
+    as_factor(STATEFIP) + id,
+  data = df)
+
+reg_did_4 <- feols(
+  wage ~ did + treat + post + female + age + age^2 + college + married |
+    as_factor(STATEFIP),
+  data = df)
+
+etable(reg_did_1, reg_did_2, reg_did_3, reg_did_4
+       ## , tex = TRUE
+       )
+#+end_src
+
+#+RESULTS:
+|                     | reg_did_1           | reg_did_2           | reg_did_3           | reg_did_4           |
+|---------------------+---------------------+---------------------+---------------------+---------------------|
+| Dependent Var.:     | wage                | wage                | wage                | wage                |
+|                     |                     |                     |                     |                     |
+| Constant            | -8.280 (11.70)      |                     |                     |                     |
+| did                 | 159.8*** (15.92)    | 179.7*** (15.89)    | 179.1*** (17.08)    | 160.7*** (10.36)    |
+| treat               | -53.50*** (11.59)   | -253.6*** (47.31)   | -253.4*** (43.84)   | -77.06*** (8.853)   |
+| post                | -118.0*** (8.107)   | -186.7*** (37.20)   | -186.2*** (31.62)   | -116.1*** (10.56)   |
+| female              | -170.2*** (7.178)   | 8.265 (42.93)       | 8.250 (38.03)       | -167.3*** (23.58)   |
+| age                 | 18.65*** (0.8425)   | 35.01*** (3.950)    | 35.05*** (6.739)    | 18.06*** (1.399)    |
+| age square          | -0.2270*** (0.0103) | -0.3744*** (0.0159) | -0.3754*** (0.0674) | -0.2215*** (0.0209) |
+| college             | 372.8*** (16.87)    | 358.8*** (38.82)    | 358.2*** (51.00)    | 364.1*** (53.31)    |
+| married             | -17.78. (10.56)     | 6.335 (22.12)       | 7.379 (33.75)       | -19.68* (8.795)     |
+| Fixed-Effects:      | ------------------- | ------------------- | ------------------- | ------------------- |
+| id                  | No                  | Yes                 | Yes                 | No                  |
+| as_factor(STATEFIP) | No                  | No                  | Yes                 | Yes                 |
+| ___________________ | ___________________ | ___________________ | ___________________ | ___________________ |
+| S.E. type           | IID                 | by: id              | by: STATEFIP)       | by: STATEFIP)       |
+| Observations        | 18,768              | 18,768              | 18,768              | 18,768              |
+| R2                  | 0.10511             | 0.59118             | 0.59291             | 0.11433             |
+| Within R2           | --                  | 0.08733             | 0.08703             | 0.10063             |
+
+*** Other Outcomes
+#+begin_src R
+wide_df <- df |>
+  pivot_wider(id_cols = id, names_from = YEAR, values_from = STATEICP:group) |>
+  mutate(lf_drop = case_when(EMPSTAT_1940 == 1 & EMPSTAT_1950 !=1),
+         OCCSCORE
+#+end_src
+
+#+RESULTS:
+
+
+#+begin_src R :colnaes yes
+reg_did_1 <- feols(
+  employed ~ did + treat + post + female + age + age^2 + college + married, data = df)
+
+reg_did_2 <- feols(
+  employed ~ did + treat + post + female + age + age^2 + college + married |
+    id,
+  data = df)
+
+reg_did_3 <- feols(
+  employed ~ did + treat + post + female + age + age^2 + college + married |
+    as_factor(STATEFIP) + id,
+  data = df)
+
+reg_did_4 <- feols(
+  employed ~ did + treat + post + female + age + age^2 + college + married |
+    as_factor(STATEFIP),
+  data = df)
+
+etable(reg_did_1, reg_did_2, reg_did_3, reg_did_4
+       ## , tex = TRUE
+       )
+#+end_src
+
+#+RESULTS:
+| Dependent Var.:     | employed             | employed             | employed             | employed             |
+|                     |                      |                      |                      |                      |
+| Constant            | -0.0971*** (0.0103)  |                      |                      |                      |
+| did                 | 0.0004 (0.0140)      | 0.0035 (0.0131)      | 0.0012 (0.0133)      | -0.0025 (0.0103)     |
+| treat               | 0.0516*** (0.0101)   | 0.0408 (0.1129)      | 0.0427*** (0.0094)   | 0.0762*** (0.0110)   |
+| post                | 0.0421*** (0.0071)   | 0.0411 (0.0318)      | 0.0444. (0.0264)     | 0.0413*** (0.0071)   |
+| female              | -0.3480*** (0.0063)  | 0.0117 (0.0833)      | 0.0115 (0.1224)      | -0.3502*** (0.0176)  |
+| age                 | 0.0367*** (0.0007)   | 0.0362*** (0.0034)   | 0.0359*** (0.0045)   | 0.0372*** (0.0005)   |
+| age square          | -0.0004*** (9.03e-6) | -0.0004*** (1.41e-5) | -0.0004*** (4.11e-5) | -0.0004*** (7.48e-6) |
+| college             | 0.0365* (0.0148)     | 0.0220 (0.0196)      | 0.0220 (0.0251)      | 0.0366** (0.0116)    |
+| married             | 0.0388*** (0.0093)   | 0.1007*** (0.0189)   | 0.1016*** (0.0185)   | 0.0382*** (0.0086)   |
+| Fixed-Effects:      | -------------------- | -------------------- | -------------------- | -------------------- |
+| id                  | No                   | Yes                  | Yes                  | No                   |
+| as_factor(STATEFIP) | No                   | No                   | Yes                  | Yes                  |
+| ___________________ | ____________________ | ____________________ | ____________________ | ____________________ |
+| S.E. type           | IID                  | by: id               | by: STATEFIP)        | by: STATEFIP)        |
+| Observations        | 18,768               | 18,768               | 18,768               | 18,768               |
+| R2                  | 0.34257              | 0.73866              | 0.73981              | 0.34734              |
+| Within R2           | --                   | 0.13898              | 0.1376               | 0.34136              |
