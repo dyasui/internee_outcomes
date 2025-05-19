@@ -80,37 +80,103 @@ df |>
 
 #+begin_src R :colnames yes
 library(fixest)
+
+reg_did_1 <- feols(
+  lnwage ~ did + treat + post + female + age + age^2 + college + married, data = df)
+
+reg_did_2 <- feols(
+  lnwage ~ did + treat + post + female + age + age^2 + college + married |
+    id,
+  data = df)
+
+reg_did_3 <- feols(
+  lnwage ~ did + treat + post + female + age + age^2 + college + married |
+    as_factor(STATEFIP) + id,
+  data = df)
+
+reg_did_4 <- feols(
+  lnwage ~ did + treat + post + female + age + age^2 + college + married |
+    as_factor(STATEFIP),
+  data = df)
+
+etable(reg_did_1, reg_did_2, reg_did_3, reg_did_4
        ## , tex = TRUE
        )
 #+end_src
 
 #+RESULTS:
-#+begin_export latex
-NOTE: 11,849 observations removed because of NA values (LHS: 11,849).
-NOTE: 11,849 observations removed because of NA values (LHS: 11,849).
-NOTE: 11,849 observations removed because of NA values (LHS: 11,849).
-NOTE: 11,849 observations removed because of NA values (LHS: 11,849).
-                              reg_did       reg_did_cont  reg_did_state_fe   reg_did_cont_fe
-Dependent Var.:               INCWAGE            INCWAGE           INCWAGE           INCWAGE
-                                                                                            
-Constant             335.7*** (19.06) -1,539.9 (1,029.8)                                    
-did                  174.5*** (37.68)   192.7*** (28.92)  171.9*** (21.73)  189.7*** (19.98)
-pr_intern           -127.4*** (19.08)  -68.17*** (18.01) -156.2*** (5.987) -89.95*** (8.194)
-as_factor(YEAR)1950  167.3*** (20.35)   195.4*** (17.95)  167.8*** (14.96)  196.1*** (12.67)
-female                                 -347.9*** (13.64)                   -340.8*** (13.89)
-BIRTHYR                                 0.9619. (0.5375)                      1.016 (0.7072)
-college                                 233.7*** (22.32)                    216.4*** (45.65)
-married                                 175.1*** (17.63)                    173.7*** (21.27)
-Fixed-Effects:      ----------------- ------------------ ----------------- -----------------
-as_factor(STATEFIP)                No                 No               Yes               Yes
-___________________ _________________ __________________ _________________ _________________
-S.E. type              by: COUNTYICP)                IID     by: STATEFIP)     by: STATEFIP)
-Observations                   10,309             10,309            10,309            10,309
-R2                            0.02851            0.10424           0.04981           0.12054
-Within R2                          --                 --           0.03020           0.10240
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-#+end_export
+|                     | reg_did_1            | reg_did_2           | reg_did_3         | reg_did_4           |
+|---------------------+----------------------+---------------------+-------------------+---------------------|
+| Dependent Var.:     | lnwage               | lnwage              | lnwage            | lnwage              |
+|                     |                      |                     |                   |                     |
+| Constant            | 5.250*** (0.1325)    |                     |                   |                     |
+| did                 | 0.1920** (0.0730)    | -0.0075 (0.1957)    | -0.0372 (0.2265)  | 0.1947** (0.0666)   |
+| treat               | -0.0975. (0.0516)    |                     | 0.1136 (1.673)    | -0.0840. (0.0452)   |
+| post                | 0.3776*** (0.0381)   | 0.1515 (0.2317)     | 0.1999 (0.6685)   | 0.3711*** (0.0592)  |
+| female              | -0.4923*** (0.0413)  |                     | 0.8015 (11.65)    | -0.5103*** (0.0515) |
+| age                 | 0.0614*** (0.0071)   | 0.1453*** (0.0377)  | 0.1396 (0.0844)   | 0.0629*** (0.0114)  |
+| age square          | -0.0007*** (8.43e-5) | -0.0014*** (0.0003) | -0.0014* (0.0006) | -0.0007*** (0.0001) |
+| college             | 0.3493*** (0.0479)   | 0.2136 (0.2706)     | 0.2304 (0.3756)   | 0.3374*** (0.0457)  |
+| married             | 0.0746. (0.0399)     | -0.1003 (0.1397)    | -0.1172 (0.6533)  | 0.0632** (0.0226)   |
+| Fixed-Effects:      | -------------------- | ------------------- | ----------------- | ------------------- |
+| id                  | No                   | Yes                 | Yes               | No                  |
+| as_factor(STATEFIP) | No                   | No                  | Yes               | Yes                 |
+| ___________________ | ____________________ | ___________________ | _________________ | ___________________ |
+| S.E. type           | IID                  | by: id              | by: STATEFIP)     | by: STATEFIP)       |
+| Observations        | 3,179                | 3,179               | 3,179             | 3,179               |
+| R2                  | 0.1122               | 0.92523             | 0.92778           | 0.13046             |
+| Within R2           | --                   | 0.17519             | 0.17945           | 0.11198             |
+
+**** level wages
+
+#+begin_src R :colnames yes
+library(fixest)
+
+reg_did_1 <- feols(
+  wage ~ did + treat + post + female + age + age^2 + college + married, data = df)
+
+reg_did_2 <- feols(
+  wage ~ did + treat + post + female + age + age^2 + college + married |
+    id,
+  data = df)
+
+reg_did_3 <- feols(
+  wage ~ did + treat + post + female + age + age^2 + college + married |
+    as_factor(STATEFIP) + id,
+  data = df)
+
+reg_did_4 <- feols(
+  wage ~ did + treat + post + female + age + age^2 + college + married |
+    as_factor(STATEFIP),
+  data = df)
+
+etable(reg_did_1, reg_did_2, reg_did_3, reg_did_4
+       ## , tex = TRUE
+       )
+#+end_src
+
+#+RESULTS:
+|                     | reg_did_1           | reg_did_2           | reg_did_3           | reg_did_4           |
+|---------------------+---------------------+---------------------+---------------------+---------------------|
+| Dependent Var.:     | wage                | wage                | wage                | wage                |
+|                     |                     |                     |                     |                     |
+| Constant            | -8.280 (11.70)      |                     |                     |                     |
+| did                 | 159.8*** (15.92)    | 179.7*** (15.89)    | 179.1*** (17.08)    | 160.7*** (10.36)    |
+| treat               | -53.50*** (11.59)   | -253.6*** (47.31)   | -253.4*** (43.84)   | -77.06*** (8.853)   |
+| post                | -118.0*** (8.107)   | -186.7*** (37.20)   | -186.2*** (31.62)   | -116.1*** (10.56)   |
+| female              | -170.2*** (7.178)   | 8.265 (42.93)       | 8.250 (38.03)       | -167.3*** (23.58)   |
+| age                 | 18.65*** (0.8425)   | 35.01*** (3.950)    | 35.05*** (6.739)    | 18.06*** (1.399)    |
+| age square          | -0.2270*** (0.0103) | -0.3744*** (0.0159) | -0.3754*** (0.0674) | -0.2215*** (0.0209) |
+| college             | 372.8*** (16.87)    | 358.8*** (38.82)    | 358.2*** (51.00)    | 364.1*** (53.31)    |
+| married             | -17.78. (10.56)     | 6.335 (22.12)       | 7.379 (33.75)       | -19.68* (8.795)     |
+| Fixed-Effects:      | ------------------- | ------------------- | ------------------- | ------------------- |
+| id                  | No                  | Yes                 | Yes                 | No                  |
+| as_factor(STATEFIP) | No                  | No                  | Yes                 | Yes                 |
+| ___________________ | ___________________ | ___________________ | ___________________ | ___________________ |
+| S.E. type           | IID                 | by: id              | by: STATEFIP)       | by: STATEFIP)       |
+| Observations        | 18,768              | 18,768              | 18,768              | 18,768              |
+| R2                  | 0.10511             | 0.59118             | 0.59291             | 0.11433             |
+| Within R2           | --                  | 0.08733             | 0.08703             | 0.10063             |
 
 *** Other Outcomes
 #+begin_src R
@@ -123,33 +189,47 @@ wide_df <- df |>
 #+RESULTS:
 
 
-#+begin_src R :results output latex :exports results
-reg_emp <- feols(employed ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married | as_factor(STATEFIP), data = df)
-reg_occ <- feols(OCCSCORE ~ did + pr_intern + as_factor(YEAR) + female + BIRTHYR + college + married | as_factor(STATEFIP), data = df)
-etable(reg_emp, reg_occ
+#+begin_src R :colnaes yes
+reg_did_1 <- feols(
+  employed ~ did + treat + post + female + age + age^2 + college + married, data = df)
+
+reg_did_2 <- feols(
+  employed ~ did + treat + post + female + age + age^2 + college + married |
+    id,
+  data = df)
+
+reg_did_3 <- feols(
+  employed ~ did + treat + post + female + age + age^2 + college + married |
+    as_factor(STATEFIP) + id,
+  data = df)
+
+reg_did_4 <- feols(
+  employed ~ did + treat + post + female + age + age^2 + college + married |
+    as_factor(STATEFIP),
+  data = df)
+
+etable(reg_did_1, reg_did_2, reg_did_3, reg_did_4
        ## , tex = TRUE
        )
 #+end_src
 
 #+RESULTS:
-#+begin_export latex
-                                reg_emp            reg_occ
-Dependent Var.:                employed           OCCSCORE
-                                                          
-did                 -0.0491*** (0.0122) -1.514*** (0.4187)
-pr_intern            0.0851*** (0.0075) -1.937*** (0.1779)
-as_factor(YEAR)1950  0.1343*** (0.0188)  2.257*** (0.5121)
-female              -0.3461*** (0.0140) -9.000*** (0.2299)
-BIRTHYR             -0.0044*** (0.0010) -0.0871** (0.0259)
-college              0.1218*** (0.0099)  8.171*** (0.2978)
-married              0.2370*** (0.0251)  7.082*** (0.3222)
-Fixed-Effects:      ------------------- ------------------
-as_factor(STATEFIP)                 Yes                Yes
-___________________ ___________________ __________________
-S.E.: Clustered           by: STATEFIP)      by: STATEFIP)
-Observations                     22,158             22,158
-R2                              0.28343            0.26024
-Within R2                       0.27644            0.24787
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-#+end_export
+| Dependent Var.:     | employed             | employed             | employed             | employed             |
+|                     |                      |                      |                      |                      |
+| Constant            | -0.0971*** (0.0103)  |                      |                      |                      |
+| did                 | 0.0004 (0.0140)      | 0.0035 (0.0131)      | 0.0012 (0.0133)      | -0.0025 (0.0103)     |
+| treat               | 0.0516*** (0.0101)   | 0.0408 (0.1129)      | 0.0427*** (0.0094)   | 0.0762*** (0.0110)   |
+| post                | 0.0421*** (0.0071)   | 0.0411 (0.0318)      | 0.0444. (0.0264)     | 0.0413*** (0.0071)   |
+| female              | -0.3480*** (0.0063)  | 0.0117 (0.0833)      | 0.0115 (0.1224)      | -0.3502*** (0.0176)  |
+| age                 | 0.0367*** (0.0007)   | 0.0362*** (0.0034)   | 0.0359*** (0.0045)   | 0.0372*** (0.0005)   |
+| age square          | -0.0004*** (9.03e-6) | -0.0004*** (1.41e-5) | -0.0004*** (4.11e-5) | -0.0004*** (7.48e-6) |
+| college             | 0.0365* (0.0148)     | 0.0220 (0.0196)      | 0.0220 (0.0251)      | 0.0366** (0.0116)    |
+| married             | 0.0388*** (0.0093)   | 0.1007*** (0.0189)   | 0.1016*** (0.0185)   | 0.0382*** (0.0086)   |
+| Fixed-Effects:      | -------------------- | -------------------- | -------------------- | -------------------- |
+| id                  | No                   | Yes                  | Yes                  | No                   |
+| as_factor(STATEFIP) | No                   | No                   | Yes                  | Yes                  |
+| ___________________ | ____________________ | ____________________ | ____________________ | ____________________ |
+| S.E. type           | IID                  | by: id               | by: STATEFIP)        | by: STATEFIP)        |
+| Observations        | 18,768               | 18,768               | 18,768               | 18,768               |
+| R2                  | 0.34257              | 0.73866              | 0.73981              | 0.34734              |
+| Within R2           | --                   | 0.13898              | 0.1376               | 0.34136              |
