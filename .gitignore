@@ -13,14 +13,16 @@
 **.tex~
 **.toc
 
-# files which are too large for github
 **.dat.gz
-data/fullcount_census/mlp_1940_1950_v1_2_csv/*.csv
+data/fullcount_census/mlp_1940_1950_v1_2_csv/
 ltximg
-data/#README.org#
-data/.#README.org
-data/README.org~
 data/ipums_db.duckdb
 .Internment-tabspaces-session.el
 .#\*dashboard\*
 \#\*dashboard\*#
+\*dashboard\*
+
+data/linked_census_sample.csv
+data/linked_internee_sample.csv
+data/linked_microdata_JA.csv
+data/ja_pop_groups.csv
