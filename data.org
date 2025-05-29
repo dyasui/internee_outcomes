@@ -272,12 +272,12 @@ data_labelled <- data_raw |>
       bpl_pop == 2 & bpl_mom == 1 ~ 2,  # foreign father, native mother
       bpl_pop == 1 & bpl_mom == 2 ~ 3,  # native father, foreign mother
       bpl_pop == 2 & bpl_mom == 2 ~ 4,  # both parents foreign-born
-      birthplace %in% 0:74 ~ 5,       # is foreign born themselves
-      TRUE ~ NA_real_                    # for any other cases, assign NA
+      !(birthplace %in% 0:74) ~ 5,       # is foreign born themselves
+      .default = NA_real_                    # for any other cases, assign NA
     ),
     educ_bach = ifelse(educ %in% c("A", "B", "C", "D", "E", "F", "G", "H", "I", "4"), 1, 0),
     bpl = case_when(
-      birthplace == 31 ~ 001,  # Alabama	
+      birthplace == 31 ~ 001,  # Alabama
       birthplace == 81 ~ 002,  # Alaska
       birthplace == 26 ~ 004,  # Arizona
       birthplace == 32 ~ 005,  # Arkansas
@@ -421,7 +421,7 @@ tbl = "ipums_microdata"
 
 dt40 <- tbl(db, tbl) |>
   filter(YEAR == 1940, RACE == 5) |>
-  select(STATEFIP, COUNTYICP, SEX)
+  select(STATEFIP, COUNTYICP, SEX, BIRTHYR, BPL)
 #+end_src
 
 #+RESULTS:
@@ -430,7 +430,7 @@ Collect all Japanese-American micro-records by county, sex, birthyear, and birth
 
 #+begin_src R
 JApop_groups <- dt40 |>
-  count(STATEFIP, COUNTYICP, SEX) |>
+  count(STATEFIP, COUNTYICP, SEX, BIRTHYR, BPL) |>
   collect() |>
   mutate(
     # proportion in each demographic group
@@ -452,7 +452,7 @@ At this stage, I only need the state and county of each person who is linked acr
 For each decade-to-decade comparison (1920 to 1930, and 1930 to 1940),
 I join the state and county location by =HISTID= code for the appropriate year in the crosswalk file.
 Then I count how many linked individuals appear in each county-county migration group
-and drop individuals who do not report a county location in either decade. 
+and drop individuals who do not report a county location in either decade.
 
 #+begin_src R
 # open database connection with duckdb
@@ -477,7 +477,7 @@ l1 <- cw |>
   collect()
 
 # join histids to selected data from year 2
-l2 <- cw |>  
+l2 <- cw |>
   inner_join(d2, by = c("histid_1950" = "HISTID")) |>
   collect()
 #+end_src
@@ -486,7 +486,7 @@ l2 <- cw |>
 # join all selected data between years by crosswalked histids
 results <- bind_rows(l1, l2) |>
   # get rid of leftover linking and technical varibles
-  select(!c("step", "SAMPLE", "SERIAL", "HHWT", "PERWT", 
+  select(!c("step", "SAMPLE", "SERIAL", "HHWT", "PERWT",
             "PERNUM", "GQ", "VERSIONHIST", "CITY", "ENUMDIST"))
 
 # generate new unique ids for each linked person
@@ -598,11 +598,11 @@ Combine internee records with census records and calculate predicted internment 
 #+begin_src R :results silent
 dt <- left_join(pr_z_I, pr_z,
                 by = c("NHGISST", "NHGISCTY",
-                       "sex"="SEX"),
+                       "sex"="SEX", "birthyr"="BIRTHYR", "birthplace"="BPL"),
                 suffix = c("_z_I","_z")) |>
   mutate(
-    pr_intern = (p_z_I * pr_I) / p_z ,
-    pr_intern_test = n_z_I / n_z
+    ## pr_intern = (p_z_I * pr_I) / p_z ,
+    pr_intern = n_z_I / n_z
   )
 #+end_src
 
@@ -615,7 +615,7 @@ write_csv(dt, file = "data/pr_intern_status.csv")
 #+begin_src R :exports results :results graphics file :file figures/pr_intern_plot.png :width 16 :height 12 :res 200 :units cm
 ggplot(data = dt) +
   geom_histogram(aes(x=pr_intern), fill = "blue", alpha = 0.5) +
-  geom_histogram(aes(x=pr_intern_test), fill = "green", alpha = 0.5) +
+  ## geom_histogram(aes(x=pr_intern_test), fill = "green", alpha = 0.5) +
   xlim(0,2) +
   theme_minimal()
 #+end_src
@@ -783,7 +783,7 @@ dt |>
 :PROPERTIES:
 :HEADER-ARGS:R: :tangle R/collect_sample.R :session *R:internment*
 :END:
-#+begin_src R 
+#+begin_src R
 library(tidyverse)
 library(haven)
 mlp_panel <- read_csv("data/linked_census_sample.csv")
@@ -794,7 +794,10 @@ df <- left_join(mlp_panel, intrn_stat,
                         by = c(
                           "STATEFIP_1940"="STATEFIP",
                           "COUNTYICP_1940"="COUNTYICP",
-                          "SEX"="sex")) |>
+                          "SEX"="sex",
+                          "BIRTHYR"="birthyr",
+                          "BPL"="birthplace"
+                          )) |>
   # assign did internment status
   mutate(
     pr_intern = replace_na(pr_intern, 0),
@@ -806,11 +809,113 @@ df <- left_join(mlp_panel, intrn_stat,
       pr_intern >= 0.9 & race == "Japanese" ~ 1, #treatment group
       pr_intern == 0 & race == "Japanese" ~ 0, #treatment group
       .default = NA
-    ), 
+    ),
     did = treat * post # treatment status
-    ) 
-write_csv(df, "data/linked_internee_sample.csv")
+    )
+## write_csv(df, "data/linked_internee_sample.csv")
 #+end_src
 
 #+RESULTS:
 
+#+begin_src R :exports results :results graphics file :file figures/pr_intern-linked-sample_plot.png :width 16 :height 12 :res 200 :units cm
+df |> filter(YEAR==1940) |>
+ggplot() +
+  geom_histogram(aes(x=pr_intern), fill = "blue", alpha = 0.5) +
+  ## xlim(0,2) +
+  theme_minimal()
+#+end_src
+
+#+RESULTS:
+[[file:figures/pr_intern-linked-sample_plot.png]]
+
+* Visualizations
+:PROPERTIES:
+:HEADER-ARGS:R: :tangle R/figures.R :session *R:internment*
+:END:
+
+#+begin_src R
+library(ipumsr)
+library(tidyverse)
+library(dbplyr)
+library(duckdb)
+# data extract file
+db <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
+tbl = "ipums_microdata"
+
+pr_I <- read_csv("data/pr_intern_status.csv")
+
+ja_pop <- tbl(db, tbl) |>
+  select(YEAR, STATEFIP, COUNTYICP, SEX, BIRTHYR, MARST, BPL, BPLD, NATIVITY, CITIZEN,
+         EDUC, EMPSTAT, LABFORCE, OCC1950, INCTOT, INCWAGE, BPL_MOM, BPL_POP) |>
+  collect() |>
+  mutate(
+    # replace missing values with NAs and adjust all dollar amounts to 1940 levels
+    across(c(INCWAGE),
+           ~ case_when(.x %in% c(999999,999998) ~ NA,
+                             YEAR == 1950 ~ .x * 0.59, # deflated dollars to 1940 standards
+                             .default = .x)
+           ),
+    ) |>
+  left_join(pr_I, by = c("STATEFIP", "COUNTYICP", SEX="sex", BIRTHYR="birthyr", BPL="birthplace")) |>
+  mutate(internee = ifelse(pr_intern > 0.5, T, F))
+
+dbDisconnect()
+
+data_int <- read_csv("data/internees_data.csv")
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :exports results :results graphics file :file figures/internee-age_plot.pdf
+d1 <- data_int |>
+  mutate(group = "Internees") |>
+  select(group, NHGISST, NHGISCTY, SEX=sex, BIRTHYR=birthyr,
+         BPL=bpl, NATIVITY=nativity)
+
+d2 <- ja_pop |>
+  filter(YEAR == 1940, RACE == 5) |>
+  mutate(
+    group = "All Japanese",
+    SEX = ifelse(SEX==1, "male", "female"),
+    NHGISST = str_pad(string = STATEFIP*10, width = 3, side = "left", pad = "0"),
+    NHGISCTY = str_pad(COUNTYICP, width = 4, side = "left", pad = "0") ) |>
+  select(group, NHGISST, NHGISCTY, SEX, BIRTHYR, BPL, NATIVITY)
+
+plot_d <- bind_rows(d1,d2)
+
+ggplot(data = plot_d, aes(x=BIRTHYR, group = group, fill = group)) +
+  geom_density(alpha = 0.5) +
+  theme_minimal() +
+  theme(
+    ## legend.title = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    title = "Internee Birth Year Distribution vs Overall Japanese Population",
+    x = "Birth Year",
+    )
+
+#+end_src
+
+#+RESULTS:
+[[file:figures/internee-age_plot.pdf]]
+
+** Wages
+#+begin_src R :exports results :results graphics file :file figures/internee-wage_plot.pdf
+ggplot(data = ja_pop, aes(x=INCWAGE, group = internee, fill = internee)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap("YEAR") +
+  scale_x_log10() +
+  theme_minimal() +
+  theme(
+    ## legend.title = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    title = "Internee Wage Distribution vs Overall Japanese Population",
+    x = "Real Wages (1940 $)",
+    )
+#+end_src
+
+#+RESULTS:
+[[file:figures/internee-wage_plot.pdf]]
