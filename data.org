@@ -1,6 +1,5 @@
-#+STARTUP: show2levels
-#+OPTIONS: toc:2
-
+#+toc: 2
+#+bibliography: main.bib
 * Data Sources and Downloading
 ** WRA Camp Internee Records
 
@@ -121,6 +120,9 @@ read_ipums_micro_chunked(
 # read crosswalk csv files into database
 duckdb_read_csv(database, "mlp_crosswalks", cw45_csv)
 #+end_src
+** Japanese American Redress Verification Information System (JARVIS) Files
+[cite:@departmentofjustice.civilrightsdivision.12/9/1957-JapaneseAmericanRedress2006]
+
 * Data Cleaning
 ** Clean WRA camp records
 :PROPERTIES:
@@ -130,7 +132,7 @@ Here is a version of Arellano-Bover's original Stata code to process the WRA for
 rewritten in R.
 The file =WRA.FORM26.PU.txt= is read into R as fixed width data using =read_fwf= from the =readr= package.
 *** Variables Names and Labels
-#+begin_src R
+#+begin_src R :results silent
 #------------------------------------------------------------------------------#
 #                               README                                         #
 # this file was translated from the original stata do file compile_wra.do      #
@@ -148,15 +150,11 @@ library(haven)  # for reading stata data_raw files
 ## path <- "~/Research/Internment/data/"
 #+end_src
 
-#+RESULTS:
-: ~/Research/Internment/data/
-
-
 The original form included internee's names, the assembly center and WRA camp they were first assigned to,
 the county and city of thier previous address before being brought to the assembly centers,
 as well as demographic information such as their education attainment, birthplace and year, occupation, and father's characteristics.
 
-#+begin_src R :results silent 
+#+begin_src R :results silent
 # variables defined by column ranges in original file
 column_positions <- fwf_widths(
   c(10,             8,                 1,             1,                 1,
