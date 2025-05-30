@@ -1,5 +1,38 @@
 #+toc: 2
 #+bibliography: main.bib
+
+#+begin_src mermaid
+flowchart TD
+%% Data sources
+    nara[(🌐 National Archives)];
+    ipums[(🌐 IPUMS)];
+    nhgis[(🌐 NHGIS)];
+    jarvis[(🌐 JARVIS)];
+%% data files 
+    ipumsdat(📄 `fullcount_census/usa_00123.dat.gz`);
+    shp(📄 `US_county_1940.shp`);
+    wra(📄 `WRA.FORM26.PU.txt`);
+    lis(📄 `linked_internee_sample.csv`);
+
+%% output files
+    duckdb(`ipums_db.duckdb`);
+    printern(`pr_intern_status.csv`);
+
+%% scripts
+    wrdb["write-db.R"];
+    cwra["compile_WRA.R"];
+    linkc["link-census.R"];
+
+%% create edges
+    ipums --> ipumsdat;
+    ipumsdat --`write-db.R`--> duckdb;
+    duckdb --`collect_sample.R`--> lis;
+    duckdb --> `ja_pop_groups.csv`;
+    nhgis --> shp;
+    nara --> wra --> 'internees_data.csv';
+    wra --> `internment_groups.csv` --> `pr_intern_status.csv`;
+#+end_src
+
 * Data Sources and Downloading
 ** WRA Camp Internee Records
 
@@ -9,9 +42,99 @@ I use the fixed-width text version of this text file from Jaime Arellano-Bover's
 https://www.openicpsr.org/openicpsr/project/144561/version/V1/view:
 =WRA.FORM26.PU.txt=.
 
-** County Codes Crosswalk
- =data/county_codes_cw.csv= contains the list of 1940 counties with their state and county codes in NHGIS and ICPSR form.
- It also includes crosswalk wieghts for any possible border changes between 1940 and 1950 generated using the method from [[https://fpeckert.me/eglp/][Eckert et al. (2020)]].
+** Historical Counties
+:PROPERTIES:
+:header-args:R: :session *R:downloads* :tangle R/download-nhgis.R
+:END:
+
+I download shapefiles for county boundaries in 1940 and 1950 from the [[https://www.nhgis.org/][National Historical Geographic Information System]] (NHGIS).
+
+#+begin_src R :results silent
+library(ipumsr)
+library(tidyverse)
+library(sf)
+#+end_src
+
+#+begin_src R
+nhgis_extract <- define_extract_nhgis(
+  description = "1940 and 1950 historical county shapefiles",
+  shapefiles = c("us_county_1940_tl2008", "us_county_1950_tl2008") ) |>
+  submit_extract()
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R
+if (is_extract_ready(nhgis_extract)) {
+  download_extract(nhgis_extract, download_dir = "data"
+  }
+#+end_src
+
+#+RESULTS:
+: TRUE
+
+#+begin_src R
+nhgis_codes <- read_ipums_sf("data/nhgis0035_shape.zip", bind_multiple = T) |>
+  st_drop_geometry() |>
+  select(DECADE:STATENAM)
+  pivot_wider(id_cols = c("STATENAM", "NHGISNAM"), names_from(DECADE), values_from(NHGISST, NHGISCTY, ))
+#+end_src
+
+#+RESULTS:
+
+** MLP Crosswalk Links
+:PROPERTIES:
+:HEADER-ARGS:R: :session *R:ipums* :tangle R/write-db.R :results silent
+:END:
+
+The original micro data files from IPUMS are too large to fit in memory,
+and the MLP v1.2 linkages are provided as crosswalks which have to be joined to the data.
+I first read both crosswalks and extract microdata into a local database file
+so that I can use SQL operations via the =duckdb= API in R.
+
+#+name: define-objects
+#+begin_src R
+# open database connection with duckdb
+library(ipumsr)
+library(dplyr)
+library(dbplyr)
+library(duckdb)
+database <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
+# data extract file
+extract <- "data/fullcount_census/usa_00124.xml"
+ddi <- read_ipums_ddi(extract)
+# table name in database
+tbl <- "ipums_microdata"
+# crosswalk files for each adjacent census year pair
+cw45_csv <- "data/fullcount_census/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv"
+#+end_src
+
+*** Database Reading
+To manage how much memory is used at once, I read the ddi file in chunks to the database as its own table.
+I also read the crosswalks in as separate tables in the database.
+
+#+name: write-database
+#+begin_src R :eval false
+# read in ipums extract to database in chunks
+read_ipums_micro_chunked(
+  ddi, # path to ddi .xml file in same location as data download
+  callback = readr::SideEffectChunkCallback$new(
+    function(x, pos) {
+      if (pos == 1) {
+        dbWriteTable(database, tbl, x, overwrite = TRUE)
+      } else {
+        dbWriteTable(database, tbl, x, overwrite = FALSE, append = TRUE)
+      }
+    }
+  ),
+  chunk_size = 1e7 # observations to read per chunk
+)
+#+end_src
+
+#+begin_src R :eval false
+# read crosswalk csv files into database
+duckdb_read_csv(database, "mlp_crosswalks", cw45_csv)
+#+end_src
 ** Historical Census Microdata
 :PROPERTIES:
 :header-args:R: :session *R:ipums* :tangle R/download-ipums.R :colnames yes :export no
@@ -67,59 +190,6 @@ For this project, the files needed are located in the =data/= subdirectory:
 │   └── ...
 #+end_example
 
-** MLP Crosswalk Links
-:PROPERTIES:
-:HEADER-ARGS:R: :session *R:ipums* :tangle R/write-db.R :results silent
-:END:
-
-The original micro data files from IPUMS are too large to fit in memory,
-and the MLP v1.2 linkages are provided as crosswalks which have to be joined to the data.
-I first read both crosswalks and extract microdata into a local database file
-so that I can use SQL operations via the =duckdb= API in R.
-
-#+name: define-objects
-#+begin_src R
-# open database connection with duckdb
-library(ipumsr)
-library(dplyr)
-library(dbplyr)
-library(duckdb)
-database <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
-# data extract file
-extract <- "data/fullcount_census/usa_00124.xml"
-ddi <- read_ipums_ddi(extract)
-# table name in database
-tbl <- "ipums_microdata"
-# crosswalk files for each adjacent census year pair
-cw45_csv <- "data/fullcount_census/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv"
-#+end_src
-
-*** Database Reading
-To manage how much memory is used at once, I read the ddi file in chunks to the database as its own table.
-I also read the crosswalks in as separate tables in the database.
-
-#+name: write-database
-#+begin_src R :eval false
-# read in ipums extract to database in chunks
-read_ipums_micro_chunked(
-  ddi, # path to ddi .xml file in same location as data download
-  callback = readr::SideEffectChunkCallback$new(
-    function(x, pos) {
-      if (pos == 1) {
-        dbWriteTable(database, tbl, x, overwrite = TRUE)
-      } else {
-        dbWriteTable(database, tbl, x, overwrite = FALSE, append = TRUE)
-      }
-    }
-  ),
-  chunk_size = 1e7 # observations to read per chunk
-)
-#+end_src
-
-#+begin_src R :eval false
-# read crosswalk csv files into database
-duckdb_read_csv(database, "mlp_crosswalks", cw45_csv)
-#+end_src
 ** Japanese American Redress Verification Information System (JARVIS) Files
 [cite:@departmentofjustice.civilrightsdivision.12/9/1957-JapaneseAmericanRedress2006]
 
@@ -214,22 +284,22 @@ data_labelled <- data_raw |>
                          assembly %in% c("T", "Z") ~ "",
                          .default = assembly),
     assembly = labelled(as.integer(assembly),
-                        c("none"        = 0 , 
-                          "Manzanar"    = 1 , 
-                          "Fresno"      = 2 , 
-                          "Marysville"  = 3 , 
-                          "Mayor"       = 4 , 
-                          "Merced"      = 5 , 
-                          "Pinedale"    = 6 , 
-                          "Pomona"      = 7 , 
-                          "Portland"    = 8 , 
-                          "Puyallup"    = 9 , 
-                          "Sacramento"  = 10, 
-                          "Salinas"     = 11, 
-                          "Santa Anita" = 12, 
-                          "Stockton"    = 13, 
-                          "Tanforan"    = 14, 
-                          "Tulare"      = 15, 
+                        c("none"        = 0 ,
+                          "Manzanar"    = 1 ,
+                          "Fresno"      = 2 ,
+                          "Marysville"  = 3 ,
+                          "Mayor"       = 4 ,
+                          "Merced"      = 5 ,
+                          "Pinedale"    = 6 ,
+                          "Pomona"      = 7 ,
+                          "Portland"    = 8 ,
+                          "Puyallup"    = 9 ,
+                          "Sacramento"  = 10,
+                          "Salinas"     = 11,
+                          "Santa Anita" = 12,
+                          "Stockton"    = 13,
+                          "Tanforan"    = 14,
+                          "Tulare"      = 15,
                           "Turlock"     = 16 )
                         ),
     sex = case_when(sex_marrge %in% c("1", "2", "3", "4", "5", "0") ~ 1, # men
@@ -251,7 +321,7 @@ data_labelled <- data_raw |>
                       as.integer(birth_yr) + 1800, # born after 1842
                       as.integer(birth_yr) + 1900), # born before or during 1942
     race = case_when(race %in% c("4", "7", "L", "O", "V", "5", "J", "M", "P", "W", "6", "K", "N", "Q", "X") ~ 5, # japanese including mixed-race
-                     race %in% c("8", "S", "T", "U") ~ 1, # white non-japanese 
+                     race %in% c("8", "S", "T", "U") ~ 1, # white non-japanese
                      race %in% c("1", "2", NA) ~ NA), # other race or not specified
     race = labelled(race, c("White" = 1, "Japanese" = 5)),
     bpl_pop = case_when(brth_cntry_pnts %in% c("B", "1", "4", "7", "C") ~ 501, # japan
