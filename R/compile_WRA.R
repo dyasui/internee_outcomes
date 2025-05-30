@@ -12,7 +12,7 @@ library(tidyverse)
 library(haven)  # for reading stata data_raw files
 
 # Load dataset
-path <- "~/Research/Internment/data/"
+## path <- "~/Research/Internment/data/"
 
 # variables defined by column ranges in original file
 column_positions <- fwf_widths(
@@ -32,7 +32,7 @@ column_positions <- fwf_widths(
     "rel",          "qual_occ_1",      "qual_occ_2",  "qual_occ_3",      "pot_occ_1",
     "pot_occ_2",    "file_no",         "file_no_2"))
 
-fw_data <- read_fwf(paste0(path, "WRA.FORM26.PU.txt"), column_positions)
+fw_data <- read_fwf("data/WRA.FORM26.PU.txt", column_positions)
 
 data_raw <- fw_data |>
   filter(ind_number != "") |> # Drop records with empty ind_number
@@ -67,22 +67,22 @@ data_labelled <- data_raw |>
                          assembly %in% c("T", "Z") ~ "",
                          .default = assembly),
     assembly = labelled(as.integer(assembly),
-                        c("none"        = 0 , 
-                          "Manzanar"    = 1 , 
-                          "Fresno"      = 2 , 
-                          "Marysville"  = 3 , 
-                          "Mayor"       = 4 , 
-                          "Merced"      = 5 , 
-                          "Pinedale"    = 6 , 
-                          "Pomona"      = 7 , 
-                          "Portland"    = 8 , 
-                          "Puyallup"    = 9 , 
-                          "Sacramento"  = 10, 
-                          "Salinas"     = 11, 
-                          "Santa Anita" = 12, 
-                          "Stockton"    = 13, 
-                          "Tanforan"    = 14, 
-                          "Tulare"      = 15, 
+                        c("none"        = 0 ,
+                          "Manzanar"    = 1 ,
+                          "Fresno"      = 2 ,
+                          "Marysville"  = 3 ,
+                          "Mayor"       = 4 ,
+                          "Merced"      = 5 ,
+                          "Pinedale"    = 6 ,
+                          "Pomona"      = 7 ,
+                          "Portland"    = 8 ,
+                          "Puyallup"    = 9 ,
+                          "Sacramento"  = 10,
+                          "Salinas"     = 11,
+                          "Santa Anita" = 12,
+                          "Stockton"    = 13,
+                          "Tanforan"    = 14,
+                          "Tulare"      = 15,
                           "Turlock"     = 16 )
                         ),
     sex = case_when(sex_marrge %in% c("1", "2", "3", "4", "5", "0") ~ 1, # men
@@ -104,7 +104,7 @@ data_labelled <- data_raw |>
                       as.integer(birth_yr) + 1800, # born after 1842
                       as.integer(birth_yr) + 1900), # born before or during 1942
     race = case_when(race %in% c("4", "7", "L", "O", "V", "5", "J", "M", "P", "W", "6", "K", "N", "Q", "X") ~ 5, # japanese including mixed-race
-                     race %in% c("8", "S", "T", "U") ~ 1, # white non-japanese 
+                     race %in% c("8", "S", "T", "U") ~ 1, # white non-japanese
                      race %in% c("1", "2", NA) ~ NA), # other race or not specified
     race = labelled(race, c("White" = 1, "Japanese" = 5)),
     bpl_pop = case_when(brth_cntry_pnts %in% c("B", "1", "4", "7", "C") ~ 501, # japan
@@ -125,12 +125,12 @@ data_labelled <- data_raw |>
       bpl_pop == 2 & bpl_mom == 1 ~ 2,  # foreign father, native mother
       bpl_pop == 1 & bpl_mom == 2 ~ 3,  # native father, foreign mother
       bpl_pop == 2 & bpl_mom == 2 ~ 4,  # both parents foreign-born
-      birthplace %in% 0:74 ~ 5,       # is foreign born themselves
-      TRUE ~ NA_real_                    # for any other cases, assign NA
+      !(birthplace %in% 0:74) ~ 5,       # is foreign born themselves
+      .default = NA_real_                    # for any other cases, assign NA
     ),
     educ_bach = ifelse(educ %in% c("A", "B", "C", "D", "E", "F", "G", "H", "I", "4"), 1, 0),
     bpl = case_when(
-      birthplace == 31 ~ 001,  # Alabama	
+      birthplace == 31 ~ 001,  # Alabama
       birthplace == 81 ~ 002,  # Alaska
       birthplace == 26 ~ 004,  # Arizona
       birthplace == 32 ~ 005,  # Arkansas
@@ -193,8 +193,16 @@ data_labelled <- data_raw |>
 # previous address codes transcribed from WRA form 26 documentation
 wra_counties <- read_csv("data/WRA_prev_address_list.csv")
 
-nhgis_codes <- read_csv("data/county_codes_cw.csv") |>
-  distinct(STATENAM, NHGISNAM, NHGISST, NHGISCTY)
+nhgis_shp <- "data/nhgis0032_shape.zip"
+
+nhgis_codes <- read_ipums_sf(nhgis_shp, file_select = matches("us_county_1950")) |>
+  sf::st_drop_geometry() |>
+  mutate(STATENAM = case_when(
+           STATENAM == "Alaska Territory" ~ "Alaska",
+           STATENAM == "Hawaii Territory" ~ "Hawaii",
+           .default = STATENAM
+         )) |>
+  select(STATENAM, NHGISNAM ,NHGISST, NHGISCTY)
 
 join_counties <- left_join(wra_counties, nhgis_codes,
                            by = c("state" = "STATENAM", "county" = "NHGISNAM") )
@@ -202,17 +210,21 @@ join_counties <- left_join(wra_counties, nhgis_codes,
 data_int <- data_labelled |>
   left_join(join_counties, by = "prev_address") |>
   select(ind_number, state, county, NHGISST, NHGISCTY,
-         camp, assembly, race, sex, birthyr, bpl, bpl_pop, bpl_mom, yr_immig, nativity,
-         last_name, first_name)
+         camp, assembly, race, sex, birthyr, bpl, bpl_pop, bpl_mom, yr_immig, nativity, birthplace,
+         last_name, first_name) |>
+  # convert labelled values into strings from label
+  mutate(across(c(camp, assembly, race, sex, bpl_pop, bpl_mom), as_factor))
+
+write_csv(data_int, "data/internees_data.csv")
 
 intrn_grps <- data_int |>
   filter(!is.na(state)) |>
-  count(state, county, NHGISST, NHGISCTY, sex, birthyr, bpl) |>
+  count(state, county, NHGISST, NHGISCTY, sex, birthyr, birthplace) |>
   mutate(p = n / sum(n))
 
 write_csv(intrn_grps, file = "data/internment_groups.csv")
 
 intrn_grps |>
   arrange(desc(n)) |>
-  head(n=25) |> 
+  head(n=25) |>
   knitr::kable(format = "org")
