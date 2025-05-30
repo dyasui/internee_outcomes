@@ -1,7 +1,7 @@
 #+toc: 2
 #+bibliography: main.bib
 
-#+begin_src mermaid
+#+begin_src mermaid :file data-plan.svg
 flowchart TD
 %% Data sources
     nara[(🌐 National Archives)];
@@ -9,29 +9,26 @@ flowchart TD
     nhgis[(🌐 NHGIS)];
     jarvis[(🌐 JARVIS)];
 %% data files 
-    ipumsdat(📄 `fullcount_census/usa_00123.dat.gz`);
-    shp(📄 `US_county_1940.shp`);
-    wra(📄 `WRA.FORM26.PU.txt`);
-    lis(📄 `linked_internee_sample.csv`);
+    ipumsdat(💾 fullcount_census/usa_00123.dat.gz);
+    shp(💾 US_county_1940.shp);
+    wra(💾 WRA.FORM26.PU.txt);
+    lis(💾 linked_internee_sample.csv);
 
 %% output files
-    duckdb(`ipums_db.duckdb`);
-    printern(`pr_intern_status.csv`);
-
-%% scripts
-    wrdb["write-db.R"];
-    cwra["compile_WRA.R"];
-    linkc["link-census.R"];
+    duckdb('ipums_db.duckdb');
 
 %% create edges
     ipums --> ipumsdat;
-    ipumsdat --`write-db.R`--> duckdb;
-    duckdb --`collect_sample.R`--> lis;
-    duckdb --> `ja_pop_groups.csv`;
+    ipumsdat --📄 write-db.R--> duckdb;
+    duckdb --📄 collect_sample.R--> lis;
+    duckdb --> ja_pop_groups.csv;
     nhgis --> shp;
-    nara --> wra --> 'internees_data.csv';
-    wra --> `internment_groups.csv` --> `pr_intern_status.csv`;
+    nara --> wra --> internees_data.csv;
+    wra --📄 compile-wra.R--> internment_groups.csv --> pr_intern_status.csv;
 #+end_src
+
+#+RESULTS:
+[[file:data-plan.svg]]
 
 * Data Sources and Downloading
 ** WRA Camp Internee Records
