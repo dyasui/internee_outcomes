@@ -8,12 +8,6 @@
 # joseph noonan https://chatgpt.com/g/g-ddlktfvbt-stata-to-r-code-translator   #
 #------------------------------------------------------------------------------#
 
-library(tidyverse)
-library(haven)  # for reading stata data_raw files
-
-# Load dataset
-wra_file <- "data/WRA.FORM26.PU.txt"
-
 # variables defined by column ranges in original file
 read_fw_form26 <- function(data_file = "data/WRA.FORM26.PU.txt") {
   library(readr)
@@ -44,11 +38,8 @@ read_fw_form26 <- function(data_file = "data/WRA.FORM26.PU.txt") {
   return(fw_data)
 }
 
-read_lines(wra_file, n_max = 5)
-
-read_fw_form26() |> head(n=5) |> select(initial:race)
-
 form26_drop_dup <- function(fw_data) {
+  library(dplyr)
   fw_data |>
     filter(ind_number != "") |> # Drop records with empty ind_number
     # Handle duplicates
@@ -60,6 +51,8 @@ form26_drop_dup <- function(fw_data) {
 }
 
 form26_label <- function(raw_data) {
+  library(dplyr)
+  library(haven)
   raw_data |> 
     mutate(
       camp = labelled(as.integer(camp),
@@ -299,6 +292,7 @@ form26_label <- function(raw_data) {
 }
 
 get_nhgis_codes <- function(shp) {
+  library(dplyr)
   library(ipumsr)
 
   nhgis_codes <- read_ipums_sf(shp, file_select = matches("us_county_1950")) |>
@@ -312,14 +306,9 @@ get_nhgis_codes <- function(shp) {
   return(nhgis_codes)
 }
 
-nhgis_codes <- get_nhgis_codes("data/nhgis0035_shape.zip")
-wra_counties <- read_csv("data/WRA_prev_address_list.csv")
-join_counties <- left_join(wra_counties, nhgis_codes,
-                           by = c("state" = "STATENAM", "county" = "NHGISNAM") )
-write_csv(join_counties, file="data/WRA_counties.csv")
-
 compile_WRA <- function(file="data/WRA.FORM26.PU.txt",
                         addr_file="data/WRA_counties.csv") {
+  library(dplyr)
   data_labelled <- read_fw_form26(file) |>
     form26_drop_dup() |>
     form26_label()
@@ -333,18 +322,3 @@ compile_WRA <- function(file="data/WRA.FORM26.PU.txt",
            fath_occ_us, fath_occ_abroad, school_jap,
            last_name, first_name)
 }
-
-data <- compile_WRA(file="data/WRA.FORM26.PU.txt", addr_file="data/WRA_counties.csv")
-write_dta(data, "data/all_internees.dta")
-
-intrn_grps <- data_int |>
-  filter(!is.na(state)) |>
-  count(state, county, NHGISST, NHGISCTY, sex, birthyr, birthplace) |>
-  mutate(p = n / sum(n))
-
-write_csv(intrn_grps, file = "data/internment_groups.csv")
-
-intrn_grps |>
-  arrange(desc(n)) |>
-  head(n=25) |>
-  knitr::kable(format = "org")

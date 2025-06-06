@@ -1,6 +1,3 @@
-#+toc: 2
-#+startup: overview
-
 * WRA Camp Internee Records
 :PROPERTIES:
 :HEADER-ARGS:R: :tangle R/compile_WRA.R :session *R:internment*
@@ -21,12 +18,6 @@ The file =WRA.FORM26.PU.txt= is read into R as fixed width data using =read_fwf=
 # translation was helped by the stata to r code translator chatgpt model by    #
 # joseph noonan https://chatgpt.com/g/g-ddlktfvbt-stata-to-r-code-translator   #
 #------------------------------------------------------------------------------#
-
-library(tidyverse)
-library(haven)  # for reading stata data_raw files
-
-# Load dataset
-wra_file <- "data/WRA.FORM26.PU.txt"
 #+end_src
 
 The original form included internee's names, the assembly center and WRA camp they were first assigned to,
@@ -68,7 +59,13 @@ read_fw_form26 <- function(data_file = "data/WRA.FORM26.PU.txt") {
 }
 #+end_src
 
-#+begin_src R
+Here is a glimpse at how the original data form looks:
+#+begin_src R :tangle no :results silent
+library(tidyverse)
+library(haven)  # for reading stata data_raw files
+
+# Load dataset
+wra_file <- "data/WRA.FORM26.PU.txt"
 read_lines(wra_file, n_max = 5)
 #+end_src
 
@@ -79,8 +76,8 @@ read_lines(wra_file, n_max = 5)
 | AKASA    AKIRA    3B1301346&000--000X23217D1434130L9Z               30396411021 |
 | ATO      SHIGEKO J111301515-000  111X03092E642813&Q6Z               10218511072 |
 
-Compare with the version after reading as fwf:
-#+begin_src R :colnames yes
+Compare with the version after using the function =read_fw_form26()= defined above:
+#+begin_src R :colnames yes :tangle no
 read_fw_form26() |> head(n=5) |> select(initial:race)
 #+end_src
 
@@ -96,6 +93,7 @@ read_fw_form26() |> head(n=5) |> select(initial:race)
 There are 137 rows which need to be removed due to mistakenly inserted formatting rows and duplicate records.
 #+begin_src R :results silent
 form26_drop_dup <- function(fw_data) {
+  library(dplyr)
   fw_data |>
     filter(ind_number != "") |> # Drop records with empty ind_number
     # Handle duplicates
@@ -110,6 +108,8 @@ form26_drop_dup <- function(fw_data) {
 Add clean up demographic variables and label according to documentation.
 #+begin_src R :results silent
 form26_label <- function(raw_data) {
+  library(dplyr)
+  library(haven)
   raw_data |> 
     mutate(
       camp = labelled(as.integer(camp),
@@ -406,6 +406,7 @@ Here is a function which strips the names and NHGIS codes from a shapefile downl
 
 #+begin_src R :results silent
 get_nhgis_codes <- function(shp) {
+  library(dplyr)
   library(ipumsr)
 
   nhgis_codes <- read_ipums_sf(shp, file_select = matches("us_county_1950")) |>
@@ -421,7 +422,7 @@ get_nhgis_codes <- function(shp) {
 #+end_src
 
 I'm going to save these wra counties with nhgis codes to a separate file than the original for now, in case I go back later to change the original.
-#+begin_src R :results silent
+#+begin_src R :results silent :tangle no
 nhgis_codes <- get_nhgis_codes("data/nhgis0035_shape.zip")
 wra_counties <- read_csv("data/WRA_prev_address_list.csv")
 join_counties <- left_join(wra_counties, nhgis_codes,
@@ -435,6 +436,7 @@ write_csv(join_counties, file="data/WRA_counties.csv")
 #+begin_src R
 compile_WRA <- function(file="data/WRA.FORM26.PU.txt",
                         addr_file="data/WRA_counties.csv") {
+  library(dplyr)
   data_labelled <- read_fw_form26(file) |>
     form26_drop_dup() |>
     form26_label()
@@ -455,7 +457,7 @@ compile_WRA <- function(file="data/WRA.FORM26.PU.txt",
 
 #+RESULTS:
 
-#+begin_src R
+#+begin_src R :tangle no
 data <- compile_WRA(file="data/WRA.FORM26.PU.txt", addr_file="data/WRA_counties.csv")
 write_dta(data, "data/all_internees.dta")
 #+end_src
@@ -463,8 +465,9 @@ write_dta(data, "data/all_internees.dta")
 #+RESULTS:
 
 ** Internee Demographic Groups
+*** TODO make this a function
 
-#+begin_src R
+#+begin_src R :tangle no
 intrn_grps <- data_int |>
   filter(!is.na(state)) |>
   count(state, county, NHGISST, NHGISCTY, sex, birthyr, birthplace) |>

@@ -1243,7 +1243,6 @@ ggplot() +
 #+RESULTS:
 [[file:figures/pr_intern-linked-sample_plot.png]]
 
-
 * TODO Japanese American Redress Verification Information System (JARVIS) Files
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment* :tangle no :results silent
