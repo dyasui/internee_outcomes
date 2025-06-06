@@ -1,31 +1,440 @@
-# open database connection with duckdb
-library(ipumsr)
-library(dplyr)
-library(dbplyr)
-library(duckdb)
-database <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
-# data extract file
-extract <- "data/fullcount_census/usa_00124.xml"
-ddi <- read_ipums_ddi(extract)
-# table name in database
-tbl <- "ipums_microdata"
-# crosswalk files for each adjacent census year pair
-cw45_csv <- "data/fullcount_census/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv"
+;; This buffer is for text that is not saved, and for Lisp evaluation.
+;; To create a file, visit it with C-x C-f and enter text in its buffer.
 
-# read in ipums extract to database in chunks
-read_ipums_micro_chunked(
-  ddi, # path to ddi .xml file in same location as data download
-  callback = readr::SideEffectChunkCallback$new(
-    function(x, pos) {
-      if (pos == 1) {
-        dbWriteTable(database, tbl, x, overwrite = TRUE)
-      } else {
-        dbWriteTable(database, tbl, x, overwrite = FALSE, append = TRUE)
-      }
-    }
-  ),
-  chunk_size = 1e7 # observations to read per chunk
-)
 
-# read crosswalk csv files into database
-duckdb_read_csv(database, "mlp_crosswalks", cw45_csv)
+* WRA Camp Internee Records
+
+The internee data file is available in the [[https://catalog.archives.gov/][National Archives]] catalog with the NAID =1264228=.
+I use the fixed-width file =WRA.FORM26.PU.txt=, of this text file from Jaime Arellano-Bover's online replication package in the [[https://www.openicpsr.org/openicpsr/project/144561/version/V1/view][OpenICPSR repository]].
+** Clean WRA camp records
+:PROPERTIES:
+:HEADER-ARGS:R: :tangle R/compile_WRA.R :session *R:internment*
+:END:
+Here is a version of Arellano-Bover's original Stata code to process the WRA form 26 data,
+rewritten in R.
+The file =WRA.FORM26.PU.txt= is read into R as fixed width data using =read_fwf= from the =readr= package.
+*** Variables Names and Labels
+#+begin_src R :results silent
+#------------------------------------------------------------------------------#
+#                               README                                         #
+# this file was translated from the original stata do file compile_wra.do      #
+# from the replication files for "displacement, diversity, and mobility:       #
+# careeer impacts of japanese american internment" by jaime arellano-bover     #
+# posted here: https://www.jarellanobover.com/research                         #
+# translation was helped by the stata to r code translator chatgpt model by    #
+# joseph noonan https://chatgpt.com/g/g-ddlktfvbt-stata-to-r-code-translator   #
+#------------------------------------------------------------------------------#
+
+library(tidyverse)
+library(haven)  # for reading stata data_raw files
+
+# Load dataset
+wra_file <- "data/WRA.FORM26.PU.txt"
+#+end_src
+
+The original form included internee's names, the assembly center and WRA camp they were first assigned to,
+the county and city of thier previous address before being brought to the assembly centers,
+as well as demographic information such as their education attainment, birthplace and year, occupation, and father's characteristics.
+
+Consult the file [[file:./data/NARA-WRA-Form26_documentation.pdf]] to see the documentation page which defines all source variables and thier column positions in the data file.
+
+
+#+begin_src R :results silent
+# variables defined by column ranges in original file
+read_fw_form26 <- function(data_file = "data/WRA.FORM26.PU.txt") {
+  library(readr)
+  # read data by specifying the width in character columns of each source variable
+  col_positions <- fwf_widths(
+    c(10,             8,                 1,             1,                 1,
+      5,              1,                 1,             1,                 1,
+      1,              1,                 2,             1,                 1,
+      1,              1,                 6,             1,                 1,
+      2,              2,                 1,             1,                 1,
+      1,              3,                 3,             3,                 3,
+      3,              6,                 5),
+    col_names <- c(
+      "last_name",    "first_name",      "initial",     "camp",            "assembly",
+      "prev_address", "brth_cntry_pnts", "fath_occ_us", "fath_occ_abroad", "school_jap",
+      "school_jap2",  "high_educ",       "arrival_us",  "length_jap",      "times_jap",
+      "age_jap",      "military",        "ind_number",  "sex_marrge",      "race",
+      "birth_yr",     "birthplace",      "japsch_ssn",  "educ",            "lang",
+      "rel",          "qual_occ_1",      "qual_occ_2",  "qual_occ_3",      "pot_occ_1",
+      "pot_occ_2",    "file_no",         "file_no_2")
+  )
+
+  fw_data <- read_fwf(
+    file = data_file, col_positions,
+    # there are weird characters like &,- etc so default to chars
+    col_types = cols(.default = col_character())
+  )
+  fw_data
+}
+#+end_src
+
+#+begin_src R
+read_lines(wra_file, n_max = 5)
+#+end_src
+
+#+RESULTS:
+| KAHASHI TAKEO    401121315&000  172X33001A2714128H5Z309736   041   40388341112  |
+| ZUKI    CHIEKO   0071--011&000--000X0H186 6429710P6Z      057   62595759911061  |
+| A AS IMA M SAO    5 115241&&41014685X12152A2797969V7Z309631   387   50704272044 |
+| AKASA    AKIRA    3B1301346&000--000X23217D1434130L9Z               30396411021 |
+| ATO      SHIGEKO J111301515-000  111X03092E642813&Q6Z               10218511072 |
+
+Compare with the version after reading as fwf:
+#+begin_src R :colnames yes
+read_fw_form26() |> head(n=5) |> select(initial:race)
+#+end_src
+
+#+RESULTS:
+| initial | camp | assembly | prev_address | brth_cntry_pnts | fath_occ_us | fath_occ_abroad | school_jap | school_jap2 | high_educ | arrival_us | length_jap | times_jap | age_jap | military | ind_number | sex_marrge | race |
+|---------+------+----------+--------------+-----------------+-------------+-----------------+------------+-------------+-----------+------------+------------+-----------+---------+----------+------------+------------+------|
+|         |    4 |        0 |        11213 |               1 |           5 | &               |          0 |           0 |         0 |            |          1 |         7 |       2 | X        | 33001A     |          2 |    7 |
+|         |    0 |        0 |        71--0 |               1 |           1 | &               |          0 |           0 |         0 | --         |          0 |         0 |       0 | X        | 0H186      |          6 |    4 |
+|         |    5 |          |        11524 |               1 |           & | &               |          4 |           1 |         0 | 14         |          6 |         8 |       5 | X        | 12152A     |          2 |    7 |
+|         |    3 |        B |        13013 |               4 |           6 | &               |          0 |           0 |         0 | --         |          0 |         0 |       0 | X        | 23217D     |          1 |    4 |
+| J       |    1 |        1 |        13015 |               1 |           5 | -               |          0 |           0 |         0 |            |          1 |         1 |       1 | X        | 03092E     |          6 |    4 |
+
+There are 137 rows which need to be removed due to mistakenly inserted formatting rows and duplicate records.
+#+begin_src R :results silent
+form26_drop_dup <- function(fw_data) {
+  fw_data |>
+    filter(ind_number != "") |> # Drop records with empty ind_number
+    # Handle duplicates
+    group_by(ind_number, file_no, first_name, last_name) |>
+    mutate(dup_n = row_number(), .after = last_name) |>
+    ungroup() |>
+    filter(dup_n == 1) |>
+    select(-dup_n)
+}
+#+end_src
+
+Add clean up demographic variables and label according to documentation.
+#+begin_src R :results silent
+form26_label <- function(raw_data) {
+  raw_data |> 
+    mutate(
+      camp = labelled(as.integer(camp),
+                      c("Manzanar"       = 1,
+                        "Poston"         = 2,
+                        "Gila River"     = 3,
+                        "Tule Lake"      = 4,
+                        "Minidoka"       = 5,
+                        "Topaz"          = 6,
+                        "Heart Mountain" = 7,
+                        "Granada"        = 8,
+                        "Rohwer"         = 9,
+                        "Jerome"         = 10 )
+                      ),
+      assembly = case_when(assembly == "-" ~ "10",
+                           assembly == "A" ~ "11",
+                           assembly == "B" ~ "12",
+                           assembly == "C" ~ "13",
+                           assembly == "D" ~ "14",
+                           assembly == "E" ~ "15",
+                           assembly == "F" ~ "16",
+                           assembly %in% c("T", "Z") ~ "",
+                           .default = assembly),
+      assembly = labelled(as.integer(assembly),
+                          c("none"        = 0 ,
+                            "Manzanar"    = 1 ,
+                            "Fresno"      = 2 ,
+                            "Marysville"  = 3 ,
+                            "Mayor"       = 4 ,
+                            "Merced"      = 5 ,
+                            "Pinedale"    = 6 ,
+                            "Pomona"      = 7 ,
+                            "Portland"    = 8 ,
+                            "Puyallup"    = 9 ,
+                            "Sacramento"  = 10,
+                            "Salinas"     = 11,
+                            "Santa Anita" = 12,
+                            "Stockton"    = 13,
+                            "Tanforan"    = 14,
+                            "Tulare"      = 15,
+                            "Turlock"     = 16 )
+                          ),
+      sex = case_when(sex_marrge %in% c("1", "2", "3", "4", "5", "0") ~ 1, # men
+                      sex_marrge %in% c("6", "7", "8", "9", "-", "&") ~ 2, # women
+                      .default = NA),
+      sex = labelled(as.integer(sex), c("male" = 1, "female" = 2)),
+      marst = case_when(sex_marrge %in% c("1", "6") ~ 1, # single
+                        sex_marrge %in% c("2", "9") ~ 2, # married
+                        sex_marrge %in% c("3", "8") ~ 3, # widowed
+                        sex_marrge %in% c("4", "9") ~ 4, # divorced
+                        sex_marrge == "5" ~ 5, # separated
+                        .default = NA),
+      marst = labelled(as.integer(marst), c("single" = 1,
+                                            "married" = 2,
+                                            "widowed" = 3,
+                                            "divorced" = 4,
+                                            "separated" = 5)),
+      birthyr = if_else(as.integer(birth_yr) > 42,
+                        as.integer(birth_yr) + 1800, # born after 1842
+                        as.integer(birth_yr) + 1900), # born before or during 1942
+      race = case_when(race %in% c("4", "7", "L", "O", "V", "5", "J", "M", "P", "W", "6", "K", "N", "Q", "X") ~ 5, # japanese including mixed-race
+                       race %in% c("8", "S", "T", "U") ~ 1, # white non-japanese
+                       race %in% c("1", "2", NA) ~ NA), # other race or not specified
+      race = labelled(race, c("White" = 1, "Japanese" = 5)),
+      bpl_pop = case_when(brth_cntry_pnts %in% c("B", "1", "4", "7", "C") ~ 501, # japan
+                          brth_cntry_pnts %in% c("K", "2", "5", "8", "L") ~ 99, # US not specified
+                          brth_cntry_pnts %in% c("T", "3", "6", "9", "U") ~ 15, # Hawaii
+                          .default = NA),
+      bpl_pop = labelled(bpl_pop, c("Japan" = 501, "United States, ns" = 99, "Hawaii" = 15)),
+      bpl_mom = case_when(brth_cntry_pnts %in% c("A", "1", "2", "3", "D") ~ 501, # japan
+                          brth_cntry_pnts %in% c("J", "4", "5", "6", "M") ~ 99, # US not specified
+                          brth_cntry_pnts %in% c("S", "7", "8", "9", "V") ~ 15, # Hawaii
+                          .default = NA),
+      bpl_mom = labelled(bpl_mom, c("Japan" = 501, "United States, ns" = 99, "Hawaii" = 15)),
+      yr_immig = if_else(as.integer(birth_yr) > 42,
+                         as.integer(birth_yr) + 1800, # arrived after 1842
+                         as.integer(birth_yr) + 1900), # arrived before or during 1942
+      nativity = case_when(
+        bpl_pop == 1 & bpl_mom == 1 ~ 1,  # both parents native-born
+        bpl_pop == 2 & bpl_mom == 1 ~ 2,  # foreign father, native mother
+        bpl_pop == 1 & bpl_mom == 2 ~ 3,  # native father, foreign mother
+        bpl_pop == 2 & bpl_mom == 2 ~ 4,  # both parents foreign-born
+        !(birthplace %in% 0:74) ~ 5,       # is foreign born themselves
+        .default = NA_real_                    # for any other cases, assign NA
+      ),
+      nativity = labelled(nativity, c("Native born, native parents"=1,
+                                      "Native born, native mother"=2,
+                                      "Native born, native father"=3,
+                                      "Native born, foreign parents"=4,
+                                      "Foreign born"=5)),
+      fath_occ_us = if_else(fath_occ_us %in% c("&", "-"), NA, fath_occ_us),
+      fath_occ_us = labelled(fath_occ_us,
+                             c("Professional & semiprofessional"=1,
+                               "Managerial and official (exept farm)"=2,
+                               "Clerical and sales"=3,
+                               "Service"=4,
+                               "Farm operators and managers"=5,
+                               "Fishermen"=6,
+                               "Skilled craftsmen and foremen"=7,
+                               "Semi-skilled operators (except farm)"=8,
+                               "Unskilled laborers (except farm)"=9,
+                               )),
+      fath_occ_abroad = if_else(fath_occ_abroad %in% c("&", "-"), NA, fath_occ_abroad),
+      fath_occ_abroad = labelled(fath_occ_abroads,
+                                 c("Professional & semiprofessional"=1,
+                                   "Managerial and official (exept farm)"=2,
+                                   "Clerical and sales"=3,
+                                   "Service"=4,
+                                   "Farm operators and managers"=5,
+                                   "Fishermen"=6,
+                                   "Skilled craftsmen and foremen"=7,
+                                   "Semi-skilled operators (except farm)"=8,
+                                   "Unskilled laborers (except farm)"=9,
+                                   )),
+      school_jap = case_when(
+        school_jap == "&" ~ NA,
+        school_jap == "0" ~ 0,
+        school_jap == "1" ~ 1,
+        school_jap == "2" ~ 2,
+        school_jap == "3" ~ 3,
+        school_jap == "4" ~ 4,
+        school_jap == "5" ~ 5,
+        school_jap == "6" ~ 6,
+        school_jap == "7" ~ 7,
+        school_jap == "8" ~ 8,
+        school_jap == "9" ~ 9,
+        school_jap == "A" ~ 10,
+        school_jap == "B" ~ 11,
+        school_jap == "C" ~ 12,
+        school_jap == "D" ~ 13,
+        school_jap == "E" ~ 14,
+        school_jap == "F" ~ 15,
+        school_jap == "G" ~ 16,
+        ),
+      degfield = case_when(
+        high_educ %in% c("A", "J", "1") ~ 00, # "Not specified",
+        high_educ %in% c("B", "K") ~ 11, # "Agriculture",
+        high_educ %in% c("C", "L") ~ 60, # "Arts",
+        high_educ %in% c("D", "M") ~ 36, # "Biological Sciences",
+        high_educ %in% c("E", "N") ~ 24, # "Engineering",
+        high_educ %in% c("F", "O") ~ 29, # "Home Economics",
+        high_educ %in% c("G", "P") ~ 50, # "Physical Sciences",
+        high_educ %in% c("H", "Q") ~ 54, # "Public Health, Hygiene, Physical Ed, Nursing, and Pre-Med.",
+        high_educ %in% c("I", "R") ~ 37, # "Social Sciences and Mathematics",
+        high_educ %in% "2" ~ 2, # "Divinity, Law, or Other Doctorate",
+        high_educ %in% "3" ~ 3, # "Teaching, Nursing, or other Certification",
+        .default = NA
+        ),
+      high_deg = case_when(
+        high_educ %in% c("A", "B", "C", "D", "E", "F", "G", "H", "I") ~ 1, # bachelors degree
+        high_educ %in% c("J", "K", "L", "M", "N", "O", "P", "Q", "R") ~ 2, # masters degree
+        high_educ %in% c("1", "2") ~ 4, # phd or other doctorate
+        high_educ == "3" ~ 5, # certificate, credential, etc
+      ),
+      educ = case_when( # highest grade completed or grade attending
+        educ %in% "J" ~ 0,
+        educ %in% c("S", "K") ~ 1,
+        educ %in% c("T", "L") ~ 2,
+        educ %in% c("U", "M") ~ 3,
+        educ %in% c("V", "N") ~ 4,
+        educ %in% c("W", "O") ~ 5,
+        educ %in% c("X", "P") ~ 6,
+        educ %in% c("Y", "Q") ~ 7,
+        educ %in% c("Z", "F") ~ 8,
+        educ %in% c("A", "G") ~ 9,
+        educ %in% c("B", "H") ~ 10,
+        educ %in% c("C", "I") ~ 11,
+        EDUC %in% c("D", "I", "E") ~ 12,
+        educ %in% c("1", "5") ~ 14,
+        educ %in% c("2", "6") ~ 15,
+        educ %in% c("3", "7") ~ 16,
+        educ %in% c("4", "8") ~ 17,
+        educ %in% c("_", "9") ~ 18,
+        .default = NA
+      ),
+      yrimmig = if_else(as.integer(arrival_us) > 00, as.integer(arrival_us) + 1900, as.integer(arrival_us) + 1800),
+      bpl = case_when(
+        birthplace == 31 ~ 001,  # Alabama
+        birthplace == 81 ~ 002,  # Alaska
+        birthplace == 26 ~ 004,  # Arizona
+        birthplace == 32 ~ 005,  # Arkansas
+        birthplace == 13 ~ 006,  # California
+        birthplace == 22 ~ 008,  # Colorado
+        birthplace == 61 ~ 009,  # Connecticut
+        birthplace == 52 ~ 010,  # Delaware
+        birthplace == 51 ~ 011,  # District of Columbia
+        birthplace == 53 ~ 012,  # Florida
+        birthplace == 54 ~ 013,  # Georgia
+        birthplace %in% 70:74 ~ 015,  # Hawaii
+        birthplace == 23 ~ 016,  # Idaho
+        birthplace == 41 ~ 017,  # Illinois
+        birthplace == 42 ~ 018,  # Indiana
+        birthplace == 43 ~ 019,  # Iowa
+        birthplace == 44 ~ 020,  # Kansas
+        birthplace == 33 ~ 021,  # Kentucky
+        birthplace == 34 ~ 022,  # Louisiana
+        birthplace == 62 ~ 023,  # Maine
+        birthplace == 55 ~ 024,  # Maryland
+        birthplace == 63 ~ 025,  # Massachusetts
+        birthplace == 45 ~ 026,  # Michigan
+        birthplace == 46 ~ 027,  # Minnesota
+        birthplace == 35 ~ 028,  # Mississippi
+        birthplace == 47 ~ 029,  # Missouri
+        birthplace == 24 ~ 030,  # Montana
+        birthplace == 48 ~ 031,  # Nebraska
+        birthplace == 25 ~ 032,  # Nevada
+        birthplace == 64 ~ 033,  # New Hampshire
+        birthplace == 56 ~ 034,  # New Jersey
+        birthplace == 21 ~ 035,  # New Mexico
+        birthplace == 57 ~ 036,  # New York
+        birthplace == 58 ~ 037,  # North Carolin
+        birthplace == 49 ~ 038,  # North Dakota
+        birthplace == 40 ~ 039,  # Ohio
+        birthplace == 36 ~ 040,  # Oklahoma
+        birthplace == 12 ~ 041,  # Oregon
+        birthplace == 59 ~ 042,  # Pennsylvania
+        birthplace == 65 ~ 044,  # Rhode Island
+        birthplace == 50 ~ 045,  # South Carolina
+        birthplace == "4-" ~ 046,  # South Dakota
+        birthplace == 37 ~ 047,  # Tennessee
+        birthplace == 38 ~ 048,  # Texas
+        birthplace == 27 ~ 049,  # Utah
+        birthplace == 66 ~ 050,  # Vermont
+        birthplace == "5&" ~ 051,  # Virginia
+        birthplace == 11 ~ 053,  # Washington
+        birthplace == "5-" ~ 054,  # West Virginia
+        birthplace == "4-" ~ 055,  # Wisconsin
+        birthplace == 28 ~ 056,  # Wyoming
+        birthplace == 0 ~ 099,  # United States, ns
+        birthplace %in% 90:99 ~ 501, # Japan
+        birthplace == 82 ~ 150,  # Canada
+        birthplace == 83 ~ 200, # Mexico
+        birthplace == 84 ~ 300, # South America
+        .default = NA
+      ),
+      )
+}
+#+end_src 
+*** Previous Address Counties of Internees
+Group the internees into observable counties.
+#+begin_src R :results silent
+# previous address codes transcribed from WRA form 26 documentation
+wra_counties <- read_csv("data/WRA_prev_address_list.csv")
+#+end_src
+
+The county names from the WRA records should match the county names from the NHGIS system for counties in 1940.
+#+begin_src R :results silent
+nhgis_shp <- "data/nhgis0032_shape.zip"
+
+nhgis_codes <- read_ipums_sf(nhgis_shp, file_select = matches("us_county_1950")) |>
+  sf::st_drop_geometry() |>
+  mutate(STATENAM = case_when(
+           STATENAM == "Alaska Territory" ~ "Alaska",
+           STATENAM == "Hawaii Territory" ~ "Hawaii",
+           .default = STATENAM
+         )) |>
+  select(STATENAM, NHGISNAM ,NHGISST, NHGISCTY)
+
+join_counties <- left_join(wra_counties, nhgis_codes,
+                           by = c("state" = "STATENAM", "county" = "NHGISNAM") )
+#+end_src
+
+*** Individual Internees Data Cleaned
+#+begin_src R
+data_int <- data_labelled |>
+  left_join(join_counties, by = "prev_address") |>
+  select(ind_number, state, county, NHGISST, NHGISCTY,
+         camp, assembly, race, sex, birthyr, bpl, bpl_pop, bpl_mom, yr_immig, nativity, birthplace,
+         last_name, first_name) |>
+  # convert labelled values into strings from label
+  mutate(across(c(camp, assembly, race, sex, bpl_pop, bpl_mom), as_factor))
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R
+write_csv(data_int, "data/all_internees.csv")
+#+end_src
+
+#+RESULTS:
+
+*** Internee Demographic Groups
+
+#+begin_src R
+intrn_grps <- data_int |>
+  filter(!is.na(state)) |>
+  count(state, county, NHGISST, NHGISCTY, sex, birthyr, birthplace) |>
+  mutate(p = n / sum(n))
+
+write_csv(intrn_grps, file = "data/internment_groups.csv")
+
+intrn_grps |>
+  arrange(desc(n)) |>
+  head(n=25) |>
+  knitr::kable(format = "org")
+#+end_src
+
+#+RESULTS:
+|   | state                                                                  | county      | NHGISST | NHGISCTY | sex | birthyr | birthplace |   n |         p |
+|   | :----------+:-----------+:-------+:--------+---:+-------:+----------:+---:+---------: |             |         |          |     |         |            |     |           |
+|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1921 |         13 | 458 | 0.0042262 |
+|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1923 |         13 | 458 | 0.0042262 |
+|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1921 |         13 | 447 | 0.0041247 |
+|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1922 |         13 | 443 | 0.0040878 |
+|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1925 |         13 | 420 | 0.0038755 |
+|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1925 |         13 | 411 | 0.0037925 |
+|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1923 |         13 | 405 | 0.0037371 |
+|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1920 |         13 | 403 | 0.0037187 |
+|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1924 |         13 | 398 | 0.0036725 |
+|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1922 |         13 | 390 | 0.0035987 |
+|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1924 |         13 | 384 | 0.0035434 |
+|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1920 |         13 | 381 | 0.0035157 |
+|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1919 |         13 | 375 | 0.0034603 |
+|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1926 |         13 | 364 | 0.0033588 |
+|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1926 |         13 | 343 |  0.003165 |
+|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1941 |         13 | 334 |  0.003082 |
+|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1918 |         13 | 330 | 0.0030451 |
+|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1927 |         13 | 328 | 0.0030266 |
+|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1917 |         13 | 302 | 0.0027867 |
+|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1927 |         13 | 293 | 0.0027037 |
+|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1940 |         13 | 287 | 0.0026483 |
+|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1928 |         13 | 285 | 0.0026298 |
+|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1939 |         13 | 284 | 0.0026206 |
+|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1916 |         13 | 281 | 0.0025929 |
+|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1941 |         13 | 272 | 0.0025099 |
