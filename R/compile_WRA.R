@@ -65,7 +65,7 @@ form26_label <- function(raw_data) {
                         "Heart Mountain" = 7,
                         "Granada"        = 8,
                         "Rohwer"         = 9,
-                        "Jerome"         = 10 )
+                        "Jerome"         = 0 )
                       ),
       assembly = case_when(assembly == "-" ~ "10",
                            assembly == "A" ~ "11",
@@ -127,9 +127,9 @@ form26_label <- function(raw_data) {
                           brth_cntry_pnts %in% c("S", "7", "8", "9", "V") ~ 15, # Hawaii
                           .default = NA),
       bpl_mom = labelled(bpl_mom, c("Japan" = 501, "United States, ns" = 99, "Hawaii" = 15)),
-      yr_immig = if_else(as.integer(birth_yr) > 42,
-                         as.integer(birth_yr) + 1800, # arrived after 1842
-                         as.integer(birth_yr) + 1900), # arrived before or during 1942
+      yrimmig = if_else(as.integer(birth_yr) > 42,
+                        as.integer(birth_yr) + 1800, # arrived after 1842
+                        as.integer(birth_yr) + 1900), # arrived before or during 1942
       nativity = case_when(
         bpl_pop == 1 & bpl_mom == 1 ~ 1,  # both parents native-born
         bpl_pop == 2 & bpl_mom == 1 ~ 2,  # foreign father, native mother
@@ -200,13 +200,21 @@ form26_label <- function(raw_data) {
         high_educ %in% "2" ~ 2, # "Divinity, Law, or Other Doctorate",
         high_educ %in% "3" ~ 3, # "Teaching, Nursing, or other Certification",
         .default = NA
-        ),
-      high_deg = case_when(
-        high_educ %in% c("A", "B", "C", "D", "E", "F", "G", "H", "I") ~ 1, # bachelors degree
-        high_educ %in% c("J", "K", "L", "M", "N", "O", "P", "Q", "R") ~ 2, # masters degree
-        high_educ %in% c("1", "2") ~ 4, # phd or other doctorate
-        high_educ == "3" ~ 5, # certificate, credential, etc
       ),
+      degfield = labelled(degfield,
+                          c("Not specified" = 00, "Agriculture" = 11,
+                            "Arts" = 60, "Biological Sciences" = 36,
+                            "Engineering" = 24, "Home Economics" = 29,
+                            "Physical Sciences" = 50, "Public Health, Hygiene, Physical Ed, Nursing, and Pre-Med."=54,
+                            "Social Sciences and Mathematics" = 37,
+                            "Divinity, Law, or Other Doctorate" = 2,
+                            "Teaching, Nursing, org other Certification"=3)),
+      high_deg = case_when(
+        high_educ %in% c("A", "B", "C", "D", "E", "F", "G", "H", "I") ~ "bachelors", # bachelors degree
+        high_educ %in% c("J", "K", "L", "M", "N", "O", "P", "Q", "R") ~ "masters", # masters degree
+        high_educ %in% c("1", "2") ~ "doctorate", # phd or other doctorate
+        high_educ == "3" ~ "certificate", # certificate, credential, etc
+        ),
       educ = case_when( # highest grade completed or grade attending
         educ %in% "J" ~ 0,
         educ %in% c("S", "K") ~ 1,
@@ -228,7 +236,6 @@ form26_label <- function(raw_data) {
         educ %in% c("_", "9") ~ 18,
         .default = NA
       ),
-      yrimmig = if_else(as.integer(arrival_us) > 00, as.integer(arrival_us) + 1900, as.integer(arrival_us) + 1800),
       bpl = case_when(
         birthplace == 31 ~ 001,  # Alabama
         birthplace == 81 ~ 002,  # Alaska
@@ -321,4 +328,14 @@ compile_WRA <- function(file="data/WRA.FORM26.PU.txt",
            degfield, high_deg, educ, 
            fath_occ_us, fath_occ_abroad, school_jap,
            last_name, first_name)
+}
+
+count_internees <- function(data,
+                            vars=c("state", "county", "NHGISST", "NHGISCTY")) {
+  library(tidyverse)
+  groups <- data |>
+    filter(!is.na(state)) |>
+    count(across(all_of(vars))) |>
+    mutate(p = n / sum(n))
+  return(groups)
 }

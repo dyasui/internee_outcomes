@@ -7,7 +7,6 @@ I use the fixed-width file =WRA.FORM26.PU.txt=, of this text file from Jaime Are
 Here is a version of Arellano-Bover's original Stata code to process the WRA form 26 data,
 rewritten in R.
 The file =WRA.FORM26.PU.txt= is read into R as fixed width data using =read_fwf= from the =readr= package.
-** Variables Names and Labels
 #+begin_src R :results silent
 #------------------------------------------------------------------------------#
 #                               README                                         #
@@ -105,7 +104,12 @@ form26_drop_dup <- function(fw_data) {
 }
 #+end_src
 
-Add clean up demographic variables and label according to documentation.
+** Variables Names and Labels
+The original variable codes are pretty cryptic without consulting the documentation,
+so I try to recode the important variables and label the new values with =haven= to improve readability of the data file.
+I also try to choose values that roughly match the way similar variables are coded in IPUMS
+to make the later process of matching easier.
+
 #+begin_src R :results silent
 form26_label <- function(raw_data) {
   library(dplyr)
@@ -122,7 +126,7 @@ form26_label <- function(raw_data) {
                         "Heart Mountain" = 7,
                         "Granada"        = 8,
                         "Rohwer"         = 9,
-                        "Jerome"         = 10 )
+                        "Jerome"         = 0 )
                       ),
       assembly = case_when(assembly == "-" ~ "10",
                            assembly == "A" ~ "11",
@@ -184,9 +188,9 @@ form26_label <- function(raw_data) {
                           brth_cntry_pnts %in% c("S", "7", "8", "9", "V") ~ 15, # Hawaii
                           .default = NA),
       bpl_mom = labelled(bpl_mom, c("Japan" = 501, "United States, ns" = 99, "Hawaii" = 15)),
-      yr_immig = if_else(as.integer(birth_yr) > 42,
-                         as.integer(birth_yr) + 1800, # arrived after 1842
-                         as.integer(birth_yr) + 1900), # arrived before or during 1942
+      yrimmig = if_else(as.integer(birth_yr) > 42,
+                        as.integer(birth_yr) + 1800, # arrived after 1842
+                        as.integer(birth_yr) + 1900), # arrived before or during 1942
       nativity = case_when(
         bpl_pop == 1 & bpl_mom == 1 ~ 1,  # both parents native-born
         bpl_pop == 2 & bpl_mom == 1 ~ 2,  # foreign father, native mother
@@ -257,13 +261,21 @@ form26_label <- function(raw_data) {
         high_educ %in% "2" ~ 2, # "Divinity, Law, or Other Doctorate",
         high_educ %in% "3" ~ 3, # "Teaching, Nursing, or other Certification",
         .default = NA
-        ),
-      high_deg = case_when(
-        high_educ %in% c("A", "B", "C", "D", "E", "F", "G", "H", "I") ~ 1, # bachelors degree
-        high_educ %in% c("J", "K", "L", "M", "N", "O", "P", "Q", "R") ~ 2, # masters degree
-        high_educ %in% c("1", "2") ~ 4, # phd or other doctorate
-        high_educ == "3" ~ 5, # certificate, credential, etc
       ),
+      degfield = labelled(degfield,
+                          c("Not specified" = 00, "Agriculture" = 11,
+                            "Arts" = 60, "Biological Sciences" = 36,
+                            "Engineering" = 24, "Home Economics" = 29,
+                            "Physical Sciences" = 50, "Public Health, Hygiene, Physical Ed, Nursing, and Pre-Med."=54,
+                            "Social Sciences and Mathematics" = 37,
+                            "Divinity, Law, or Other Doctorate" = 2,
+                            "Teaching, Nursing, org other Certification"=3)),
+      high_deg = case_when(
+        high_educ %in% c("A", "B", "C", "D", "E", "F", "G", "H", "I") ~ "bachelors", # bachelors degree
+        high_educ %in% c("J", "K", "L", "M", "N", "O", "P", "Q", "R") ~ "masters", # masters degree
+        high_educ %in% c("1", "2") ~ "doctorate", # phd or other doctorate
+        high_educ == "3" ~ "certificate", # certificate, credential, etc
+        ),
       educ = case_when( # highest grade completed or grade attending
         educ %in% "J" ~ 0,
         educ %in% c("S", "K") ~ 1,
@@ -285,7 +297,6 @@ form26_label <- function(raw_data) {
         educ %in% c("_", "9") ~ 18,
         .default = NA
       ),
-      yrimmig = if_else(as.integer(arrival_us) > 00, as.integer(arrival_us) + 1900, as.integer(arrival_us) + 1800),
       bpl = case_when(
         birthplace == 31 ~ 001,  # Alabama
         birthplace == 81 ~ 002,  # Alaska
@@ -382,23 +393,18 @@ full_join(wra_counties, nhgis_codes,
 #+end_src
 
 #+RESULTS:
-| state            | county                   | NHGISST | NHGISCTY |
-|------------------+--------------------------+---------+----------|
-|                  |                          |         |          |
-| Washington       |                          |         |          |
-| Washington       | Klikitat                 |         |          |
-| California       |                          |         |          |
-| California       | Mono/Alpine              |         |          |
-| New York         |                          |         |          |
-| Hawaii           |                          |         |          |
-| Alaska           | First Judicial Division  |         |          |
-| Alaska           | Second Judicial Division |         |          |
-| Alaska           | Third Judicial Division  |         |          |
-| Alaska           | Fourth Judicial Division |         |          |
-| British Columbia | Vancouver                |         |          |
-
-- TODO: fix spelling error on Klickitat county WA
-- TODO: figure out how Alaska's divisions are called in NHGIS
+| state            | county               | NHGISST | NHGISCTY |
+|------------------+----------------------+---------+----------|
+|                  |                      |         |          |
+| Washington       |                      |         |          |
+| California       |                      |         |          |
+| California       | Mono/Alpine          |         |          |
+| New York         |                      |         |          |
+| Hawaii           |                      |         |          |
+| Alaska           | Second Judicial Dist |         |          |
+| Alaska           | Third Judicial Dist  |         |          |
+| Alaska           | Fourth Judicial Dist |         |          |
+| British Columbia | Vancouver            |         |          |
 
 Overall, the counties match up pretty well.
 
@@ -425,7 +431,7 @@ I'm going to save these wra counties with nhgis codes to a separate file than th
 #+begin_src R :results silent :tangle no
 nhgis_codes <- get_nhgis_codes("data/nhgis0035_shape.zip")
 wra_counties <- read_csv("data/WRA_prev_address_list.csv")
-join_counties <- left_join(wra_counties, nhgis_codes,
+join_counties <- inner_join(wra_counties, nhgis_codes,
                            by = c("state" = "STATENAM", "county" = "NHGISNAM") )
 write_csv(join_counties, file="data/WRA_counties.csv")
 #+end_src
@@ -465,49 +471,82 @@ write_dta(data, "data/all_internees.dta")
 #+RESULTS:
 
 ** Internee Demographic Groups
-*** TODO make this a function
-
-#+begin_src R :tangle no
-intrn_grps <- data_int |>
-  filter(!is.na(state)) |>
-  count(state, county, NHGISST, NHGISCTY, sex, birthyr, birthplace) |>
-  mutate(p = n / sum(n))
-
-write_csv(intrn_grps, file = "data/internment_groups.csv")
-
-intrn_grps |>
-  arrange(desc(n)) |>
-  head(n=25) |>
-  knitr::kable(format = "org")
+The function =count_internees= takes in a tibble of internee data (=all_internees=),
+and a list of variables to use to create summary groups.
+By default it will count all internees in the record in each county,
+but other demographic variables like =birthyr=, =birthplace=, =sex=, etc can be added to split the internees into more specific subgroups.
+This is meant to help the process of iterating different specifications of the internment prediction on subgroups of Japanese Americans who appear in other datasets.
+#+begin_src R 
+count_internees <- function(data,
+                            vars=c("state", "county", "NHGISST", "NHGISCTY")) {
+  library(tidyverse)
+  groups <- data |>
+    filter(!is.na(state)) |>
+    count(across(all_of(vars))) |>
+    mutate(p = n / sum(n))
+  return(groups)
+}
 #+end_src
 
 #+RESULTS:
-|   | state                                                                  | county      | NHGISST | NHGISCTY | sex | birthyr | birthplace |   n |         p |
-|   | :----------+:-----------+:-------+:--------+---:+-------:+----------:+---:+---------: |             |         |          |     |         |            |     |           |
-|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1921 |         13 | 458 | 0.0042262 |
-|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1923 |         13 | 458 | 0.0042262 |
-|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1921 |         13 | 447 | 0.0041247 |
-|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1922 |         13 | 443 | 0.0040878 |
-|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1925 |         13 | 420 | 0.0038755 |
-|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1925 |         13 | 411 | 0.0037925 |
-|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1923 |         13 | 405 | 0.0037371 |
-|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1920 |         13 | 403 | 0.0037187 |
-|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1924 |         13 | 398 | 0.0036725 |
-|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1922 |         13 | 390 | 0.0035987 |
-|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1924 |         13 | 384 | 0.0035434 |
-|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1920 |         13 | 381 | 0.0035157 |
-|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1919 |         13 | 375 | 0.0034603 |
-|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1926 |         13 | 364 | 0.0033588 |
-|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1926 |         13 | 343 |  0.003165 |
-|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1941 |         13 | 334 |  0.003082 |
-|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1918 |         13 | 330 | 0.0030451 |
-|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1927 |         13 | 328 | 0.0030266 |
-|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1917 |         13 | 302 | 0.0027867 |
-|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1927 |         13 | 293 | 0.0027037 |
-|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1940 |         13 | 287 | 0.0026483 |
-|   | California                                                             | Los Angeles |      60 |      370 |   1 |    1928 |         13 | 285 | 0.0026298 |
-|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1939 |         13 | 284 | 0.0026206 |
-|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1916 |         13 | 281 | 0.0025929 |
-|   | California                                                             | Los Angeles |      60 |      370 |   2 |    1941 |         13 | 272 | 0.0025099 |
+
+#+begin_src R :tangle no :results silent
+county_data <- compile_WRA(file="data/WRA.FORM26.PU.txt", addr_file="data/WRA_counties.csv") |>
+  count_internees()
+write_csv(county_data, file = "data/internment_groups.csv")
+#+end_src
+
+#+begin_src R :tangle no :colnames yes
+county_data |>
+  arrange(desc(n)) |>
+  head(n=25)
+#+end_src
+
+#+RESULTS:
+| state      | county        | NHGISST | NHGISCTY |     n |                   p |
+|------------+---------------+---------+----------+-------+---------------------|
+| California | Los Angeles   |      60 |      370 | 33520 |   0.309530625248169 |
+| Washington | King          |     530 |      330 |  8598 |  0.0793957134810191 |
+| California | Sacramento    |      60 |      670 |  7827 |  0.0722761397320233 |
+| California | Fresno        |      60 |      190 |  5620 |  0.0518962444479329 |
+| California | San Joaquin   |      60 |      770 |  4912 |   0.045358425752357 |
+| California | San Francisco |      60 |      750 |  4792 |  0.0442503208887001 |
+| California | Alameda       |      60 |       10 |  4694 |  0.0433453685833803 |
+| California | Santa Clara   |      60 |      850 |  3669 |  0.0338803062063107 |
+| Oregon     | Multnomah     |     410 |      510 |  2242 |  0.0207030925359903 |
+| California | Tulare        |      60 |     1070 |  2202 |  0.0203337242481047 |
+| California | San Diego     |      60 |      730 |  1997 |  0.0184407117726908 |
+| Washington | Pierce        |     530 |      530 |  1946 |  0.0179697672056366 |
+| California | Santa Barbara |      60 |      830 |  1938 |  0.0178958935480594 |
+| California | Orange        |      60 |      590 |  1855 |  0.0171294543506967 |
+| California | Monterey      |      60 |      530 |  1822 |  0.0168247255131911 |
+| California | Placer        |      60 |      610 |  1767 |  0.0163168441173483 |
+| California | Imperial      |      60 |      250 |  1530 |  0.0141283370116259 |
+| California | Santa Cruz    |      60 |      870 |  1398 |  0.0129094216616032 |
+| California | Kern          |      60 |      290 |  1241 |  0.0114596511316521 |
+| California | Yolo          |      60 |     1130 |  1106 |   0.010213033160038 |
+| California | San Mateo     |      60 |      810 |   962 | 0.00888330732364973 |
+| Washington | Yakima        |     530 |      770 |   847 |  0.0078213734959785 |
+| California | Contra Costa  |      60 |      130 |   765 | 0.00706416850581293 |
+| California | Sonoma        |      60 |      970 |   730 |   0.006740971253913 |
+| California | Solano        |      60 |      950 |   724 | 0.00668556601073015 |
 
 * WRA Internee Statistics
+Summarise the internee records file.
+#+begin_src R :session *R:internment*
+library(modelsummary)
+library(tidyverse)
+
+read_dta(file="data/all_internees.dta") |>
+  datasummary_skim()
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :session *R:internment*
+read_dta(file="data/all_internees.dta") |>
+  mutate(across(c(camp, assembly, race, sex, degfield, fath_occ_us, birthplace), as_factor)) |>
+  datasummary_skim()
+#+end_src
+
+#+RESULTS:

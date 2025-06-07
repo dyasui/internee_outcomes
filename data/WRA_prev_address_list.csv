@@ -35,7 +35,7 @@ prev_address, state, county, city
 11314, Washington, "Benton", NA
 11320, Washington, "Chelan",
 11323, Washington, "Chelan", "Wenatchee"
-11350, Washington, "Klikitat", NA
+11350, Washington, "Klikatat", NA
 11390, Washington, "Yakima", NA
 11391, Washington, "Yakima", "Toppenish"
 11394, Washington, "Yakima", "Yakima"
@@ -314,16 +314,16 @@ prev_address, state, county, city
 74--4, Hawaii, "Maui",
 81&&&, Hawaii, NA, NA
 81--2, Hawaii, NA, NA
-81010, Alaska, "First Judicial Division", NA
-81011, Alaska, "First Judicial Division", "Ketchikan"
-81012, Alaska, "First Judicial Division", "Juneau"
-81020, Alaska, "Second Judicial Division", NA
-81030, Alaska, "Third Judicial Division", NA
-81031, Alaska, "Third Judicial Division", "Anchorage"
-81032, Alaska, "Third Judicial Division", NA
-81033, Alaska, "Third Judicial Division", NA
-81040, Alaska, "Fourth Judicial Division", NA
-81041, Alaska, "Fourth Judicial Division", "Fairbanks"
+81010, Alaska, "First Judicial Dist", NA
+81011, Alaska, "First Judicial Dist", "Ketchikan"
+81012, Alaska, "First Judicial Dist", "Juneau"
+81020, Alaska, "Second Judicial Dist", NA
+81030, Alaska, "Third Judicial Dist", NA
+81031, Alaska, "Third Judicial Dist", "Anchorage"
+81032, Alaska, "Third Judicial Dist", NA
+81033, Alaska, "Third Judicial Dist", NA
+81040, Alaska, "Fourth Judicial Dist", NA
+81041, Alaska, "Fourth Judicial Dist", "Fairbanks"
 82&&4, British Columbia, "Vancouver"
 A3814, NA, NA, NA
 B13-1, NA, NA, NA

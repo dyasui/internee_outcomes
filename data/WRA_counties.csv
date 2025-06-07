@@ -1,6 +1,4 @@
 prev_address,state,county,city,NHGISST,NHGISCTY
-&&&&&,NA,NA,NA,NA,NA
-1100&,Washington,NA,NA,NA,NA
 11110,Washington,Clallam,NA,530,0090
 11112,Washington,Clallam,Port Angeles,530,0090
 11123,Washington,Grays Harbor,NA,530,0270
@@ -35,7 +33,7 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 11314,Washington,Benton,NA,530,0050
 11320,Washington,Chelan,NA,530,0070
 11323,Washington,Chelan,Wenatchee,530,0070
-11350,Washington,Klikitat,NA,NA,NA
+11350,Washington,Klikatat,NA,530,0390
 11390,Washington,Yakima,NA,530,0770
 11391,Washington,Yakima,Toppenish,530,0770
 11394,Washington,Yakima,Yakima,530,0770
@@ -51,7 +49,6 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 11522,Washington,Pierce,Puyallup,530,0530
 11524,Washington,Pierce,Tacoma,530,0530
 11614,Washington,Spokane,Spokane,530,0630
-11914,Washington,NA,NA,NA,NA
 121&1,Oregon,Yamhill,NA,410,0710
 121-0,Oregon,Washington,NA,410,0670
 121-1,Oregon,Washington,NA,410,0670
@@ -83,7 +80,6 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 12521,Oregon,Multnomah,NA,410,0510
 12523,Oregon,Multnomah,NA,410,0510
 12524,Oregon,Multnomah,NA,410,0510
-13 10,California,NA,NA,NA,NA
 13&10,California,San Diego,NA,060,0730
 13&11,California,San Diego,NA,060,0730
 13&12,California,San Diego,NA,060,0730
@@ -119,9 +115,6 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 13163,California,Sonoma,NA,060,0970
 132&0,California,Shasta,NA,060,0890
 13200,California,Plumas,NA,060,0630
-13210,California,Mono/Alpine,NA,NA,NA
-13211,California,Mono/Alpine,NA,NA,NA
-13214,California,Mono/Alpine,NA,NA,NA
 13240,California,El Dorado,NA,060,0170
 13241,California,El Dorado,NA,060,0170
 13270,California,Modoc,NA,060,0490
@@ -144,7 +137,6 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 13362,California,Yolo,NA,060,1130
 13370,California,Yuba,NA,060,1150
 13372,California,Yuba,NA,060,1150
-13390,California,NA,NA,NA,NA
 13410,California,Monterey,NA,060,0530
 13411,California,Monterey,NA,060,0530
 13412,California,Monterey,NA,060,0530
@@ -159,7 +151,6 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 13440,California,Santa Cruz,NA,060,0870
 13442,California,Santa Cruz,NA,060,0870
 13443,California,Santa Cruz,NA,060,0870
-135 2,California,NA,NA,NA,NA
 13510,California,Fresno,NA,060,0190
 13511,California,Fresno,NA,060,0190
 13512,California,Fresno,NA,060,0190
@@ -196,7 +187,6 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 13621,California,Ventura,NA,060,1110
 13622,California,Ventura,NA,060,1110
 13623,California,Ventura,NA,060,1110
-13650,California,NA,NA,NA,NA
 13710,California,Imperial,NA,060,0250
 13711,California,Imperial,NA,060,0250
 13712,California,Imperial,NA,060,0250
@@ -240,7 +230,6 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 13915,California,Sacramento,NA,060,0670
 13919,California,Sacramento,NA,060,0670
 1391O,California,Sacramento,NA,060,0670
-18413,NA,NA,NA,NA,NA
 21053,New Mexico,Curry,Clovis,350,0090
 21253,New Mexico,Santa Fe,Santa Fe,350,0490
 22451,Colorado,Otero,Rocky Ford,080,0890
@@ -283,12 +272,9 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 57014,New York,Dutchess,Poughkeepsie,360,0270
 57024,New York,Chemung,Elmira,360,0150
 57025,New York,Chemung,Elmira,360,0150
-57035,New York,NA,New York,NA,NA
 5900&,Pennsylvania,Lackawanna,Carbondale,420,0690
 59014,Pennsylvania,York,York,420,1330
 59025,Pennsylvania,Philadelphia,Philadelphia,420,1010
-70--&,Hawaii,NA,NA,NA,NA
-70--0,Hawaii,NA,NA,NA,NA
 71--&,Hawaii,Hawaii,NA,155,0015
 71--0,Hawaii,Hawaii,NA,155,0015
 71--1,Hawaii,Hawaii,NA,155,0015
@@ -312,19 +298,6 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 74--1,Hawaii,Maui,NA,155,0095
 74--2,Hawaii,Maui,NA,155,0095
 74--4,Hawaii,Maui,NA,155,0095
-81&&&,Hawaii,NA,NA,NA,NA
-81--2,Hawaii,NA,NA,NA,NA
-81010,Alaska,First Judicial Division,NA,NA,NA
-81011,Alaska,First Judicial Division,Ketchikan,NA,NA
-81012,Alaska,First Judicial Division,Juneau,NA,NA
-81020,Alaska,Second Judicial Division,NA,NA,NA
-81030,Alaska,Third Judicial Division,NA,NA,NA
-81031,Alaska,Third Judicial Division,Anchorage,NA,NA
-81032,Alaska,Third Judicial Division,NA,NA,NA
-81033,Alaska,Third Judicial Division,NA,NA,NA
-81040,Alaska,Fourth Judicial Division,NA,NA,NA
-81041,Alaska,Fourth Judicial Division,Fairbanks,NA,NA
-82&&4,British Columbia,Vancouver,NA,NA,NA
-A3814,NA,NA,NA,NA,NA
-B13-1,NA,NA,NA,NA,NA
-NA,NA,NA,NA,NA,NA
+81010,Alaska,First Judicial Dist,NA,025,0015
+81011,Alaska,First Judicial Dist,Ketchikan,025,0015
+81012,Alaska,First Judicial Dist,Juneau,025,0015
