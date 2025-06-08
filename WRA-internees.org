@@ -4,6 +4,7 @@
 :END:
 The internee data file is available in the [[https://catalog.archives.gov/][National Archives]] catalog with the NAID =1264228=.
 I use the fixed-width file =WRA.FORM26.PU.txt=, of this text file from Jaime Arellano-Bover's online replication package in the [[https://www.openicpsr.org/openicpsr/project/144561/version/V1/view][OpenICPSR repository]].
+** Cleaning Functions
 Here is a version of Arellano-Bover's original Stata code to process the WRA form 26 data,
 rewritten in R.
 The file =WRA.FORM26.PU.txt= is read into R as fixed width data using =read_fwf= from the =readr= package.
@@ -532,21 +533,203 @@ county_data |>
 | California | Solano        |      60 |      950 |   724 | 0.00668556601073015 |
 
 * WRA Internee Statistics
+:PROPERTIES:
+:HEADER-ARGS:R: :session *R:internment*
+:END:
 Summarise the internee records file.
-#+begin_src R :session *R:internment*
+#+begin_src R :results silent
 library(modelsummary)
 library(tidyverse)
-
-read_dta(file="data/all_internees.dta") |>
-  datasummary_skim()
+library(haven)
 #+end_src
 
-#+RESULTS:
-
-#+begin_src R :session *R:internment*
+#+begin_src R
 read_dta(file="data/all_internees.dta") |>
   mutate(across(c(camp, assembly, race, sex, degfield, fath_occ_us, birthplace), as_factor)) |>
   datasummary_skim()
 #+end_src
 
 #+RESULTS:
+
+** County of Origin to WRA Camp
+#+begin_src R :colnames yes
+read_dta(file="data/all_internees.dta") |>
+  mutate(camp = as_factor(camp)) |>
+  count(state, county, camp) |> 
+  arrange(state, county) |>
+  pivot_wider(names_from = camp, values_from = n)
+#+end_src
+
+#+RESULTS:
+| state        | county              | Jerome | Manzanar | Poston | Gila River | Tule Lake | Minidoka | Topaz | Heart Mountain | Granada | Rohwer | NA |
+|--------------+---------------------+--------+----------+--------+------------+-----------+----------+-------+----------------+---------+--------+----|
+|              |                     |     70 |       94 |    149 |        136 |        79 |      121 |    84 |             96 |      45 |     78 |  2 |
+| Alabama      | Jefferson           |        |          |        |            |           |          |     1 |                |         |        |    |
+| Alaska       | First Judicial Dist |        |        4 |        |            |         6 |       86 |       |                |         |        |    |
+| Arizona      | Cochise             |        |          |      5 |            |           |          |       |                |         |        |    |
+| Arizona      | Gila                |        |          |      6 |            |           |          |       |                |         |        |    |
+| Arizona      | Maricopa            |        |          |    216 |          5 |           |          |       |                |         |        |    |
+| Arizona      | Pinal               |        |          |      7 |            |           |          |       |                |         |        |    |
+| Arizona      | Yavapai             |        |        1 |        |            |           |          |       |                |         |        |    |
+| Arizona      | Yuma                |        |          |      8 |            |           |          |       |                |         |        |    |
+| Arkansas     | Pulaski             |        |          |        |            |           |        1 |       |                |         |        |    |
+| California   | Alameda             |     60 |       20 |     95 |        328 |       300 |       16 |  3635 |            111 |      77 |     51 |  1 |
+| California   | Butte               |        |        1 |        |          1 |       193 |          |     1 |                |      32 |        |    |
+| California   | Colusa              |      4 |          |      3 |            |         1 |          |       |                |     169 |        |    |
+| California   | Contra Costa        |      1 |        1 |      6 |        583 |        12 |          |   127 |              3 |      14 |     18 |    |
+| California   | El Dorado           |        |          |      4 |            |           |          |       |                |       2 |        |    |
+| California   | Fresno              |   1942 |       25 |   1591 |       1936 |        37 |        8 |    20 |              1 |      23 |     37 |    |
+| California   | Imperial            |        |        7 |   1486 |         16 |         2 |          |     2 |             11 |         |      6 |    |
+| California   | Kern                |    332 |       13 |    821 |         16 |         9 |       10 |    10 |              2 |      13 |     15 |    |
+| California   | Kings               |    460 |          |      7 |         13 |           |        1 |     2 |                |       1 |      1 |    |
+| California   | Lake                |        |          |        |            |           |          |       |                |       1 |        |    |
+| California   | Los Angeles         |   3049 |     8879 |   2780 |       4851 |       360 |       28 |    62 |           6342 |    2837 |   4331 |  1 |
+| California   | Madera              |    156 |          |      2 |         16 |         2 |        2 |     2 |                |         |        |    |
+| California   | Marin               |        |          |        |          3 |           |          |     4 |              3 |      69 |      1 |    |
+| California   | Mendocino           |        |          |      1 |            |         1 |          |       |                |      43 |      2 |    |
+| California   | Merced              |     10 |          |        |         10 |           |          |     1 |                |     437 |        |    |
+| California   | Modoc               |        |          |        |            |         3 |          |     1 |                |         |        |    |
+| California   | Monterey            |     44 |        8 |   1490 |         73 |       125 |        3 |    25 |              7 |      37 |     10 |    |
+| California   | Napa                |        |          |        |          7 |           |          |       |                |      31 |        |    |
+| California   | Nevada              |        |          |        |            |         6 |          |       |                |         |        |    |
+| California   | Orange              |     28 |       78 |   1611 |         57 |        10 |          |     3 |             17 |      10 |     41 |    |
+| California   | Placer              |      3 |          |     10 |            |      1746 |        3 |     1 |              1 |       2 |      1 |    |
+| California   | Plumas              |        |          |        |            |         1 |          |       |                |         |        |    |
+| California   | Riverside           |        |       35 |    493 |         10 |           |          |       |              9 |       1 |        |    |
+| California   | Sacramento          |    965 |      376 |    664 |        401 |      4841 |       10 |    19 |              6 |     487 |     58 |    |
+| California   | San Benito          |        |        2 |    423 |            |        15 |          |     2 |              3 |         |        |    |
+| California   | San Bernardino      |      1 |        8 |    369 |          5 |           |          |       |              9 |         |      2 |    |
+| California   | San Diego           |     25 |       38 |   1877 |         17 |         2 |        4 |     1 |             19 |      11 |      3 |    |
+| California   | San Francisco       |     59 |       81 |     63 |        174 |       225 |        6 |  3359 |            671 |      74 |     80 |    |
+| California   | San Joaquin         |      4 |      160 |     18 |        779 |       356 |       31 |    22 |              3 |      27 |   3511 |  1 |
+| California   | San Luis Obispo     |    106 |       17 |    105 |        191 |        10 |        1 |     1 |              5 |       1 |      2 |    |
+| California   | San Mateo           |     17 |        6 |      4 |         31 |        24 |        3 |   757 |             32 |      31 |     57 |    |
+| California   | Santa Barbara       |     38 |       16 |     44 |       1767 |        16 |        1 |     7 |             23 |       6 |     20 |    |
+| California   | Santa Clara         |     57 |       16 |    467 |        207 |       219 |          |   134 |           2502 |      50 |     16 |  1 |
+| California   | Santa Cruz          |     23 |          |   1203 |         46 |        88 |        1 |     1 |             16 |      13 |      7 |    |
+| California   | Shasta              |        |          |        |            |           |          |       |                |       6 |        |    |
+| California   | Solano              |        |          |        |        687 |        20 |        1 |     7 |              3 |       6 |        |    |
+| California   | Sonoma              |      3 |          |     14 |          8 |        22 |          |     1 |              8 |     674 |        |    |
+| California   | Stanislaus          |      2 |        3 |        |          6 |         8 |        3 |       |                |     648 |     28 |    |
+| California   | Sutter              |        |          |        |            |        49 |          |       |                |     311 |      1 |    |
+| California   | Tehama              |        |          |        |            |        12 |          |       |              1 |      29 |        |    |
+| California   | Tulare              |    199 |        4 |   1947 |         25 |         5 |        6 |     9 |              1 |       2 |      4 |    |
+| California   | Ventura             |      6 |       14 |     32 |        578 |         5 |          |       |             10 |       8 |      8 |    |
+| California   | Yolo                |      1 |        1 |     10 |        120 |       348 |          |       |                |     626 |        |    |
+| California   | Yuba                |      1 |          |      1 |          5 |       466 |          |     4 |                |      50 |        |    |
+| Colorado     | Otero               |        |          |      4 |            |           |          |       |                |         |        |    |
+| Colorado     | Weld                |        |          |      1 |            |           |          |       |                |         |      1 |    |
+| Florida      | Pinellas            |        |          |        |            |           |          |       |                |         |      2 |    |
+| Hawaii       | Hawaii              |    210 |          |        |            |         2 |          |    28 |                |         |        |    |
+| Hawaii       | Honolulu            |    441 |        2 |        |            |         4 |        1 |   167 |              1 |       3 |      1 |    |
+| Hawaii       | Kauai               |     85 |          |        |            |           |          |     7 |              1 |         |      1 |    |
+| Hawaii       | Maui                |     70 |          |        |          1 |           |          |    21 |                |         |        |    |
+| Idaho        | Bannock             |        |          |        |            |           |          |       |                |         |      1 |    |
+| Idaho        | Bingham             |        |          |      2 |            |           |          |     1 |                |         |        |    |
+| Idaho        | Bonneville          |        |          |        |          1 |           |          |       |                |         |        |    |
+| Illinois     | Cook                |        |        1 |        |          1 |         1 |          |       |              1 |         |        |    |
+| Michigan     | Calhoun             |      1 |          |        |            |           |          |       |                |         |        |    |
+| Missouri     | Henry/Rives         |        |        1 |        |            |           |          |       |                |         |        |    |
+| Missouri     | St Louis            |        |          |        |          4 |           |          |       |                |         |        |    |
+| Montana      | Lewis and Clark     |        |          |        |            |         1 |          |       |                |         |        |    |
+| Montana      | Missoula            |        |          |      1 |            |           |          |       |                |         |        |    |
+| Montana      | Park                |        |          |        |            |         1 |          |       |                |         |        |    |
+| Nebraska     | Douglas             |        |          |        |            |           |          |       |              1 |         |        |    |
+| Nevada       | Douglas             |        |        1 |        |            |           |          |       |                |         |        |    |
+| Nevada       | Lyon                |        |        3 |        |            |           |          |       |                |         |        |    |
+| New Mexico   | Curry               |        |          |        |         10 |           |          |    10 |                |         |        |    |
+| New Mexico   | Santa Fe            |        |          |      5 |            |           |          |       |                |         |        |    |
+| New York     | Chemung             |        |        2 |        |            |           |          |       |                |         |      1 |    |
+| New York     | Dutchess            |        |        1 |        |            |           |          |       |                |         |        |    |
+| North Dakota | Burleigh            |        |          |      1 |            |           |          |     1 |                |         |        |    |
+| Oregon       | Benton              |        |          |        |            |         1 |          |       |              1 |         |        |    |
+| Oregon       | Clackamas           |        |          |      1 |            |        20 |      142 |       |                |         |        |    |
+| Oregon       | Clatsop             |        |          |        |            |        11 |       49 |       |                |         |        |    |
+| Oregon       | Columbia            |        |          |        |            |         9 |       24 |       |                |         |        |    |
+| Oregon       | Deschutes           |        |          |        |            |         1 |          |       |              6 |         |        |    |
+| Oregon       | Hood River          |        |          |        |            |       410 |        5 |     1 |                |         |        |    |
+| Oregon       | Jackson             |        |          |        |            |        37 |        2 |       |              3 |         |        |    |
+| Oregon       | Jefferson           |        |          |        |            |        21 |        1 |       |                |       1 |        |    |
+| Oregon       | Lane                |        |          |        |            |         1 |        1 |       |              1 |         |        |    |
+| Oregon       | Lincoln             |        |          |        |            |           |        2 |       |                |         |        |    |
+| Oregon       | Linn                |        |          |        |            |         2 |          |       |                |         |        |    |
+| Oregon       | Marion              |        |          |        |          5 |       171 |          |       |                |         |        |    |
+| Oregon       | Multnomah           |        |        1 |      1 |            |       308 |     1864 |     1 |             66 |       1 |        |    |
+| Oregon       | Polk                |        |          |        |            |        43 |        5 |       |                |         |        |    |
+| Oregon       | Tillamook           |        |          |        |            |           |        1 |       |                |         |        |    |
+| Oregon       | Wasco               |        |          |        |            |        64 |          |       |                |         |        |    |
+| Oregon       | Washington          |        |          |        |            |        11 |      138 |       |                |         |        |    |
+| Oregon       | Yamhill             |        |          |        |            |         4 |        1 |       |                |         |        |    |
+| Pennsylvania | Lackawanna          |        |          |        |            |           |          |       |              1 |         |        |    |
+| Pennsylvania | Philadelphia        |        |          |        |            |           |          |       |                |         |      1 |    |
+| Pennsylvania | York                |      1 |        1 |        |            |           |          |       |                |         |        |    |
+| Texas        | Harris              |        |          |        |            |           |          |       |              3 |         |        |    |
+| Utah         | Box Elder           |        |        1 |        |            |           |          |    11 |                |         |        |    |
+| Utah         | Carbon              |        |          |        |            |           |        1 |       |                |         |        |    |
+| Utah         | Wasatch             |        |          |        |            |           |          |     5 |                |         |        |    |
+| Virginia     | Norfolk             |        |          |        |            |           |          |       |                |         |      2 |    |
+| Virginia     | Suffolk City        |        |          |        |            |           |          |       |                |         |      1 |    |
+| Washington   | Asotin              |        |          |      1 |            |           |          |       |                |         |        |    |
+| Washington   | Benton              |        |          |        |          5 |           |          |       |             27 |         |        |    |
+| Washington   | Chelan              |        |          |        |            |         1 |          |       |             26 |         |        |    |
+| Washington   | Clallam             |        |          |        |            |        13 |          |       |                |         |        |    |
+| Washington   | Clark               |        |          |        |            |       115 |       14 |       |                |         |        |    |
+| Washington   | Cowlitz             |        |          |        |            |       111 |       15 |       |                |         |        |    |
+| Washington   | Franklin            |        |          |        |            |           |        2 |       |                |         |        |    |
+| Washington   | Grays Harbor        |        |          |        |            |        11 |          |       |                |         |        |    |
+| Washington   | Island              |        |          |        |            |           |        2 |       |                |         |        |    |
+| Washington   | Jefferson           |        |          |        |            |        24 |          |       |                |         |        |    |
+| Washington   | King                |        |        1 |      8 |         20 |      2679 |     5852 |     8 |             18 |       6 |      6 |    |
+| Washington   | Kitsap              |        |      225 |        |            |        45 |        3 |       |              2 |         |        |    |
+| Washington   | Klikatat            |        |          |        |            |        47 |          |       |             29 |         |        |    |
+| Washington   | Lewis               |        |          |        |            |        54 |          |       |                |         |        |    |
+| Washington   | Mason               |        |          |        |            |        19 |          |       |                |         |        |    |
+| Washington   | Pacific             |        |          |        |            |        56 |        2 |       |              1 |         |        |    |
+| Washington   | Pierce              |        |        3 |        |            |       938 |      999 |       |              4 |         |      2 |    |
+| Washington   | San Juan            |        |          |        |            |         2 |        2 |       |                |         |        |    |
+| Washington   | Skagit              |        |          |        |            |        56 |        4 |       |                |         |        |    |
+| Washington   | Snohomish           |        |          |        |          2 |        35 |        1 |       |                |         |        |    |
+| Washington   | Spokane             |        |          |        |          1 |           |          |       |                |         |        |    |
+| Washington   | Thurston            |        |          |        |            |        76 |        8 |       |                |         |        |    |
+| Washington   | Wahkiakum           |        |          |        |            |         3 |          |       |                |         |        |    |
+| Washington   | Whatcom             |        |          |        |            |        34 |          |       |                |         |        |    |
+| Washington   | Whitman             |        |          |        |            |           |        3 |       |                |         |        |    |
+| Washington   | Yakima              |        |          |        |            |         8 |       25 |       |            812 |       1 |      1 |    |
+| Wisconsin    | Grant               |      1 |          |      1 |            |           |          |       |                |         |        |    |
+
+** Demographic Groups
+#+begin_src R :colnames yes
+read_dta(file="data/all_internees.dta") |>
+  filter(state!="", county!="", race ==5) |>
+  count(state, county, sex, birthyr, bpl, bpl_mom, bpl_pop) |>
+  arrange(desc(n)) |>
+  print(n=100)
+#+end_src
+
+#+RESULTS:
+|---|
+
+** Age Distribution
+#+begin_src R :exports results :results graphics file :file figures/internee-age_plot.png
+library(paletteer)
+read_dta(file="data/all_internees.dta") |>
+  filter(!is.na(camp)) |>
+  mutate(age = 1942 -birthyr) |>
+  ggplot(aes(x=age, group = as_factor(camp), fill = as_factor(camp))) +
+  geom_histogram() +
+  ## geom_density(alpha = 0.5) +
+  theme_minimal() +
+  theme(
+    ## legend.title = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    title = "Internee Age Distribution by Camp",
+    x = "Age",
+    fill = "WRA Camp",
+    ) +
+  scale_fill_paletteer_d("MetBrewer::Hiroshige")
+#+end_src
+
+#+RESULTS:
+[[file:figures/internee-age_plot.png]]
