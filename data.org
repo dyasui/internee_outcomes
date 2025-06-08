@@ -276,87 +276,6 @@ The WDC's final exclusion area included the western halves of Washington and Ore
 #+name: fig:WDC-evac-area
 [[./figures/external/WDC-evac-areas_map.png]]
 
-
-# Categories and stuff: ---------------                                                                                                                
-# evacuation zone west coast states:
- c(61, 71, 72, 73)
- # evac zone counties ICPSR codes:
- ezAZ = c(30, 130, 190, 230, 270)
- ezOR = c(30, 50, 70, 90, 110, 190, 270, 290, 330, 390, 410, 430, 470, 510, 530, 570, 670, 710)
- ezWA = c(50, 70, 90, 150, 270, 310, 330, 350, 370, 390, 410, 450, 490, 530, 570, 590, 610, 670, 690, 730, 770)
- # counties split by zone boundary:
- spAZ = c(90, 130, 150, 210, 250)
- spOR = c(170, 310, 350, 550, 650)
- spWA = c(470)
- # drop overseas military and Wash. D.C. and unclassified:
- drop_states = c(83, 96, 97, 98, 99)
-
-** Voluntary Migration Rates
-The Final Report from DeWitt records the number of Japanese Americans who chose to voluntarily relocate away from the West Coast prior to the orders to relocate to Assembly Centers.
-
-#+begin_src R :colnames yes
-library(tidyverse)
-read_csv("data/WDC-voluntary-migration.csv")
-#+end_src
-
-#+RESULTS:
-| State and County | Total | Male | Female |
-|------------------+-------+------+--------|
-| Four-State total |  4889 | 2602 |   2287 |
-| Arizona          |    58 |   34 |     24 |
-| Maricopa         |    58 |   34 |     24 |
-| California       |  4203 | 2269 |   1934 |
-| Alameda          |   263 |  142 |    121 |
-| Butte            |     7 |    5 |      2 |
-| Contra Costa     |    18 |    8 |     10 |
-| Fresno           |   153 |   75 |     78 |
-| Imperial         |    82 |   35 |     47 |
-| Kern             |     7 |    5 |      2 |
-| Kings            |     3 |    1 |      2 |
-| Los Angeles      |  1969 | 1080 |    889 |
-| Marin            |     8 |    4 |      4 |
-| Merced           |     6 |    2 |      4 |
-| Monterey         |   234 |  143 |     91 |
-| Orange           |    88 |   54 |     34 |
-| Placer           |     2 |    1 |      1 |
-| Riverside        |    10 |    4 |      6 |
-| Sacramento       |    24 |   10 |     14 |
-| San Benito       |     6 |    4 |      2 |
-| San Bernardino   |    13 |    9 |      4 |
-| San Diego        |    61 |   31 |     30 |
-| San Francisco    |   207 |   95 |    112 |
-| San Joaquin      |    21 |   10 |     11 |
-| San Luis Obispo  |    11 |    5 |      6 |
-| San Mateo        |   139 |   67 |     72 |
-| Santa Barbara    |   205 |  116 |     89 |
-| Santa Clara      |   443 |  231 |    212 |
-| Santa Cruz       |    82 |   44 |     38 |
-| Sonoma           |    17 |    9 |      8 |
-| Stanislaus       |     8 |    4 |      4 |
-| Tulare           |    64 |   44 |     20 |
-| Tuolumne         |    20 |   15 |      5 |
-| Ventura          |    29 |   14 |     15 |
-| Yolo             |     2 |    2 |        |
-| Yuba             |     1 |      |      1 |
-| Oregon           |   129 |   70 |     59 |
-| Clatsop          |     1 |    1 |        |
-| Hood River       |    13 |    9 |      4 |
-| Lane             |     4 |    2 |      2 |
-| Multnomah        |    54 |   24 |     30 |
-| Polk             |     5 |    2 |      3 |
-| Washington       |    50 |   32 |     18 |
-| Yamhill          |     2 |      |      2 |
-| Washington       |   499 |  229 |    270 |
-| Chelan           |     2 |    1 |      1 |
-| Clark            |     5 |    3 |      2 |
-| King             |   403 |  183 |    220 |
-| Kitsap           |     6 |    4 |      2 |
-| Lewis            |     6 |    1 |      5 |
-| Okanogan         |     3 |    3 |        |
-| Pacific          |     5 |    2 |      3 |
-| Pierce           |    56 |   26 |     30 |
-| Thurston         |     6 |    2 |      4 |
-| Yakima           |     7 |    4 |      3 |
  
 * County GIS Files
 ** Historical Counties
@@ -626,25 +545,98 @@ duckdb_read_csv(database, "mlp_crosswalks", cw45_csv)
 #+end_src
 
 * Predicted Internment Status
-:PROPERTIES:
-:HEADER-ARGS:R: :tangle R/predict_internment.R :session *R:internment*
-:END:
 
 #+begin_src R :results silent
 library(tidyverse)
 #+end_src
 
 The WRA records give a complete list of all individuals who were interned during World War II.
-However, if we as researchers of the impact of internment want to know more about the migration choices or economic outcomes faced by these individuals we need to match these individuals with data from other sources.
+However, if we as researchers of the impact of internment want to know more about the migration choices or economic outcomes faced by these individuals we need to match these individuals with data from other sources (in my case the full-count census).
 
-The 
+To determine the probability that someone who shows up in the census is the same as one of the internees, I borrow Jaime Arellano-Bover's method of estimating predicted internment status using Bayes Rule.
+The probability that an individual $i$ in the demographic group $z$ who lived in county $c$ in 1942 was interned ($Pr(I_{i}=1|z_i,c_{i})$
+could be determined from the proportion of the whole population who were interned ($Pr(I_{i}=1)},
+the proportion of the population with demographics $z$ who lived in county $c$ in 1942 ($Pr(z_i,c_{i}^{1942}$),
+and the probability of a known internee having the same demographics and county in 1942 ($Pr(z_i,c_i^{42}|I_i=1)$).
 
-An individual was subject to 
- Estimating Predicted Internment Status using Bayes Rule:
+$$Pr(I_i=1|z_i,c_i^{42}) = \frac{Pr(z_i,c_i^{42}|I_i=1) \cdot Pr(I_i=1)}{Pr(z_i,c_i^{42})}$$
 
-$$Pr(I_i=1|Z_i,s_i^{40}) = \frac{Pr(z_i,s_i^{40}|I_i=1) \cdot Pr(I_i=1)}{Pr(z_i,s_i^{40})}$$
+However, because my target sample of census respondents were only asked about their county of residence in the year of the census and not in 1942, $c_i^{1940}$ is used as a proxy for census respondents' 1942 locations.
 
-** $Pr(z_i,s_i^{40}|I_i=1)$ : proportion of internees with in each demographic group
+The estimator for the true internment status of a census respondent is:
+
+
+\begin{equation}
+\hat{E}[I]_{zc} =
+\frac{n(i | z_i=z, ~ c_{i}^{42}=c)}{n(j | z_j=z, ~ c_{j}^{40}=c)}}
+\end{equation}
+
+This will produce a biased estimate of true internment status if there were unobserved changes in population in each county between 1940 and 1942. For example, for a county that experienced a net outflow of residents, then the ratio of residents in 1940 vs 1942 would be greater than 1 and we would have an estimated internment probability that overstates the likelihood of anyone who lived in that county in 1940 would be interned.
+
+One source of differences between the number of 1940 residents and the number of internees who came from each county is that the Army initially allowed Japanese persons to choose to move out of the exclusion areas before they gathered the remaining people into assembly centers.
+
+** Voluntary Migration Rates
+The Final Report from DeWitt records the number of Japanese Americans who chose to voluntarily relocate away from the West Coast prior to the orders to relocate to Assembly Centers.
+
+#+begin_src R :colnames yes
+library(tidyverse)
+read_csv("data/WDC-voluntary-migration.csv")
+#+end_src
+
+#+RESULTS:
+| state      | county          | Total | Male | Female |
+|------------+-----------------+-------+------+--------|
+| Arizona    | Maricopa        |    58 |   34 |     24 |
+| California | Alameda         |   263 |  142 |    121 |
+| California | Butte           |     7 |    5 |      2 |
+| California | Contra Costa    |    18 |    8 |     10 |
+| California | Fresno          |   153 |   75 |     78 |
+| California | Imperial        |    82 |   35 |     47 |
+| California | Kern            |     7 |    5 |      2 |
+| California | Kings           |     3 |    1 |      2 |
+| California | Los Angeles     |  1969 | 1080 |    889 |
+| California | Marin           |     8 |    4 |      4 |
+| California | Merced          |     6 |    2 |      4 |
+| California | Monterey        |   234 |  143 |     91 |
+| California | Orange          |    88 |   54 |     34 |
+| California | Placer          |     2 |    1 |      1 |
+| California | Riverside       |    10 |    4 |      6 |
+| California | Sacramento      |    24 |   10 |     14 |
+| California | San Benito      |     6 |    4 |      2 |
+| California | San Bernardino  |    13 |    9 |      4 |
+| California | San Diego       |    61 |   31 |     30 |
+| California | San Francisco   |   207 |   95 |    112 |
+| California | San Joaquin     |    21 |   10 |     11 |
+| California | San Luis Obispo |    11 |    5 |      6 |
+| California | San Mateo       |   139 |   67 |     72 |
+| California | Santa Barbara   |   205 |  116 |     89 |
+| California | Santa Clara     |   443 |  231 |    212 |
+| California | Santa Cruz      |    82 |   44 |     38 |
+| California | Sonoma          |    17 |    9 |      8 |
+| California | Stanislaus      |     8 |    4 |      4 |
+| California | Tulare          |    64 |   44 |     20 |
+| California | Tuolumne        |    20 |   15 |      5 |
+| California | Ventura         |    29 |   14 |     15 |
+| California | Yolo            |     2 |    2 |        |
+| California | Yuba            |     1 |      |      1 |
+| Oregon     | Clatsop         |     1 |    1 |        |
+| Oregon     | Hood River      |    13 |    9 |      4 |
+| Oregon     | Lane            |     4 |    2 |      2 |
+| Oregon     | Multnomah       |    54 |   24 |     30 |
+| Oregon     | Polk            |     5 |    2 |      3 |
+| Oregon     | Washington      |    50 |   32 |     18 |
+| Oregon     | Yamhill         |     2 |      |      2 |
+| Washington | Chelan          |     2 |    1 |      1 |
+| Washington | Clark           |     5 |    3 |      2 |
+| Washington | King            |   403 |  183 |    220 |
+| Washington | Kitsap          |     6 |    4 |      2 |
+| Washington | Lewis           |     6 |    1 |      5 |
+| Washington | Okanogan        |     3 |    3 |        |
+| Washington | Pacific         |     5 |    2 |      3 |
+| Washington | Pierce          |    56 |   26 |     30 |
+| Washington | Thurston        |     6 |    2 |      4 |
+| Washington | Yakima          |     7 |    4 |      3 |
+** $Pr(z_i,c_i^{40}|I_i=1)$ : proportion of internees with in each demographic group
 For the time-invariant $z_i$ characteristics, I use the internees recorded county of residence, sex, birth year, birthplace, and race.
 These internee demographic groups are save in the file =data/internment_groups.csv=.
 #+begin_src R :results silent
@@ -667,15 +659,20 @@ pr_I <- 108525/126701
 #+RESULTS:
 : 0.8565441472443
 
-** $Pr(z_i,s_i^{40})$: proportion of Japanese Americans in each demographic group in 1940 census
+** $Pr(z_i,c_i^{40})$: proportion of Japanese Americans in each demographic group in 1940 census
 #+begin_src R :results silent
 # proportion of each demographic group in 1940 Japanese population
 pr_z <- read_csv("data/ja_pop_groups.csv")
 #+end_src
 
 #+RESULTS:
-** Proportion of Predicted Internees in Each Demographic Group
-Combine internee records with census records and calculate predicted internment probability using Bayes' Rule formulation from above:
+** Predicted Interment Status Estimator
+:PROPERTIES:
+:HEADER-ARGS:R: :tangle R/predict_internment.R :session *R:internment*
+:END:
+My version of the estimator outlined is a function which takes in internee data and 1940 census data to calculate predicted internment probability.
+I allow for using different demographic variables to create groups to test different specifications.
+
 #+begin_src R :results silent
 dt <- left_join(pr_z_I, pr_z,
                 by = c("NHGISST", "NHGISCTY",
