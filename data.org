@@ -483,12 +483,12 @@ countystat_cb <- function(x, pos) {
       INCWAGE = ifelse(YEAR == 1940, INCWAGE * 1.71, INCWAGE) ) |>
     group_by(YEAR, STATEFIP, COUNTYICP) |>
     summarise(
-      mean_wage = mean(incwage, na.rm=t),
+      mean_wage = mean(INCWAGE, na.rm=T),
       pop       = n(),
-      pop_wh = sum(race==1),
-      pop_bl = sum(race==2),
-      pop_ch = sum(race==4),
-      pop_jp = sum(race==5),
+      pop_wh = sum(RACE==1),
+      pop_bl = sum(RACE==2),
+      pop_ch = sum(RACE==4),
+      pop_jp = sum(RACE==5),
       .groups = "drop"
     )
 }
@@ -501,7 +501,7 @@ county_data <- read_ipums_micro_chunked(
 ) |>
   group_by(YEAR, STATEFIP, COUNTYICP) |>
   summarise(
-    mean_wage = mean(mean_wage, na.rm=t),
+    mean_wage = mean(mean_wage, na.rm=T),
     pop       = sum(pop),
     pop_wh = sum(pop_wh),
     pop_bl = sum(pop_bl),
@@ -514,11 +514,13 @@ write_csv(county_data, "data/county_stats.csv")
 #+end_src
 
 #+RESULTS:
+: TRUE
+** Wage Distribution by Internment Status
 * MLP Linked Census Data
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:ipums* :results silent
 :END:
-** Database Reading
+** DuckDB Storage of Linking Variables
 The original micro data files from IPUMS are too large to fit in memory,
 and the MLP v1.2 linkages are provided as crosswalks which have to be joined to the data.
 I first read both crosswalks and extract microdata into a local database file
@@ -610,26 +612,26 @@ l2 <- cw |>
 
 #+begin_src R
 # join all selected data between years by crosswalked histids
-results <- bind_rows(l1, l2) |>
+rows <- bind_rows(l1, l2) |>
   # get rid of leftover linking and technical varibles
   select(!c("step", "SAMPLE", "SERIAL", "HHWT", "PERWT",
             "PERNUM", "GQ", "VERSIONHIST", "CITY", "ENUMDIST"))
 
 # generate new unique ids for each linked person
-histid_pairs <- results |>
+histid_pairs <- rows |>
   count(histid_1940, histid_1950) |>
   filter(n>1) |> # multiple matches
   mutate(id = row_number()) |>
   select(!n)
 
-results <- results |>
+rows_id <- rows |>
   left_join(histid_pairs, by = c("histid_1940", "histid_1950")) |>
   filter(!is.na(id)) |>
   select(!c("histid_1940", "histid_1950")) |>
   relocate(id)
 
 # clean up other variables
-results <- results |>
+results <- rows_id |>
   mutate(
     # replace missing values with NAs and adjust all dollar amounts to 1950 levels
     across(c(INCWAGE, INCTOT, INCBUSFM),
@@ -660,13 +662,6 @@ results <- results |>
 
 #+RESULTS:
 
-#+begin_src R :results silent
-results_wide <- results |>
-  select(id, YEAR, STATEFIP, COUNTYICP) |>
-  pivot_wider(id_cols = id, names_from = YEAR, names_sep = "_", values_from = c(STATEFIP, COUNTYICP))
-
-results <- left_join(results, results_wide, by = "id")
-#+end_src
 
 #+name: write-linked-sample
 #+begin_src R :exports results
@@ -675,59 +670,6 @@ readr::write_csv(results, file = "data/mlp_sample.csv")
 
 This initial procedure leaves 11,079 linked MLP individuals across all MLP records of anyone reported as Japanese or Chinese American between the 1940 and 1950 census.
 
-** Consistent Wage Reporting Panel
-:PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment* 
-:END:
-
-Only persons aged 14 or older at the time of the census were asked about their employment status or wage income.
-#+begin_src R
-library(tidyverse)
-library(modelsummary)
-mlp_sample <- read_csv("data/linked_census_sample.csv") |>
-  filter(age >= 14)
-over14_sample <- mlp_sample |> summarise(n = n_distinct(id))
-mlp_sample |>
-  group_by(RACE) |>
-  summarise(n=n_distinct(id))
-#+end_src
-
-#+RESULTS:
-| 4 | 5928 |
-| 5 | 4385 |
-
-After filtering for only persons aged 14 or older, I am left with src_R[:exports results]{over14_sample$n} {{{results(=10302=)}}} } linked individuals,
-5928 of which are Chinese, and 4385 are Japanese.
-
-#+begin_src R
-mlp_panel <- mlp_sample |>
-  filter(!is.na(INCWAGE)) |>
-  group_by(id) |>
-  filter(n() == 2 && all(c(1940, 1950) %in% YEAR)) |>
-  ungroup()
-
-mlp_panel |>
-  group_by(RACE) |>
-  summarise(n=n_distinct(id))
-#+end_src
-
-#+RESULTS:
-| 4 | 1012 |
-| 5 |  897 |
-
-Many individuals have missing wages in either 1940 or 1950.
-After filtering for only those linked individuals who report wages in both census years, I am left with 1909 people.
-
-#+begin_src R
-datasummary_balance(~RACE, mlp_panel)
-#+end_src
-
-#+RESULTS:
-
-#+name: write-wage-panel
-#+begin_src R
-readr::write_csv(mlp_panel, file = "data/linked_wage_panel.csv")
-#+end_src
 ** Linked Internee Sample
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment*
@@ -791,7 +733,7 @@ predict_internment <- function(census_1940, internees="data/all_internees.dta", 
 #+begin_src R
 library(tidyverse)
 library(haven)
-mlp_panel <- read_csv("data/linked_census_sample.csv") |>
+mlp_panel <- read_csv("data/mlp_sample.csv") |>
   pivot_wider(id_cols = id, names_from = YEAR, values_from = STATEFIP:generation)
 #+end_src
 
@@ -819,8 +761,28 @@ intern_prob <- census_dat |>
 mlp_panel_linked <- mlp_panel |>
   left_join(intern_prob, by = c("STATEFIP_1940"="STATEFIP",
             "COUNTYICP_1940"="COUNTYICP", "SEX_1940"="SEX",
-            "RACE_1940"="RACE"))
+            "RACE_1940"="RACE")) |>
+  # only include those who are old enough to work in 1940
+  filter(age_1940>=14) |>
+  mutate(
+    # create indicator for migration status
+    moved = ifelse(COUNTYICP_1940!=COUNTYICP_1950, T, F),
+    # assign probable internment status
+    interned = ifelse(p_ij>0.5, T, F)
+    ) |>
+  rename(female = "female_1940", BIRTHYR = "BIRTHYR_1940",
+         BPL = "BPL_1940", RACE = "RACE_1940") |>
+  select(id, RACE, female, BIRTHYR, BPL, p_ij, interned,
+         age_1940, age_1950,
+         STATEFIP_1940, STATEFIP_1950, COUNTYICP_1940, COUNTYICP_1950, moved,
+         employed_1940, employed_1950, LABFORCE_1940, LABFORCE_1950,
+         wage_1940, wage_1950, OCCSCORE_1940, OCCSCORE_1950,
+         OCC1950_1940, OCC1950_1950,
+         EDUC_1940, EDUC_1950, citizen_1940, citizen_1950, homestate_1940, homestate_1950, married_1940, married_1950
+         )
 #+end_src
+
+#+RESULTS:
 
 Save the linked analysis sample to a csv.
 #+begin_src R
@@ -829,9 +791,46 @@ write_csv(mlp_panel_linked, file = "data/linked_sample.csv")
 
 #+RESULTS:
 
-#+RESULTS:
-[[file:figures/pr_intern-linked-sample_plot.png]]
+** Consistent Wage Reporting Panel
+:PROPERTIES:
+:HEADER-ARGS:R: :session *R:internment* 
+:END:
 
+#+begin_src R
+library(tidyverse)
+library(modelsummary)
+data <- read_csv("data/linked_sample.csv")
+datasummary_balance(~interned, data = data)
+#+end_src
+
+#+RESULTS:
+
+After filtering for only persons aged 14 or older, I am left with src_R[:exports results]{over14_sample$n} {{{results(=10302=)}}} } linked individuals,
+5928 of which are Chinese, and 4385 are Japanese.
+
+#+begin_src R
+data |>
+  filter(!is.na(INCWAGE_1940),!is.na(INCWAGE_1950)) |>
+  count(RACE_1940)
+#+end_src
+
+#+RESULTS:
+| 4 | 1010 |
+| 5 |  896 |
+
+Many individuals have missing wages in either 1940 or 1950.
+After filtering for only those linked individuals who report wages in both census years, I am left with 1906 people.
+
+#+begin_src R
+datasummary_balance(~RACE, mlp_panel)
+#+end_src
+
+#+RESULTS:
+
+#+name: write-wage-panel
+#+begin_src R
+readr::write_csv(mlp_panel, file = "data/linked_wage_panel.csv")
+#+end_src
 * TODO Japanese American Redress Verification Information System (JARVIS) Files
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment* :results silent
