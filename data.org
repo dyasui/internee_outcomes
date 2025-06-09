@@ -64,6 +64,39 @@ as_ct <- function(STATEFIP, COUNTYICP) {
 }
 #+end_sr
 
+** Clean IPUMS Variables
+#+begin_src R :tangle R/clean-ipums.R :session *R:internment*
+clean_ipums <- function(data) {
+  library(tidyverse)
+  data |>
+    mutate( # replace missing values with NAs and adjust all dollar amounts to 1950 levels
+      INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE),
+      # adjust 1940 wages for inflation to 1950 dollars
+      INCWAGE = ifelse(YEAR == 1940, INCWAGE * 1.71, INCWAGE),
+      married = ifelse(MARST %in% 1:2, 1, 0),
+      foreign = ifelse(NATIVITY == 5, 1, 0),
+      college = ifelse(EDUC %in% 7:11, 1, 0),
+      employed = ifelse(EMPSTAT == 1, 1, 0),
+      female = ifelse(SEX==2, 1, 0),
+      OCC1950 = ifelse(OCC1950 %in% 979:999, NA, OCC1950),
+      age = YEAR - BIRTHYR,
+      female = ifelse(SEX == 2, 1, 0),
+      wage = ifelse(is.na(INCWAGE), 0, INCWAGE),
+      lnwage = ifelse(INCWAGE!=0, log(INCWAGE), NA),
+      citizen = ifelse(CITIZEN %in% c(0, 1, 2), 1, 0),
+      homestate = ifelse(BPL == STATEFIP, 1, 0),
+      generation = case_when(
+        NATIVITY == 5 ~ "first", # foriegn born
+        NATIVITY %in% 2:4 ~ "second", # both or either parent foriegn born
+        NATIVITY == 1 & (NATIVITY_POP %in% 2:4 | NATIVITY_MOM %in% 2:4) ~ "third"
+        ## .default == NA
+        )
+    )
+}
+#+end_src
+
+#+RESULTS:
+
 ** IPUMS Census Variables Definitions
 [fn::defintions quoted from IPUMS online documentation: https://usa.ipums.org/usa-action/variables/group]
 **** Geographic:
@@ -437,55 +470,52 @@ For this project, the files needed are located in the =data/= subdirectory:
 :HEADER-ARGS:R: :session *R:internment*
 :END:
 #+begin_src R
+library(tidyverse)
 library(ipumsr)
-library(dbplyr)
-library(duckdb)
-# data extract file
-db <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
-tbl = "ipums_microdata"
+# set location of full-count data download files
+ddi <- "data/fullcount_census/usa_00126.xml"
 
-dt40 <- tbl(db, tbl) |>
-  filter(YEAR == 1940, RACE == 5) |>
-  select(STATEFIP, COUNTYICP, SEX, BIRTHYR, BPL)
+# callback function to calculate county summary stats
+countystat_cb <- function(x, pos) {
+  x |>
+    group_by(STATEFIP, COUNTYICP) |>
+    mutate(
+      INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE),
+      # adjust 1940 wages for inflation to 1950 dollars
+      INCWAGE = ifelse(YEAR == 1940, INCWAGE * 1.71, INCWAGE) ) |>
+    group_by(YEAR, STATEFIP, COUNTYICP) |>
+    summarise(
+      mean_wage = mean(incwage, na.rm=t),
+      pop       = n(),
+      pop_wh = sum(race==1),
+      pop_bl = sum(race==2),
+      pop_ch = sum(race==4),
+      pop_jp = sum(race==5),
+      .groups = "drop"
+    )
+}
+
+county_data <- read_ipums_micro_chunked(
+  ddi,
+  callback = IpumsDataFrameCallback$new(countystat_cb),
+  chunk_size = 1e5,
+  verbose = TRUE
+) |>
+  group_by(YEAR, STATEFIP, COUNTYICP) |>
+  summarise(
+    mean_wage = mean(mean_wage, na.rm=t),
+    pop       = sum(pop),
+    pop_wh = sum(pop_wh),
+    pop_bl = sum(pop_bl),
+    pop_ch = sum(pop_ch),
+    pop_jp = sum(pop_jp),
+    .groups = "drop"
+  )
+
+write_csv(county_data, "data/county_stats.csv")
 #+end_src
 
 #+RESULTS:
-** 1940 County-Level Japanese Population
-:PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment* 
-:END:
-#+begin_src R
-library(ipumsr)
-library(dbplyr)
-library(duckdb)
-# data extract file
-db <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
-tbl = "ipums_microdata"
-
-dt40 <- tbl(db, tbl) |>
-  filter(YEAR == 1940, RACE == 5) |>
-  select(STATEFIP, COUNTYICP, SEX, BIRTHYR, BPL)
-#+end_src
-
-#+RESULTS:
-
-Collect all Japanese-American micro-records by county, sex, birthyear, and birthplace groups.
-
-#+begin_src R
-JApop_groups <- dt40 |>
-  count(STATEFIP, COUNTYICP, SEX, BIRTHYR, BPL) |>
-  collect() |>
-  mutate(
-    # proportion in each demographic group
-    p = n / sum(n),
-    # state-county geography code based on NHGIS
-    NHGISST = str_pad(string = STATEFIP*10, width = 3, side = "left", pad = "0"),
-    NHGISCTY = str_pad(COUNTYICP, width = 4, side = "left", pad = "0") )
-
-# save results
-readr::write_csv(JApop_groups, file = "data/ja_pop_groups.csv")
-#+end_src
-
 * MLP Crosswalk Links
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:ipums* :results silent
