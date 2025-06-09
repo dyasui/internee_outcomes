@@ -710,8 +710,9 @@ read_dta(file="data/all_internees.dta") |>
 |---|
 
 ** Age Distribution
-#+begin_src R :exports results :results graphics file :file figures/internee-age_plot.png
+#+begin_src R :exports results :results graphics file :file figures/internee-age_plot.pdf
 library(paletteer)
+library(haven)
 read_dta(file="data/all_internees.dta") |>
   filter(!is.na(camp)) |>
   mutate(age = 1942 -birthyr) |>
@@ -732,4 +733,4 @@ read_dta(file="data/all_internees.dta") |>
 #+end_src
 
 #+RESULTS:
-[[file:figures/internee-age_plot.png]]
+[[file:figures/internee-age_plot.pdf]]

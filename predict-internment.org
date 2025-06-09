@@ -18,17 +18,23 @@ However, because my target sample of census respondents were only asked about th
 
 The estimator for the true internment status of a census respondent is:
 
-
+$$
 \begin{equation}
 \hat{E}[I]_{zc} =
 \frac{n(i | z_i=z, ~ c_{i}^{42}=c)}{n(j | z_j=z, ~ c_{j}^{40}=c)}}
 \end{equation}
+$$
 
 This will produce a biased estimate of true internment status if there were unobserved changes in population in each county between 1940 and 1942. For example, for a county that experienced a net outflow of residents, then the ratio of residents in 1940 vs 1942 would be greater than 1 and we would have an estimated internment probability that overstates the likelihood of anyone who lived in that county in 1940 would be interned.
 
 One source of differences between the number of 1940 residents and the number of internees who came from each county is that the Army initially allowed Japanese persons to choose to move out of the exclusion areas before they gathered the remaining people into assembly centers.
 
-** Voluntary Migration Rates
+- $Pr(z_i,c_i^{40}|I_i=1)$ : proportion of internees with in each demographic group
+
+- $Pr(I_i=1)$ : Fraction of internees out of entire 1940 Japanese population
+
+- $Pr(z_i,c_i^{40})$: proportion of Japanese Americans in each demographic group in 1940 census
+** TODO Incorporate Voluntary Migration Rates
 The Final Report from DeWitt records the number of Japanese Americans who chose to voluntarily relocate away from the West Coast prior to the orders to relocate to Assembly Centers.
 
 #+begin_src R :colnames yes
@@ -89,36 +95,6 @@ read_csv("data/WDC-voluntary-migration.csv")
 | Washington | Pierce          |    56 |   26 |     30 |
 | Washington | Thurston        |     6 |    2 |      4 |
 | Washington | Yakima          |     7 |    4 |      3 |
-** $Pr(z_i,c_i^{40}|I_i=1)$ : proportion of internees with in each demographic group
-For the time-invariant $z_i$ characteristics, I use the internees recorded county of residence, sex, birth year, birthplace, and race.
-These internee demographic groups are save in the file =data/internment_groups.csv=.
-#+begin_src R :results silent
-# proportion of each demographic group in internee population
-pr_z_I <- read_csv("data/internment_groups.csv")
-#+end_src
-
-** $Pr(I_i=1)$ : Fraction of internees out of entire 1940 Japanese population
-$$\frac{\text{number in WRA file}}{\text{number of JA in 1940 full-count census}}$$
-There are a total of 126,701 individuals with a reported race of Japanese in the full-count 1940 census.
-In the WRA records, there are 109,518 names of interned individuals.
-However, of those 83 are reported as White and 920 are missing a race category.
-Therefore, I use 108,525 as the numerator of the fraction above.
-$\hat{E}[I_i] = \frac{108,525}{126,701} = 0.856544$
-#+begin_src R
-# proportion of 1940 Japanese population interned
-pr_I <- 108525/126701
-#+end_src
-
-#+RESULTS:
-: 0.8565441472443
-
-** $Pr(z_i,c_i^{40})$: proportion of Japanese Americans in each demographic group in 1940 census
-#+begin_src R :results silent
-# proportion of each demographic group in 1940 Japanese population
-pr_z <- read_csv("data/ja_pop_groups.csv")
-#+end_src
-
-#+RESULTS:
 ** Predicted Interment Status Estimator
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment*
@@ -145,6 +121,12 @@ predict_internment <- function(census_1940, internees="data/all_internees.dta", 
     # AK, HI don't have census data, so drop them here
     filter(!STATE %in% c("Alaska", "Hawaii"))
 
+  # Count by group in internee data
+  int_grp <- data_int |>
+    group_by(across(all_of(vars))) |>
+    summarise(n_i = n(), .groups = "drop")
+  
+  # Join and calculate fraction
   # Check required columns
   missing_census <- setdiff(vars, colnames(census_1940))
   if (length(missing_census) > 0) {
@@ -157,12 +139,6 @@ predict_internment <- function(census_1940, internees="data/all_internees.dta", 
     group_by(across(all_of(vars))) |>
     summarise(n_j=n(), .groups = "drop")
 
-  # Count by group in internee data
-  int_grp <- data_int |>
-    group_by(across(all_of(vars))) |>
-    summarise(n_i = n(), .groups = "drop")
-  
-  # Join and calculate fraction
   combined <- pop_grp |>
     full_join(int_grp, by = vars) |>
     mutate(
@@ -180,9 +156,7 @@ predict_internment <- function(census_1940, internees="data/all_internees.dta", 
 
 #+RESULTS:
 
-
-
-Trying to find the best combination of grouping variables:
+** Trying to find the best combination of grouping variables:
 #+begin_src R 
 library(tidyverse)
 library(dbplyr)
@@ -228,6 +202,24 @@ ggplot(probs_trials, aes(x=p_ij, group=trial, fill=trial)) +
 #+RESULTS:
 [[file:figures/test-p_ij.png]]
 
-#+begin_src R :results silent
-write_csv(dt, file = "data/pr_intern_status.csv")
+** Predicted Internment Status by County and Sex
+#+begin_src R :session *R:internment*
+library(tidyverse)
+library(dbplyr)
+library(duckdb)
+# data extract file
+db <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
+tbl = "ipums_microdata"
+linking_vars <- c("STATEFIP", "COUNTYICP", "SEX")
+
+census_dat <- tbl(db,tbl) |>
+  filter(RACE==5, YEAR==1940) |>
+  select(all_of(linking_vars)) |>
+  collect()
+dbDisconnect(db)
+
+intern_prob <- census_dat |>
+  predict_internment()
 #+end_src
+
+#+RESULTS:

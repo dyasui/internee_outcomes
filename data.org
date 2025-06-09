@@ -309,7 +309,6 @@ The WDC's final exclusion area included the western halves of Washington and Ore
 #+name: fig:WDC-evac-area
 [[./figures/external/WDC-evac-areas_map.png]]
 
- 
 * County GIS Files
 ** Historical Counties
 :PROPERTIES:
@@ -464,7 +463,6 @@ For this project, the files needed are located in the =data/= subdirectory:
 │   └── ...
 #+end_example
 
-
 ** County-Level Wages
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment*
@@ -516,11 +514,11 @@ write_csv(county_data, "data/county_stats.csv")
 #+end_src
 
 #+RESULTS:
-* MLP Crosswalk Links
+* MLP Linked Census Data
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:ipums* :results silent
 :END:
-
+** Database Reading
 The original micro data files from IPUMS are too large to fit in memory,
 and the MLP v1.2 linkages are provided as crosswalks which have to be joined to the data.
 I first read both crosswalks and extract microdata into a local database file
@@ -543,7 +541,6 @@ tbl <- "ipums_microdata"
 cw45_csv <- "data/fullcount_census/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv"
 #+end_src
 
-** Database Reading
 To manage how much memory is used at once, I read the ddi file in chunks to the database as its own table.
 I also read the crosswalks in as separate tables in the database.
 
@@ -569,7 +566,6 @@ read_ipums_micro_chunked(
 duckdb_read_csv(database, "mlp_crosswalks", cw45_csv)
 #+end_src
 
-* Data Cleaning
 ** MLP Linked Microrecords Sample
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment* :results silent
@@ -674,7 +670,7 @@ results <- left_join(results, results_wide, by = "id")
 
 #+name: write-linked-sample
 #+begin_src R :exports results
-readr::write_csv(results, file = "data/linked_census_sample.csv")
+readr::write_csv(results, file = "data/mlp_sample.csv")
 #+end_src
 
 This initial procedure leaves 11,079 linked MLP individuals across all MLP records of anyone reported as Japanese or Chinese American between the 1940 and 1950 census.
@@ -736,47 +732,102 @@ readr::write_csv(mlp_panel, file = "data/linked_wage_panel.csv")
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment*
 :END:
-#+begin_src R
-library(tidyverse)
-library(haven)
-mlp_panel <- read_csv("data/linked_census_sample.csv")
-intrn_stat <- read_csv("data/pr_intern_status.csv")
 
-# assign predicted internment status by 1940 location and demographic group
-df <- left_join(mlp_panel, intrn_stat,
-                        by = c(
-                          "STATEFIP_1940"="STATEFIP",
-                          "COUNTYICP_1940"="COUNTYICP",
-                          "SEX"="sex",
-                          "BIRTHYR"="birthyr",
-                          "BPL"="birthplace"
-                          )) |>
-  # assign did internment status
-  mutate(
-    pr_intern = replace_na(pr_intern, 0),
-    race = case_when(RACE == 4 ~ "Chinese",
-                     RACE == 5 ~ "Japanese"),
-    post = ifelse(YEAR==1950, 1, 0), # post-treatment
-    treat = case_when(
-      race == "Chinese" ~ 0,
-      pr_intern >= 0.9 & race == "Japanese" ~ 1, #treatment group
-      pr_intern == 0 & race == "Japanese" ~ 0, #treatment group
-      .default = NA
-    ),
-    did = treat * post # treatment status
+#+begin_src R
+predict_internment <- function(census_1940, internees="data/all_internees.dta", vars=c("STATEFIP", "COUNTYICP", "SEX", "RACE")) {
+  library(tidyverse)
+  library(dbplyr)
+ 
+  # Ensure internee_data is a tibble; read if character
+  if (is.character(internees)) {
+    internees <- haven::read_dta(internees)
+  }
+  # Cleanup internee data
+  data_int <- internees |>
+    rename_with(toupper) |>
+    mutate(STATEFIP = as.integer(NHGISST)/10,
+           COUNTYICP = as.integer(NHGISCTY),
+           across(RACE:FATH_OCC_ABROAD, as.numeric)) |>
+    filter(!is.na(STATE),!is.na(COUNTY)) |>
+    # AK, HI don't have census data, so drop them here
+    filter(!STATE %in% c("Alaska", "Hawaii"))
+
+  # Check required columns
+  missing_census <- setdiff(vars, colnames(census_1940))
+  if (length(missing_census) > 0) {
+    stop("Census data is missing required columns: ",
+         paste(missing_census, collapse = ", "))
+  }
+
+  # Count by group in census
+  pop_grp <- census_1940 |>
+    group_by(across(all_of(vars))) |>
+    summarise(n_j=n(), .groups = "drop")
+
+  # Count by group in internee data
+  int_grp <- data_int |>
+    group_by(across(all_of(vars))) |>
+    summarise(n_i = n(), .groups = "drop")
+  
+  # Join and calculate fraction
+  combined <- pop_grp |>
+    full_join(int_grp, by = vars) |>
+    mutate(
+      n_i = replace_na(n_i, 0),
+      p_ij = n_i / n_j,
+      p_ij = replace_na(p_ij, 0),
     )
-## write_csv(df, "data/mlp_ja-ch_sample.csv.csv")
+
+  # Attach back to census data
+  census_augmented <- census_1940 |>
+    left_join(combined, by = vars)
+
+  return(census_augmented)
+}
 #+end_src
 
 #+RESULTS:
 
-#+begin_src R :exports results :results graphics file :file figures/pr_intern-linked-sample_plot.png :width 16 :height 12 :res 200 :units cm
-df |> filter(YEAR==1940) |>
-ggplot() +
-  geom_histogram(aes(x=pr_intern), fill = "blue", alpha = 0.5) +
-  ## xlim(0,2) +
-  theme_minimal()
+#+begin_src R
+library(tidyverse)
+library(haven)
+mlp_panel <- read_csv("data/linked_census_sample.csv") |>
+  pivot_wider(id_cols = id, names_from = YEAR, values_from = STATEFIP:generation)
 #+end_src
+
+#+RESULTS:
+
+#+begin_src R
+library(dbplyr)
+library(duckdb)
+# data extract file
+db <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
+tbl = "ipums_microdata"
+linking_vars <- c("STATEFIP", "COUNTYICP", "SEX", "RACE")
+
+census_dat <- tbl(db,tbl) |>
+  filter(YEAR==1940) |>
+  select(linking_vars) |>
+  collect()
+dbDisconnect(db)
+
+intern_prob <- census_dat |>
+  predict_internment(vars=linking_vars) |>
+  group_by(STATEFIP, COUNTYICP, SEX, RACE) |> 
+  distinct(p_ij)
+
+mlp_panel_linked <- mlp_panel |>
+  left_join(intern_prob, by = c("STATEFIP_1940"="STATEFIP",
+            "COUNTYICP_1940"="COUNTYICP", "SEX_1940"="SEX",
+            "RACE_1940"="RACE"))
+#+end_src
+
+Save the linked analysis sample to a csv.
+#+begin_src R
+write_csv(mlp_panel_linked, file = "data/linked_sample.csv")
+#+end_src
+
+#+RESULTS:
 
 #+RESULTS:
 [[file:figures/pr_intern-linked-sample_plot.png]]
