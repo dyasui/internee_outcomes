@@ -1,0 +1,233 @@
+* Predicted Internment Status
+#+begin_src R :results silent
+library(tidyverse)
+#+end_src
+
+The WRA records give a complete list of all individuals who were interned during World War II.
+However, if we as researchers of the impact of internment want to know more about the migration choices or economic outcomes faced by these individuals we need to match these individuals with data from other sources (in my case the full-count census).
+
+To determine the probability that someone who shows up in the census is the same as one of the internees, I borrow Jaime Arellano-Bover's method of estimating predicted internment status using Bayes Rule.
+The probability that an individual $i$ in the demographic group $z$ who lived in county $c$ in 1942 was interned ($Pr(I_{i}=1|z_i,c_{i})$
+could be determined from the proportion of the whole population who were interned ($Pr(I_{i}=1)},
+the proportion of the population with demographics $z$ who lived in county $c$ in 1942 ($Pr(z_i,c_{i}^{1942}$),
+and the probability of a known internee having the same demographics and county in 1942 ($Pr(z_i,c_i^{42}|I_i=1)$).
+
+$$Pr(I_i=1|z_i,c_i^{42}) = \frac{Pr(z_i,c_i^{42}|I_i=1) \cdot Pr(I_i=1)}{Pr(z_i,c_i^{42})}$$
+
+However, because my target sample of census respondents were only asked about their county of residence in the year of the census and not in 1942, $c_i^{1940}$ is used as a proxy for census respondents' 1942 locations.
+
+The estimator for the true internment status of a census respondent is:
+
+
+\begin{equation}
+\hat{E}[I]_{zc} =
+\frac{n(i | z_i=z, ~ c_{i}^{42}=c)}{n(j | z_j=z, ~ c_{j}^{40}=c)}}
+\end{equation}
+
+This will produce a biased estimate of true internment status if there were unobserved changes in population in each county between 1940 and 1942. For example, for a county that experienced a net outflow of residents, then the ratio of residents in 1940 vs 1942 would be greater than 1 and we would have an estimated internment probability that overstates the likelihood of anyone who lived in that county in 1940 would be interned.
+
+One source of differences between the number of 1940 residents and the number of internees who came from each county is that the Army initially allowed Japanese persons to choose to move out of the exclusion areas before they gathered the remaining people into assembly centers.
+
+** Voluntary Migration Rates
+The Final Report from DeWitt records the number of Japanese Americans who chose to voluntarily relocate away from the West Coast prior to the orders to relocate to Assembly Centers.
+
+#+begin_src R :colnames yes
+library(tidyverse)
+read_csv("data/WDC-voluntary-migration.csv")
+#+end_src
+
+#+RESULTS:
+| state      | county          | Total | Male | Female |
+|------------+-----------------+-------+------+--------|
+| Arizona    | Maricopa        |    58 |   34 |     24 |
+| California | Alameda         |   263 |  142 |    121 |
+| California | Butte           |     7 |    5 |      2 |
+| California | Contra Costa    |    18 |    8 |     10 |
+| California | Fresno          |   153 |   75 |     78 |
+| California | Imperial        |    82 |   35 |     47 |
+| California | Kern            |     7 |    5 |      2 |
+| California | Kings           |     3 |    1 |      2 |
+| California | Los Angeles     |  1969 | 1080 |    889 |
+| California | Marin           |     8 |    4 |      4 |
+| California | Merced          |     6 |    2 |      4 |
+| California | Monterey        |   234 |  143 |     91 |
+| California | Orange          |    88 |   54 |     34 |
+| California | Placer          |     2 |    1 |      1 |
+| California | Riverside       |    10 |    4 |      6 |
+| California | Sacramento      |    24 |   10 |     14 |
+| California | San Benito      |     6 |    4 |      2 |
+| California | San Bernardino  |    13 |    9 |      4 |
+| California | San Diego       |    61 |   31 |     30 |
+| California | San Francisco   |   207 |   95 |    112 |
+| California | San Joaquin     |    21 |   10 |     11 |
+| California | San Luis Obispo |    11 |    5 |      6 |
+| California | San Mateo       |   139 |   67 |     72 |
+| California | Santa Barbara   |   205 |  116 |     89 |
+| California | Santa Clara     |   443 |  231 |    212 |
+| California | Santa Cruz      |    82 |   44 |     38 |
+| California | Sonoma          |    17 |    9 |      8 |
+| California | Stanislaus      |     8 |    4 |      4 |
+| California | Tulare          |    64 |   44 |     20 |
+| California | Tuolumne        |    20 |   15 |      5 |
+| California | Ventura         |    29 |   14 |     15 |
+| California | Yolo            |     2 |    2 |        |
+| California | Yuba            |     1 |      |      1 |
+| Oregon     | Clatsop         |     1 |    1 |        |
+| Oregon     | Hood River      |    13 |    9 |      4 |
+| Oregon     | Lane            |     4 |    2 |      2 |
+| Oregon     | Multnomah       |    54 |   24 |     30 |
+| Oregon     | Polk            |     5 |    2 |      3 |
+| Oregon     | Washington      |    50 |   32 |     18 |
+| Oregon     | Yamhill         |     2 |      |      2 |
+| Washington | Chelan          |     2 |    1 |      1 |
+| Washington | Clark           |     5 |    3 |      2 |
+| Washington | King            |   403 |  183 |    220 |
+| Washington | Kitsap          |     6 |    4 |      2 |
+| Washington | Lewis           |     6 |    1 |      5 |
+| Washington | Okanogan        |     3 |    3 |        |
+| Washington | Pacific         |     5 |    2 |      3 |
+| Washington | Pierce          |    56 |   26 |     30 |
+| Washington | Thurston        |     6 |    2 |      4 |
+| Washington | Yakima          |     7 |    4 |      3 |
+** $Pr(z_i,c_i^{40}|I_i=1)$ : proportion of internees with in each demographic group
+For the time-invariant $z_i$ characteristics, I use the internees recorded county of residence, sex, birth year, birthplace, and race.
+These internee demographic groups are save in the file =data/internment_groups.csv=.
+#+begin_src R :results silent
+# proportion of each demographic group in internee population
+pr_z_I <- read_csv("data/internment_groups.csv")
+#+end_src
+
+** $Pr(I_i=1)$ : Fraction of internees out of entire 1940 Japanese population
+$$\frac{\text{number in WRA file}}{\text{number of JA in 1940 full-count census}}$$
+There are a total of 126,701 individuals with a reported race of Japanese in the full-count 1940 census.
+In the WRA records, there are 109,518 names of interned individuals.
+However, of those 83 are reported as White and 920 are missing a race category.
+Therefore, I use 108,525 as the numerator of the fraction above.
+$\hat{E}[I_i] = \frac{108,525}{126,701} = 0.856544$
+#+begin_src R
+# proportion of 1940 Japanese population interned
+pr_I <- 108525/126701
+#+end_src
+
+#+RESULTS:
+: 0.8565441472443
+
+** $Pr(z_i,c_i^{40})$: proportion of Japanese Americans in each demographic group in 1940 census
+#+begin_src R :results silent
+# proportion of each demographic group in 1940 Japanese population
+pr_z <- read_csv("data/ja_pop_groups.csv")
+#+end_src
+
+#+RESULTS:
+** Predicted Interment Status Estimator
+:PROPERTIES:
+:HEADER-ARGS:R: :session *R:internment*
+:END:
+My version of the estimator outlined is a function which takes in internee data and 1940 census data to calculate predicted internment probability.
+I allow for using different demographic variables to create groups to test different specifications.
+
+#+begin_src R :tangle R/predict_internment.R
+predict_internment <- function(census_1940, internees="data/all_internees.dta", vars=c("STATEFIP", "COUNTYICP", "SEX")) {
+  library(tidyverse)
+  library(dbplyr)
+ 
+  # Ensure internee_data is a tibble; read if character
+  if (is.character(internees)) {
+    internees <- haven::read_dta(internees)
+  }
+  # Cleanup internee data
+  data_int <- internees |>
+    rename_with(toupper) |>
+    mutate(STATEFIP = as.integer(NHGISST)/10,
+           COUNTYICP = as.integer(NHGISCTY),
+           across(RACE:FATH_OCC_ABROAD, as.numeric)) |>
+    filter(!is.na(STATE),!is.na(COUNTY),RACE==5) |>
+    # AK, HI don't have census data, so drop them here
+    filter(!STATE %in% c("Alaska", "Hawaii"))
+
+  # Check required columns
+  missing_census <- setdiff(vars, colnames(census_1940))
+  if (length(missing_census) > 0) {
+    stop("Census data is missing required columns: ",
+         paste(missing_census, collapse = ", "))
+  }
+
+  # Count by group in census
+  pop_grp <- census_1940 |>
+    group_by(across(all_of(vars))) |>
+    summarise(n_j=n(), .groups = "drop")
+
+  # Count by group in internee data
+  int_grp <- data_int |>
+    group_by(across(all_of(vars))) |>
+    summarise(n_i = n(), .groups = "drop")
+  
+  # Join and calculate fraction
+  combined <- pop_grp |>
+    full_join(int_grp, by = vars) |>
+    mutate(
+      n_i = replace_na(n_i, 0),
+      p_ij = n_i / n_j
+    )
+
+  # Attach back to census data
+  census_augmented <- census_1940 |>
+    left_join(combined, by = vars)
+
+  return(census_augmented)
+}
+#+end_src
+
+#+RESULTS:
+
+
+
+Trying to find the best combination of grouping variables:
+#+begin_src R 
+library(tidyverse)
+library(dbplyr)
+library(duckdb)
+# data extract file
+db <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
+tbl = "ipums_microdata"
+
+census_dat <- tbl(db,tbl) |>
+  filter(RACE==5, YEAR==1940) |>
+  select("STATEFIP", "COUNTYICP", "SEX", "BIRTHYR", "BPL",
+         "BPL_MOM", "BPL_POP", "NATIVITY") |>
+  collect()
+dbDisconnect(db)
+
+probs_scg <- census_dat |>
+  predict_internment(vars=c("STATEFIP","COUNTYICP","SEX")) |>
+  mutate(trial="county:sex") |>
+  select(trial, p_ij)
+probs_scgb <- census_dat |>
+  predict_internment(vars=c("STATEFIP","COUNTYICP","SEX","BPL")) |>
+  mutate(trial="county:sex:bpl") |>
+  select(trial, p_ij)
+probs_scgyb <- census_dat |>
+  predict_internment(vars=c("STATEFIP","COUNTYICP","SEX","BIRTHYR","BPL")) |>
+  mutate(trial="county:sex:birthyr:bpl") |>
+  select(trial, p_ij)
+probs_sgyb <- census_dat |>
+  predict_internment(vars=c("STATEFIP","SEX","BIRTHYR","BPL")) |>
+  mutate(trial="state:sex:birthyr:bpl") |>
+  select(trial, p_ij)
+probs_trials <- bind_rows(probs_scg,probs_scgb,probs_scgyb,probs_sgyb)
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :results graphics file :file figures/test-p_ij.png
+ggplot(probs_trials, aes(x=p_ij, group=trial, fill=trial)) +
+  geom_density(alpha=0.5) +
+  xlim(0,2)
+#+end_src
+
+#+RESULTS:
+[[file:figures/test-p_ij.png]]
+
+#+begin_src R :results silent
+write_csv(dt, file = "data/pr_intern_status.csv")
+#+end_src

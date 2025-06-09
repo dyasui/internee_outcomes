@@ -1,7 +1,7 @@
 #+toc: 2
 #+bibliography: main.bib
 
-#+begin_src mermaid :file data-plan.svg :tangle no
+#+begin_src mermaid :file data-plan.svg
 flowchart TD
 %% Data sources
     nara@{ shape: hex, label: "🌐 National Archives"};
@@ -49,7 +49,7 @@ flowchart TD
 
 * Helper Functions and Definitions
 ** as_nhgis_code
-This function takes 
+This function converts between FIPS and ICPSR geography codes to NHGIS codes.
 #+begin_src R
 as_nhgisst <- function(STATEFIP) {
   NHGISST = str_pad(string = STATEFIP*10, width = 3, side = "left", pad = "0")
@@ -280,7 +280,7 @@ The WDC's final exclusion area included the western halves of Washington and Ore
 * County GIS Files
 ** Historical Counties
 :PROPERTIES:
-:header-args:R: :session *R:downloads* :tangle R/download-nhgis.R
+:header-args:R: :session *R:downloads*
 :END:
 
 I download shapefiles for county boundaries in 1940 and 1950 from the [[https://www.nhgis.org/][National Historical Geographic Information System]] (NHGIS).
@@ -320,14 +320,10 @@ nhgis_codes <- read_ipums_sf(nhgis_shp, bind_multiple = T) |>
 
 #+RESULTS:
 
-#+begin_src R
-
-#+end_src
-
 * Full Count Census
 ** IPUMS API Download
 :PROPERTIES:
-:header-args:R: :session *R:ipums* :tangle R/download-ipums.R :colnames yes :export no
+:header-args:R: :session *R:ipums* :colnames yes :export no
 :END:
 #+name: load-packages
 #+begin_src R :results silent
@@ -438,7 +434,7 @@ For this project, the files needed are located in the =data/= subdirectory:
 
 ** County-Level Wages
 :PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment* :tangle R/county-data.R
+:HEADER-ARGS:R: :session *R:internment*
 :END:
 #+begin_src R
 library(ipumsr)
@@ -492,7 +488,7 @@ readr::write_csv(JApop_groups, file = "data/ja_pop_groups.csv")
 
 * MLP Crosswalk Links
 :PROPERTIES:
-:HEADER-ARGS:R: :session *R:ipums* :tangle R/write-db.R :results silent
+:HEADER-ARGS:R: :session *R:ipums* :results silent
 :END:
 
 The original micro data files from IPUMS are too large to fit in memory,
@@ -521,7 +517,6 @@ cw45_csv <- "data/fullcount_census/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv
 To manage how much memory is used at once, I read the ddi file in chunks to the database as its own table.
 I also read the crosswalks in as separate tables in the database.
 
-#+name: write-database
 #+begin_src R :eval false
 # read in ipums extract to database in chunks
 read_ipums_micro_chunked(
@@ -544,156 +539,10 @@ read_ipums_micro_chunked(
 duckdb_read_csv(database, "mlp_crosswalks", cw45_csv)
 #+end_src
 
-* Predicted Internment Status
-
-#+begin_src R :results silent
-library(tidyverse)
-#+end_src
-
-The WRA records give a complete list of all individuals who were interned during World War II.
-However, if we as researchers of the impact of internment want to know more about the migration choices or economic outcomes faced by these individuals we need to match these individuals with data from other sources (in my case the full-count census).
-
-To determine the probability that someone who shows up in the census is the same as one of the internees, I borrow Jaime Arellano-Bover's method of estimating predicted internment status using Bayes Rule.
-The probability that an individual $i$ in the demographic group $z$ who lived in county $c$ in 1942 was interned ($Pr(I_{i}=1|z_i,c_{i})$
-could be determined from the proportion of the whole population who were interned ($Pr(I_{i}=1)},
-the proportion of the population with demographics $z$ who lived in county $c$ in 1942 ($Pr(z_i,c_{i}^{1942}$),
-and the probability of a known internee having the same demographics and county in 1942 ($Pr(z_i,c_i^{42}|I_i=1)$).
-
-$$Pr(I_i=1|z_i,c_i^{42}) = \frac{Pr(z_i,c_i^{42}|I_i=1) \cdot Pr(I_i=1)}{Pr(z_i,c_i^{42})}$$
-
-However, because my target sample of census respondents were only asked about their county of residence in the year of the census and not in 1942, $c_i^{1940}$ is used as a proxy for census respondents' 1942 locations.
-
-The estimator for the true internment status of a census respondent is:
-
-
-\begin{equation}
-\hat{E}[I]_{zc} =
-\frac{n(i | z_i=z, ~ c_{i}^{42}=c)}{n(j | z_j=z, ~ c_{j}^{40}=c)}}
-\end{equation}
-
-This will produce a biased estimate of true internment status if there were unobserved changes in population in each county between 1940 and 1942. For example, for a county that experienced a net outflow of residents, then the ratio of residents in 1940 vs 1942 would be greater than 1 and we would have an estimated internment probability that overstates the likelihood of anyone who lived in that county in 1940 would be interned.
-
-One source of differences between the number of 1940 residents and the number of internees who came from each county is that the Army initially allowed Japanese persons to choose to move out of the exclusion areas before they gathered the remaining people into assembly centers.
-
-** Voluntary Migration Rates
-The Final Report from DeWitt records the number of Japanese Americans who chose to voluntarily relocate away from the West Coast prior to the orders to relocate to Assembly Centers.
-
-#+begin_src R :colnames yes
-library(tidyverse)
-read_csv("data/WDC-voluntary-migration.csv")
-#+end_src
-
-#+RESULTS:
-| state      | county          | Total | Male | Female |
-|------------+-----------------+-------+------+--------|
-| Arizona    | Maricopa        |    58 |   34 |     24 |
-| California | Alameda         |   263 |  142 |    121 |
-| California | Butte           |     7 |    5 |      2 |
-| California | Contra Costa    |    18 |    8 |     10 |
-| California | Fresno          |   153 |   75 |     78 |
-| California | Imperial        |    82 |   35 |     47 |
-| California | Kern            |     7 |    5 |      2 |
-| California | Kings           |     3 |    1 |      2 |
-| California | Los Angeles     |  1969 | 1080 |    889 |
-| California | Marin           |     8 |    4 |      4 |
-| California | Merced          |     6 |    2 |      4 |
-| California | Monterey        |   234 |  143 |     91 |
-| California | Orange          |    88 |   54 |     34 |
-| California | Placer          |     2 |    1 |      1 |
-| California | Riverside       |    10 |    4 |      6 |
-| California | Sacramento      |    24 |   10 |     14 |
-| California | San Benito      |     6 |    4 |      2 |
-| California | San Bernardino  |    13 |    9 |      4 |
-| California | San Diego       |    61 |   31 |     30 |
-| California | San Francisco   |   207 |   95 |    112 |
-| California | San Joaquin     |    21 |   10 |     11 |
-| California | San Luis Obispo |    11 |    5 |      6 |
-| California | San Mateo       |   139 |   67 |     72 |
-| California | Santa Barbara   |   205 |  116 |     89 |
-| California | Santa Clara     |   443 |  231 |    212 |
-| California | Santa Cruz      |    82 |   44 |     38 |
-| California | Sonoma          |    17 |    9 |      8 |
-| California | Stanislaus      |     8 |    4 |      4 |
-| California | Tulare          |    64 |   44 |     20 |
-| California | Tuolumne        |    20 |   15 |      5 |
-| California | Ventura         |    29 |   14 |     15 |
-| California | Yolo            |     2 |    2 |        |
-| California | Yuba            |     1 |      |      1 |
-| Oregon     | Clatsop         |     1 |    1 |        |
-| Oregon     | Hood River      |    13 |    9 |      4 |
-| Oregon     | Lane            |     4 |    2 |      2 |
-| Oregon     | Multnomah       |    54 |   24 |     30 |
-| Oregon     | Polk            |     5 |    2 |      3 |
-| Oregon     | Washington      |    50 |   32 |     18 |
-| Oregon     | Yamhill         |     2 |      |      2 |
-| Washington | Chelan          |     2 |    1 |      1 |
-| Washington | Clark           |     5 |    3 |      2 |
-| Washington | King            |   403 |  183 |    220 |
-| Washington | Kitsap          |     6 |    4 |      2 |
-| Washington | Lewis           |     6 |    1 |      5 |
-| Washington | Okanogan        |     3 |    3 |        |
-| Washington | Pacific         |     5 |    2 |      3 |
-| Washington | Pierce          |    56 |   26 |     30 |
-| Washington | Thurston        |     6 |    2 |      4 |
-| Washington | Yakima          |     7 |    4 |      3 |
-** $Pr(z_i,c_i^{40}|I_i=1)$ : proportion of internees with in each demographic group
-For the time-invariant $z_i$ characteristics, I use the internees recorded county of residence, sex, birth year, birthplace, and race.
-These internee demographic groups are save in the file =data/internment_groups.csv=.
-#+begin_src R :results silent
-# proportion of each demographic group in internee population
-pr_z_I <- read_csv("data/internment_groups.csv")
-#+end_src
-
-** $Pr(I_i=1)$ : Fraction of internees out of entire 1940 Japanese population
-$$\frac{\text{number in WRA file}}{\text{number of JA in 1940 full-count census}}$$
-There are a total of 126,701 individuals with a reported race of Japanese in the full-count 1940 census.
-In the WRA records, there are 109,518 names of interned individuals.
-However, of those 83 are reported as White and 920 are missing a race category.
-Therefore, I use 108,525 as the numerator of the fraction above.
-$\hat{E}[I_i] = \frac{108,525}{126,701} = 0.856544$
-#+begin_src R
-# proportion of 1940 Japanese population interned
-pr_I <- 108525/126701
-#+end_src
-
-#+RESULTS:
-: 0.8565441472443
-
-** $Pr(z_i,c_i^{40})$: proportion of Japanese Americans in each demographic group in 1940 census
-#+begin_src R :results silent
-# proportion of each demographic group in 1940 Japanese population
-pr_z <- read_csv("data/ja_pop_groups.csv")
-#+end_src
-
-#+RESULTS:
-** Predicted Interment Status Estimator
-:PROPERTIES:
-:HEADER-ARGS:R: :tangle R/predict_internment.R :session *R:internment*
-:END:
-My version of the estimator outlined is a function which takes in internee data and 1940 census data to calculate predicted internment probability.
-I allow for using different demographic variables to create groups to test different specifications.
-
-#+begin_src R :results silent
-dt <- left_join(pr_z_I, pr_z,
-                by = c("NHGISST", "NHGISCTY",
-                       "sex"="SEX", "birthyr"="BIRTHYR", "birthplace"="BPL"),
-                suffix = c("_z_I","_z")) |>
-  mutate(
-    ## pr_intern = (p_z_I * pr_I) / p_z ,
-    pr_intern = n_z_I / n_z # should be mathematically the same as above
-  )
-#+end_src
-
-#+RESULTS:
-
-#+begin_src R :results silent
-write_csv(dt, file = "data/pr_intern_status.csv")
-#+end_src
-
 * Data Cleaning
 ** MLP Linked Microrecords Sample
 :PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment* :tangle R/link-census.R :results silent
+:HEADER-ARGS:R: :session *R:internment* :results silent
 :END:
 
 #+begin_src R
@@ -855,7 +704,7 @@ readr::write_csv(mlp_panel, file = "data/linked_wage_panel.csv")
 #+end_src
 ** Linked Internee Sample
 :PROPERTIES:
-:HEADER-ARGS:R: :tangle R/collect_sample.R :session *R:internment*
+:HEADER-ARGS:R: :session *R:internment*
 :END:
 #+begin_src R
 library(tidyverse)
@@ -904,7 +753,7 @@ ggplot() +
 
 * TODO Japanese American Redress Verification Information System (JARVIS) Files
 :PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment* :tangle no :results silent
+:HEADER-ARGS:R: :session *R:internment* :results silent
 :END:
 
 [cite:@departmentofjustice.civilrightsdivision.12/9/1957-JapaneseAmericanRedress2006]

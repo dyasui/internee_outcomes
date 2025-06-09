@@ -1,36 +1,49 @@
-library(tidyverse)
+predict_internment <- function(census_1940, internees="data/all_internees.dta", vars=c("STATEFIP", "COUNTYICP", "SEX")) {
+  library(tidyverse)
+  library(dbplyr)
+ 
+  # Ensure internee_data is a tibble; read if character
+  if (is.character(internees)) {
+    internees <- haven::read_dta(internees)
+  }
+  # Cleanup internee data
+  data_int <- internees |>
+    rename_with(toupper) |>
+    mutate(STATEFIP = as.integer(NHGISST)/10,
+           COUNTYICP = as.integer(NHGISCTY),
+           across(RACE:FATH_OCC_ABROAD, as.numeric)) |>
+    filter(!is.na(STATE),!is.na(COUNTY),RACE==5) |>
+    # AK, HI don't have census data, so drop them here
+    filter(!STATE %in% c("Alaska", "Hawaii"))
 
-# proportion of each demographic group in internee population
-pr_z_I <- read_csv("data/internment_groups.csv")
+  # Check required columns
+  missing_census <- setdiff(vars, colnames(census_1940))
+  if (length(missing_census) > 0) {
+    stop("Census data is missing required columns: ",
+         paste(missing_census, collapse = ", "))
+  }
 
-# proportion of 1940 Japanese population interned
-pr_I <- 108525/126701
+  # Count by group in census
+  pop_grp <- census_1940 |>
+    group_by(across(all_of(vars))) |>
+    summarise(n_j=n(), .groups = "drop")
 
-# proportion of each demographic group in 1940 Japanese population
-pr_z <- read_csv("data/ja_pop_groups.csv")
+  # Count by group in internee data
+  int_grp <- data_int |>
+    group_by(across(all_of(vars))) |>
+    summarise(n_i = n(), .groups = "drop")
+  
+  # Join and calculate fraction
+  combined <- pop_grp |>
+    full_join(int_grp, by = vars) |>
+    mutate(
+      n_i = replace_na(n_i, 0),
+      p_ij = n_i / n_j
+    )
 
-dt <- left_join(pr_z_I, pr_z,
-                by = c("NHGISST", "NHGISCTY",
-                       "sex"="SEX", "birthyr"="BIRTHYR", "birthplace"="BPL"),
-                suffix = c("_z_I","_z")) |>
-  mutate(
-    ## pr_intern = (p_z_I * pr_I) / p_z ,
-    pr_intern = n_z_I / n_z
-  )
+  # Attach back to census data
+  census_augmented <- census_1940 |>
+    left_join(combined, by = vars)
 
-write_csv(dt, file = "data/pr_intern_status.csv")
-
-ggplot(data = dt) +
-  geom_histogram(aes(x=pr_intern), fill = "blue", alpha = 0.5) +
-  ## geom_histogram(aes(x=pr_intern_test), fill = "green", alpha = 0.5) +
-  xlim(0,2) +
-  theme_minimal()
-
-dt |>
-  group_by(state, county) |>
-  summarise(
-    n_interned = sum(n_z_I, na.rm = T),
-    n_1940 = sum(n_z, na.rm = T),
-    prop_interned = round(n_interned / n_1940, 2)
-  ) |>
-  arrange(desc(n_interned))
+  return(census_augmented)
+}
