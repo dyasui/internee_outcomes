@@ -3,14 +3,93 @@
 :HEADER-ARGS:R: :tangle R/figures.R :session *R:internment*
 :END:
 
+#+begin_src R :results silent
+library(tidyverse)
+library(paletteer)
+library(haven)
+#+end_src
+
+#+begin_src R
+theme_internment <- function(){ 
+    font <- "Georgia"   #assign font family up front
+    
+    theme_bw() %+replace%    #replace elements we want to change
+    
+    theme(
+      
+      #grid elements
+      panel.grid.major = element_blank(),    #strip major gridlines
+      panel.grid.minor = element_blank(),    #strip minor gridlines
+      axis.ticks = element_blank(),          #strip axis ticks
+      
+      #text elements
+      plot.title = element_text(             #title
+                   family = font,            #set font family
+                   size = 20,                #set font size
+                   face = 'bold',            #bold typeface
+                   hjust = 0,                #left align
+                   vjust = 2),               #raise slightly
+      
+      plot.subtitle = element_text(          #subtitle
+                   family = font,            #font family
+                   size = 14),               #font size
+      
+      plot.caption = element_text(           #caption
+                   family = font,            #font family
+                   size = 9,                 #font size
+                   hjust = 1),               #right align
+      
+      axis.title = element_text(             #axis titles
+                   family = font,            #font family
+                   size = 10),               #font size
+      
+      axis.text = element_text(              #axis text
+                   family = font,            #axis famuly
+                   size = 9),                #font size
+      
+      axis.text.x = element_text(            #margin for axis text
+                    margin=margin(5, b = 10))
+      
+    )
+}
+#+end_src
+
+#+RESULTS:
+
+** MLP Linking
+#+begin_src R :exports results :results graphics file :file figures/mlp-wage-test.png
+read_csv("data/mlp_sample.csv") |>
+  filter(!is.na(INCWAGE)) |>
+  mutate(Year = as_factor(YEAR), Wage = INCWAGE) |>
+  ggplot(aes(x=Wage, group=Year, fill=Year)) +
+  scale_x_log10() +
+  geom_density(alpha=0.5) +
+  theme_internment() +
+  theme(legend.position = "inside",
+        legend.position.inside = c(0.1,0.9)) +
+  scale_fill_paletteer_d("MetBrewer::Juarez")
+#+end_src
+
+#+RESULTS:
+[[file:figures/mlp-wage-test.png]]
+
 ** Internment Probability 
 *** TODO Plot with pr_intern distribution among individual sample
-#+begin_src R :exports results :results graphics file :file figures/pr_intern_plot.png :width 16 :height 12 :res 200 :units cm
-ggplot(data = dt) +
-  geom_histogram(aes(x=pr_intern), fill = "blue", alpha = 0.5) +
-  ## geom_histogram(aes(x=pr_intern_test), fill = "green", alpha = 0.5) +
-  xlim(0,2) +
-  theme_minimal()
+#+begin_src R :exports results :results graphics file :file figures/pr_intern_plot.png
+read_csv("data/linked_sample.csv") |>
+  select(RACE, p_ij) |>
+  mutate(Race = case_when(as_factor(RACE) == "4" ~ "Chinese",
+                          as_factor(RACE) == "5" ~ "Japanese")
+         ) |>
+  ggplot() +
+  geom_histogram(aes(x=p_ij, fill=Race, group=Race), position = "dodge", binwidth = 0.1) +
+  geom_vline(xintercept = 0.5) +
+  xlim(-0.1,2) +
+  theme_internment() +
+  theme(legend.position = "inside",
+        legend.position.inside = c(0.9,0.9)) +
+  xlab("Internment Probability") +
+  scale_fill_paletteer_d("MetBrewer::Juarez")
 #+end_src
 
 #+RESULTS:
@@ -243,7 +322,8 @@ ggplot(data = plot_d, aes(x=BIRTHYR, group = group, fill = group)) +
 
 ** Wages
 #+begin_src R :exports results :results graphics file :file figures/internee-wage_plot.pdf
-ggplot(data = ja_pop, aes(x=INCWAGE, group = internee, fill = internee)) +
+
+ggplot(data = data, aes(x=INCWAGE, group = internee, fill = internee)) +
   geom_density(alpha = 0.5) +
   facet_wrap("YEAR") +
   scale_x_log10() +
