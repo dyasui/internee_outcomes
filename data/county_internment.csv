@@ -1,0 +1,133 @@
+state,county,NHGISST,NHGISCTY,n
+Alabama,Jefferson,010,0730,1
+Alaska,First Judicial Dist,025,0015,96
+Arizona,Cochise,040,0030,5
+Arizona,Gila,040,0070,6
+Arizona,Maricopa,040,0130,221
+Arizona,Pinal,040,0210,7
+Arizona,Yavapai,040,0250,1
+Arizona,Yuma,040,0270,8
+Arkansas,Pulaski,050,1190,1
+California,Alameda,060,0010,4694
+California,Butte,060,0070,228
+California,Colusa,060,0110,177
+California,Contra Costa,060,0130,765
+California,El Dorado,060,0170,6
+California,Fresno,060,0190,5620
+California,Imperial,060,0250,1530
+California,Kern,060,0290,1241
+California,Kings,060,0310,485
+California,Lake,060,0330,1
+California,Los Angeles,060,0370,33520
+California,Madera,060,0390,180
+California,Marin,060,0410,80
+California,Mendocino,060,0450,47
+California,Merced,060,0470,458
+California,Modoc,060,0490,4
+California,Monterey,060,0530,1822
+California,Napa,060,0550,38
+California,Nevada,060,0570,6
+California,Orange,060,0590,1855
+California,Placer,060,0610,1767
+California,Plumas,060,0630,1
+California,Riverside,060,0650,548
+California,Sacramento,060,0670,7827
+California,San Benito,060,0690,445
+California,San Bernardino,060,0710,394
+California,San Diego,060,0730,1997
+California,San Francisco,060,0750,4792
+California,San Joaquin,060,0770,4912
+California,San Luis Obispo,060,0790,439
+California,San Mateo,060,0810,962
+California,Santa Barbara,060,0830,1938
+California,Santa Clara,060,0850,3669
+California,Santa Cruz,060,0870,1398
+California,Shasta,060,0890,6
+California,Solano,060,0950,724
+California,Sonoma,060,0970,730
+California,Stanislaus,060,0990,698
+California,Sutter,060,1010,361
+California,Tehama,060,1030,42
+California,Tulare,060,1070,2202
+California,Ventura,060,1110,661
+California,Yolo,060,1130,1106
+California,Yuba,060,1150,527
+Colorado,Otero,080,0890,4
+Colorado,Weld,080,1230,2
+Florida,Pinellas,120,1030,2
+Hawaii,Hawaii,155,0015,240
+Hawaii,Honolulu,155,0035,620
+Hawaii,Kauai,155,0075,94
+Hawaii,Maui,155,0095,92
+Idaho,Bannock,160,0050,1
+Idaho,Bingham,160,0110,3
+Idaho,Bonneville,160,0190,1
+Illinois,Cook,170,0310,4
+Michigan,Calhoun,260,0250,1
+Missouri,Henry/Rives,290,0830,1
+Missouri,St Louis,290,1890,4
+Montana,Lewis and Clark,300,0490,1
+Montana,Missoula,300,0630,1
+Montana,Park,300,0670,1
+Nebraska,Douglas,310,0550,1
+Nevada,Douglas,320,0050,1
+Nevada,Lyon,320,0190,3
+New Mexico,Curry,350,0090,20
+New Mexico,Santa Fe,350,0490,5
+New York,Chemung,360,0150,3
+New York,Dutchess,360,0270,1
+North Dakota,Burleigh,380,0150,2
+Oregon,Benton,410,0030,2
+Oregon,Clackamas,410,0050,163
+Oregon,Clatsop,410,0070,60
+Oregon,Columbia,410,0090,33
+Oregon,Deschutes,410,0170,7
+Oregon,Hood River,410,0270,416
+Oregon,Jackson,410,0290,42
+Oregon,Jefferson,410,0310,23
+Oregon,Lane,410,0390,3
+Oregon,Lincoln,410,0410,2
+Oregon,Linn,410,0430,2
+Oregon,Marion,410,0470,176
+Oregon,Multnomah,410,0510,2242
+Oregon,Polk,410,0530,48
+Oregon,Tillamook,410,0570,1
+Oregon,Wasco,410,0650,64
+Oregon,Washington,410,0670,149
+Oregon,Yamhill,410,0710,5
+Pennsylvania,Lackawanna,420,0690,1
+Pennsylvania,Philadelphia,420,1010,1
+Pennsylvania,York,420,1330,2
+Texas,Harris,480,2010,3
+Utah,Box Elder,490,0030,12
+Utah,Carbon,490,0070,1
+Utah,Wasatch,490,0510,5
+Virginia,Norfolk,510,1290,2
+Virginia,Suffolk City,510,8000,1
+Washington,Asotin,530,0030,1
+Washington,Benton,530,0050,32
+Washington,Chelan,530,0070,27
+Washington,Clallam,530,0090,13
+Washington,Clark,530,0110,129
+Washington,Cowlitz,530,0150,126
+Washington,Franklin,530,0210,2
+Washington,Grays Harbor,530,0270,11
+Washington,Island,530,0290,2
+Washington,Jefferson,530,0310,24
+Washington,King,530,0330,8598
+Washington,Kitsap,530,0350,275
+Washington,Klikatat,530,0390,76
+Washington,Lewis,530,0410,54
+Washington,Mason,530,0450,19
+Washington,Pacific,530,0490,59
+Washington,Pierce,530,0530,1946
+Washington,San Juan,530,0550,4
+Washington,Skagit,530,0570,60
+Washington,Snohomish,530,0610,38
+Washington,Spokane,530,0630,1
+Washington,Thurston,530,0670,84
+Washington,Wahkiakum,530,0690,3
+Washington,Whatcom,530,0730,34
+Washington,Whitman,530,0750,3
+Washington,Yakima,530,0770,847
+Wisconsin,Grant,550,0430,2

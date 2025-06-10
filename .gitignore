@@ -8,7 +8,6 @@
 **.log
 **.nav
 **.out
-**.pdf
 **.snm
 **.tex~
 **.toc
@@ -28,3 +27,5 @@ data/linked_microdata_JA.csv
 data/ja_pop_groups.csv
 data/JARVIS_PublicUse/Data_CodeLists
 data/nhgis0035_shape.zip
+data/mlp_sample.csv
+data/linked_sample.csv
