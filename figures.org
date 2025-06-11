@@ -12,9 +12,10 @@ library(ggridges)
 
 #+begin_src R
 theme_internment <- function(){ 
-    font <- "Georgia"   #assign font family up front
-    
-    theme_bw() %+replace%    #replace elements we want to change
+  showtext::showtext_auto()
+  font <- "Georgia"   #assign font family up front
+  
+  theme_bw() %+replace%    #replace elements we want to change
     
     theme(
       
@@ -109,21 +110,21 @@ ggplot(aes(x=OCCSCORE, group=group, fill=group), data = plt_data) +
 At some point I think I was doing the linking wrong and I ended up with this really weird fat left tail in the internee wage distribution?
 [[file:figures/internee-wage_plot.pdf]]
 
-** Internment Probability 
-*** TODO Plot with pr_intern distribution among individual sample
+** Internment Proportion 
+*** For linked MLP sample
 #+begin_src R :exports results :results graphics file :file figures/pr_intern_plot.pdf
-read_csv("data/linked_sample.csv") |>
-  select(RACE, p_ij) |>
-  mutate(Race = case_when(as_factor(RACE) == "4" ~ "Chinese",
-                          as_factor(RACE) == "5" ~ "Japanese")
-         ) |>
-  ggplot() +
-  geom_histogram(aes(x=p_ij, fill=Race, group=Race), position = "dodge", binwidth = 0.1) +
+linked_dat <- read_csv("data/linked_sample.csv") |>
+  mutate(YEAR = 1940,
+         Race = case_when(RACE==5~"Japanese", RACE==4~"Chinese"))
+
+ggplot(aes(x=p_ij, group=group, fill=group), data = linked_dat) +
+  geom_histogram(binwidth = 0.1, center =0.05) +
   geom_vline(xintercept = 0.5) +
+  scale_x_continuous(breaks = c(0,0.5, 1)) +
   xlim(-0.1,2) +
   theme_internment() +
   theme(legend.position = "inside",
-        legend.position.inside = c(0.9,0.9)) +
+        legend.position.inside = c(0.8,0.9)) +
   xlab("Internment Probability") +
   scale_fill_paletteer_d("MetBrewer::Juarez")
 #+end_src
@@ -131,7 +132,38 @@ read_csv("data/linked_sample.csv") |>
 #+RESULTS:
 [[file:figures/pr_intern_plot.pdf]]
 
-*** Internee County of Origin vs 1940 Japanese Population
+*** For full-count census 1940 & 1950
+#+begin_src R :session *R:internment* :results graphics file :file figures/printern-fullct_plot.pdf
+library(dbplyr)
+library(duckdb)
+# data extract file
+db <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
+tbl = "ipums_microdata"
+
+census_dat <- tbl(db,tbl) |>
+  filter(RACE==5) |>
+  select(c("STATEFIP", "COUNTYICP", "RACE", "YEAR") ) |>
+  collect()
+dbDisconnect(db)
+
+census_prop <- census_dat |>
+  predict_internment(vars=c("STATEFIP", "COUNTYICP")) |>
+  select(YEAR, p_ij) |>
+  mutate(sample = "Full Count")
+
+ggplot(aes(x=p_ij, fill = as_factor(YEAR)), data = census_prop) +
+  geom_histogram(binwidth = 0.1) +
+  facet_wrap(~YEAR) +
+  xlim(-0.1,2) +
+  theme_internment() +
+  theme(legend.position="none") +
+  xlab("Proportion of internees from current home county") +
+  scale_fill_paletteer_d("MetBrewer::Redon")
+#+end_src
+
+#+RESULTS:
+[[file:figures/printern-fullct_plot.pdf]]
+** Internee County of Origin vs 1940 Japanese Population
 #+begin_src R :results silent
 library(sf)
 
@@ -202,7 +234,8 @@ read_dta(file="data/all_internees.dta") |>
 plt_data <- read_csv("data/linked_sample.csv") |>
   pivot_longer(cols = matches("_(1940|1950)$"),
                names_to = c(".value", "Year"),
-               names_sep = "_")
+               names_sep = "_") |>
+  mutate(Year = as.numeric(Year))
 
 grp_data <- plt_data |>
   group_by(group, Year) |>
