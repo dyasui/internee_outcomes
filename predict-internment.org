@@ -39,62 +39,63 @@ The Final Report from DeWitt records the number of Japanese Americans who chose 
 
 #+begin_src R :colnames yes
 library(tidyverse)
-read_csv("data/WDC-voluntary-migration.csv")
+read_csv("data/WDC-voluntary-migration.csv") |>
+  arrange(desc(Total))
 #+end_src
 
 #+RESULTS:
 | state      | county          | Total | Male | Female |
 |------------+-----------------+-------+------+--------|
-| Arizona    | Maricopa        |    58 |   34 |     24 |
-| California | Alameda         |   263 |  142 |    121 |
-| California | Butte           |     7 |    5 |      2 |
-| California | Contra Costa    |    18 |    8 |     10 |
-| California | Fresno          |   153 |   75 |     78 |
-| California | Imperial        |    82 |   35 |     47 |
-| California | Kern            |     7 |    5 |      2 |
-| California | Kings           |     3 |    1 |      2 |
 | California | Los Angeles     |  1969 | 1080 |    889 |
-| California | Marin           |     8 |    4 |      4 |
-| California | Merced          |     6 |    2 |      4 |
-| California | Monterey        |   234 |  143 |     91 |
-| California | Orange          |    88 |   54 |     34 |
-| California | Placer          |     2 |    1 |      1 |
-| California | Riverside       |    10 |    4 |      6 |
-| California | Sacramento      |    24 |   10 |     14 |
-| California | San Benito      |     6 |    4 |      2 |
-| California | San Bernardino  |    13 |    9 |      4 |
-| California | San Diego       |    61 |   31 |     30 |
-| California | San Francisco   |   207 |   95 |    112 |
-| California | San Joaquin     |    21 |   10 |     11 |
-| California | San Luis Obispo |    11 |    5 |      6 |
-| California | San Mateo       |   139 |   67 |     72 |
-| California | Santa Barbara   |   205 |  116 |     89 |
 | California | Santa Clara     |   443 |  231 |    212 |
-| California | Santa Cruz      |    82 |   44 |     38 |
-| California | Sonoma          |    17 |    9 |      8 |
-| California | Stanislaus      |     8 |    4 |      4 |
-| California | Tulare          |    64 |   44 |     20 |
-| California | Tuolumne        |    20 |   15 |      5 |
-| California | Ventura         |    29 |   14 |     15 |
-| California | Yolo            |     2 |    2 |        |
-| California | Yuba            |     1 |      |      1 |
-| Oregon     | Clatsop         |     1 |    1 |        |
-| Oregon     | Hood River      |    13 |    9 |      4 |
-| Oregon     | Lane            |     4 |    2 |      2 |
-| Oregon     | Multnomah       |    54 |   24 |     30 |
-| Oregon     | Polk            |     5 |    2 |      3 |
-| Oregon     | Washington      |    50 |   32 |     18 |
-| Oregon     | Yamhill         |     2 |      |      2 |
-| Washington | Chelan          |     2 |    1 |      1 |
-| Washington | Clark           |     5 |    3 |      2 |
 | Washington | King            |   403 |  183 |    220 |
+| California | Alameda         |   263 |  142 |    121 |
+| California | Monterey        |   234 |  143 |     91 |
+| California | San Francisco   |   207 |   95 |    112 |
+| California | Santa Barbara   |   205 |  116 |     89 |
+| California | Fresno          |   153 |   75 |     78 |
+| California | San Mateo       |   139 |   67 |     72 |
+| California | Orange          |    88 |   54 |     34 |
+| California | Imperial        |    82 |   35 |     47 |
+| California | Santa Cruz      |    82 |   44 |     38 |
+| California | Tulare          |    64 |   44 |     20 |
+| California | San Diego       |    61 |   31 |     30 |
+| Arizona    | Maricopa        |    58 |   34 |     24 |
+| Washington | Pierce          |    56 |   26 |     30 |
+| Oregon     | Multnomah       |    54 |   24 |     30 |
+| Oregon     | Washington      |    50 |   32 |     18 |
+| California | Ventura         |    29 |   14 |     15 |
+| California | Sacramento      |    24 |   10 |     14 |
+| California | San Joaquin     |    21 |   10 |     11 |
+| California | Tuolumne        |    20 |   15 |      5 |
+| California | Contra Costa    |    18 |    8 |     10 |
+| California | Sonoma          |    17 |    9 |      8 |
+| California | San Bernardino  |    13 |    9 |      4 |
+| Oregon     | Hood River      |    13 |    9 |      4 |
+| California | San Luis Obispo |    11 |    5 |      6 |
+| California | Riverside       |    10 |    4 |      6 |
+| California | Marin           |     8 |    4 |      4 |
+| California | Stanislaus      |     8 |    4 |      4 |
+| California | Butte           |     7 |    5 |      2 |
+| California | Kern            |     7 |    5 |      2 |
+| Washington | Yakima          |     7 |    4 |      3 |
+| California | Merced          |     6 |    2 |      4 |
+| California | San Benito      |     6 |    4 |      2 |
 | Washington | Kitsap          |     6 |    4 |      2 |
 | Washington | Lewis           |     6 |    1 |      5 |
-| Washington | Okanogan        |     3 |    3 |        |
-| Washington | Pacific         |     5 |    2 |      3 |
-| Washington | Pierce          |    56 |   26 |     30 |
 | Washington | Thurston        |     6 |    2 |      4 |
-| Washington | Yakima          |     7 |    4 |      3 |
+| Oregon     | Polk            |     5 |    2 |      3 |
+| Washington | Clark           |     5 |    3 |      2 |
+| Washington | Pacific         |     5 |    2 |      3 |
+| Oregon     | Lane            |     4 |    2 |      2 |
+| California | Kings           |     3 |    1 |      2 |
+| Washington | Okanogan        |     3 |    3 |        |
+| California | Placer          |     2 |    1 |      1 |
+| California | Yolo            |     2 |    2 |        |
+| Oregon     | Yamhill         |     2 |      |      2 |
+| Washington | Chelan          |     2 |    1 |      1 |
+| California | Yuba            |     1 |      |      1 |
+| Oregon     | Clatsop         |     1 |    1 |        |
 ** Predicted Interment Status Estimator
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment*
@@ -202,24 +203,3 @@ ggplot(probs_trials, aes(x=p_ij, group=trial, fill=trial)) +
 #+RESULTS:
 [[file:figures/test-p_ij.png]]
 
-** Predicted Internment Status by County and Sex
-#+begin_src R :session *R:internment*
-library(tidyverse)
-library(dbplyr)
-library(duckdb)
-# data extract file
-db <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
-tbl = "ipums_microdata"
-linking_vars <- c("STATEFIP", "COUNTYICP", "SEX")
-
-census_dat <- tbl(db,tbl) |>
-  filter(RACE==5, YEAR==1940) |>
-  select(all_of(linking_vars)) |>
-  collect()
-dbDisconnect(db)
-
-intern_prob <- census_dat |>
-  predict_internment()
-#+end_src
-
-#+RESULTS:

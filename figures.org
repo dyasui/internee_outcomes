@@ -181,29 +181,54 @@ map_dat <- left_join(census_dat, int_dat,
 
 # read shapefiles and append distances
 shp <- ipumsr::read_ipums_sf("data/nhgis0035_shape.zip", file_select = "nhgis0035_shape/nhgis0035_shapefile_tl2008_us_county_1950.zip") |>
-  filter( STATENAM %in% c("Oregon", "Washington", "California", "Arizona") ) |>
+  ## filter( STATENAM %in% c("Oregon", "Washington", "California", "Arizona") ) |>
+  filter( ! STATENAM %in% c("Alaska Territory", "Hawaii Territory") ) |>
   left_join(map_dat, by = c("NHGISST", "NHGISCTY")) |>
   mutate(pr_interned = num_int / pop_jp) |>
   mutate(pr_interned = ifelse(pr_interned > 1, 1, pr_interned))
 
-pr_interned_map <- ggplot(data = shp, aes(geometry=geometry)) +
-  geom_sf(aes(fill=pr_interned))
+county_map <- ggplot(data = shp, aes(geometry=geometry))
 #+end_src
 
 #+begin_src R :results graphics file :file figures/pr_interned_map.pdf :exports results
-pr_interned_map +
+county_map +
+  geom_sf(aes(fill=pr_interned)) +
   theme_void() +
   theme(
     legend.title = element_blank(),
     legend.position = "inside",
-    legend.position.inside = c(0.9,0.7)) +
+    ) +
   labs(title="Internment Proportion of 1940 Japanese Population") +
   scale_fill_continuous(na.value = "transparent", type = "viridis")
-  ## scale_fill_paletteer_c("grDevices::Viridis")
 #+end_src
 
 #+RESULTS:
 [[file:figures/pr_interned_map.pdf]]
+
+Get WRA camp coordinates from Behind Barbed Wire story map project.
+#+begin_src R :results silent
+camps <- read_csv("data/BehindBarbedWire_StoryMap/BehindBarbedWire_StoryMap_InternmentCampLocationsMap_Data.csv") |>
+  filter(!is.na(Latitude)) |>
+  st_as_sf(coords = c("Longitude", "Latitude"),crs="EPSG:4326")
+#+end_src
+
+#+begin_src R :results graphics file :file figures/1940_map.pdf :exports results
+county_map +
+  geom_sf(aes(fill=pop_jp)) +
+  geom_sf(data = camps, aes(geometry=geometry), color="red") +
+  geom_sf_label(data = camps, aes(geometry=geometry, label=`Internment Camp Name`), size=1.5, nudge_x=3e5) +
+  theme_void() +
+  theme(
+    ## legend.title = element_blank(),
+    legend.position = "inside",
+    legend.position.inside = c(0.1,0.2)
+    ) +
+  labs(fill="Japanese Pop") +
+  scale_fill_continuous(na.value = "black",transform="log10", labels=c(1,100,1000,10000,36000), breaks=c(1,100,1000,10000,36000))
+#+end_src
+
+#+RESULTS:
+[[file:figures/1940_map.pdf]]
 
 ** Age Distribution
 #+begin_src R :exports results :results graphics file :file figures/internee-age_plot.pdf
