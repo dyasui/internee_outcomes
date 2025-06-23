@@ -56,10 +56,12 @@ as_nhgisct <- function(COUNTYICP) {
   NHGISCTY = str_pad(COUNTYICP, width = 4, side = "left", pad = "0")
 }
 
-as_ct <- function(STATEFIP, COUNTYICP) {
-  nhgisst <- 
+as_ct <- function(st, ct) {
+  nhgisst <- paste0(as_nhgisst(st), as_nhgisct(ct))
 }
-#+end_sr
+#+end_src
+
+#+RESULTS:
 
 ** Clean IPUMS Variables
 #+begin_src R :tangle R/clean-ipums.R :session *R:internment*
@@ -94,11 +96,25 @@ clean_ipums <- function(data) {
 
 #+RESULTS:
 
+** Evacuation Zone Counties
+When the Army's Western Defense Command drew up plans to evacuate the West Coast Japanese,
+they targeted population based on the existing Japanese populations in the 1940 census.
+
+The WDC's final exclusion area included the western halves of Washington and Oregon, the southern half of Arizona, and all of California.
+
+#+caption: Evacuation Area Map From General DeWitt's Final Report (1942)
+#+name: fig:WDC-evac-area
+[[./figures/external/WDC-evac-areas_map.png]]
+
+* Full Count Census
+:PROPERTIES:
+:header-args:R: :session *R:ipums* :colnames yes :tangle R/download-ipums.R
+:END:
 ** IPUMS Census Variables Definitions
 [fn::defintions quoted from IPUMS online documentation: https://usa.ipums.org/usa-action/variables/group]
 **** Geographic:
 #+begin_src R :results silent
-geo_vars <- c("STATEFIP", "STATEICP", "COUNTYICP", "ENUMDIST", "CITY", "URBAN")
+geo_vars <- c("STATEFIP", "STATEICP", "COUNTYICP", "ENUMDIST", "CITY", "URBAN", "FARM")
 #+end_src
 ***** =STATEFIP=:
   "STATE/FIP/ reports the state in which the household was located, using the
@@ -181,7 +197,7 @@ classified as "U.S. outlying areas" in BPL are considered foreign."
 
 **** Education and Literacy:
 #+begin_src R :results silent
-edu_vars <- c("EDUC", "SCHOOL")
+edu_vars <- c("EDUC", "SCHOOL", "HIGRADE")
 #+end_src
 - =SCHOOL=: School Attendence
   "indicates whether the respondent attended school during a specified period"
@@ -194,7 +210,7 @@ edu_vars <- c("EDUC", "SCHOOL")
 **** Labor Market and Economic
 #+begin_src R :results silent
 emp_vars <- c("EMPSTAT", "LABFORCE", "CLASSWKR",
-                 "OCC", "OCC1950",
+                 "OCC", "OCC1950", "IND", "IND1950",
                  "WKSWORK1", "HRSWORK1", "DURUNEMP")
 #+end_src
 ***** =EMPSTAT=: Employment Status
@@ -255,6 +271,19 @@ Detailed codes with cases:
   all years included in the IPUMS. IND1950 was designed the same way as OCC1950
   (Occupation, 1950 basis)"
 **** Income and SES
+#+begin_src R
+inc_vars <- c("INCTOT", "INCWAGE", "INCBUSFM", "INCOTHER", "OCCSCORE")
+#+end_src
+
+#+RESULTS:
+| x        |
+|----------|
+| INCTOT   |
+| INCWAGE  |
+| INCBUSFM |
+| INCOTHER |
+| OCCSCORE |
+
 ***** =INCWAGE=: Wages and Salary Income
 "total pre-tax wage and salary income - that is, money received as an employee - for the previous year"
 - _Universe_:
@@ -296,64 +325,7 @@ Detailed codes with cases:
 =MIGPLAC5=: US state (or territory, country) of residence 5 years ago
 =MIGCOUNTYICP5=: ICPSR code for county of residence 5 years ago
   
-** Evacuation Zone Counties
-When the Army's Western Defense Command drew up plans to evacuate the West Coast Japanese,
-they targeted population based on the existing Japanese populations in the 1940 census.
-
-The WDC's final exclusion area included the western halves of Washington and Oregon, the southern half of Arizona, and all of California.
-
-#+caption: Evacuation Area Map From General DeWitt's Final Report (1942)
-#+name: fig:WDC-evac-area
-[[./figures/external/WDC-evac-areas_map.png]]
-
-* County GIS Files
-** Historical Counties
-:PROPERTIES:
-:header-args:R: :session *R:downloads*
-:END:
-
-I download shapefiles for county boundaries in 1940 and 1950 from the [[https://www.nhgis.org/][National Historical Geographic Information System]] (NHGIS).
-
-#+begin_src R :results silent
-library(ipumsr)
-library(tidyverse)
-library(sf)
-#+end_src
-
-#+begin_src R :eval no
-nhgis_extract <- define_extract_nhgis(
-  description = "1950 historical county shapefiles",
-  shapefiles = "us_county_1950_tl2008" ) |>
-  submit_extract()
-#+end_src
-
-#+RESULTS:
-
-#+begin_src R :eval no
-if (is_extract_ready(nhgis_extract)) {
-  download_extract(nhgis_extract, download_dir = "data"
-  }
-#+end_src
-
-#+begin_src R
-nhgis_shp <- "data/nhgis0035_shape.zip"
-nhgis_codes <- read_ipums_sf(nhgis_shp, bind_multiple = T) |>
-  st_drop_geometry() |>
-  select(DECADE:STATENAM) |>
-  pivot_wider(
-    id_cols = c("STATENAM", "NHGISNAM"),
-    names_from = DECADE,
-    values_from = c("NHGISST", "NHGISCTY")
-  )
-#+end_src
-
-#+RESULTS:
-
-* Full Count Census
 ** IPUMS API Download
-:PROPERTIES:
-:header-args:R: :session *R:ipums* :colnames yes :export no
-:END:
 #+name: load-packages
 #+begin_src R :results silent
 library(ipumsr)
@@ -371,8 +343,9 @@ fcount_vars <- list(
   nat_vars,
   edu_vars,
   emp_vars,
-  "INCWAGE", "OCCSCORE",
-  "MIGRATE5", "MIGPLAC5", "MIGCOUNTYICP5"
+  inc_vars,
+  "MIGRATE5", "MIGPLAC5", "MIGCOUNTYICP5",
+  "SLWT"
 ) |>
   unlist() |>
   as.list()
@@ -385,17 +358,18 @@ fullcount_extract <- define_extract_micro(
 )
 #+end_src
 
-#+begin_src R download-fullcount 
+#+begin_src R download-fullcount
 submit_extract(fullcount_extract)
 #+end_src
+
 
 #+begin_example
 Unsubmitted IPUMS USA extract 
 Description: Full count census data for 1940 and 1950
 
 Samples: (2 total) us1940b, us1950b
-Variables: (32 total) STATEFIP, STATEICP, COUNTYICP, ENUMD...
-> Successfully submitted IPUMS USA extract number 126
+Variables: (40 total) STATEFIP, STATEICP, COUNTYICP, ENUMDIST, CITY,...
+> Successfully submitted IPUMS USA extract number 128
 #+end_example
 
 #+begin_src R :results silent
@@ -800,7 +774,7 @@ library(duckdb)
 # data extract file
 db <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
 tbl = "ipums_microdata"
-linking_vars <- c("STATEFIP", "COUNTYICP", "SEX", "RACE")
+linking_vars <- c("STATEFIP", "COUNTYICP")
 
 census_dat <- tbl(db,tbl) |>
   filter(YEAR==1940) |>
@@ -810,13 +784,12 @@ dbDisconnect(db)
 
 intern_prob <- census_dat |>
   predict_internment(vars=linking_vars) |>
-  group_by(STATEFIP, COUNTYICP, SEX, RACE) |> 
+  group_by(STATEFIP, COUNTYICP) |> 
   distinct(p_ij)
 
 mlp_panel_linked <- mlp_panel |>
   left_join(intern_prob, by = c("STATEFIP_1940"="STATEFIP",
-            "COUNTYICP_1940"="COUNTYICP", "SEX_1940"="SEX",
-            "RACE_1940"="RACE")) |>
+            "COUNTYICP_1940"="COUNTYICP")) |>
   # only include those who are old enough to work in 1940
   filter(age_1940>=14) |>
   # base time-invariant demographics on 1940 response
@@ -829,12 +802,9 @@ mlp_panel_linked <- mlp_panel |>
     haswage_1940 = !is.na(INCWAGE_1940),
     haswage_1950 = !is.na(INCWAGE_1950),
     # assign probable internment status
-    treat = ifelse(p_ij>0.5, "Interned", "Non-interned"),
-    group = case_when(RACE==4 ~ "Chinese",
-                      RACE==5 & treat=="Interned" ~ "Interned Japanese",
-                      RACE==5 & treat=="Non-interned" ~ "Non-interned Japanese")
+    japanese = ifelse(RACE==5, 1, 0)
     ) |>
-  select(id, RACE, female, BIRTHYR, BPL, p_ij, treat, group,
+  select(id, japanese, female, BIRTHYR, BPL, p_ij,
          age_1940, age_1950,
          STATEFIP_1940, STATEFIP_1950, COUNTYICP_1940, COUNTYICP_1950, moved,
          employed_1940, employed_1950, LABFORCE_1940, LABFORCE_1950,
@@ -910,6 +880,49 @@ data |>
 | Non-interned Japanese | FALSE | 112 | 38.6160714285714 | 0.383928571428571 | 0.419642857142857 | 0.607142857142857 | 344.748214285714 | 441.071428571429 | 7.74107142857143 | 9.97321428571428 |
 | Non-interned Japanese | TRUE  |  13 | 30.9230769230769 | 0.384615384615385 | 0.461538461538462 | 0.769230769230769 | 124.961538461538 | 2088.46153846154 | 7.84615384615385 | 13.8461538461538 |
 
+* County GIS Files
+** Historical Counties
+:PROPERTIES:
+:header-args:R: :session *R:downloads*
+:END:
+
+I download shapefiles for county boundaries in 1940 and 1950 from the [[https://www.nhgis.org/][National Historical Geographic Information System]] (NHGIS).
+
+#+begin_src R :results silent
+library(ipumsr)
+library(tidyverse)
+library(sf)
+#+end_src
+
+#+begin_src R :eval no
+nhgis_extract <- define_extract_nhgis(
+  description = "1950 historical county shapefiles",
+  shapefiles = "us_county_1950_tl2008" ) |>
+  submit_extract()
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :eval no
+if (is_extract_ready(nhgis_extract)) {
+  download_extract(nhgis_extract, download_dir = "data"
+  }
+#+end_src
+
+#+begin_src R
+nhgis_shp <- "data/nhgis0035_shape.zip"
+nhgis_codes <- read_ipums_sf(nhgis_shp, bind_multiple = T) |>
+  st_drop_geometry() |>
+  select(DECADE:STATENAM) |>
+  pivot_wider(
+    id_cols = c("STATENAM", "NHGISNAM"),
+    names_from = DECADE,
+    values_from = c("NHGISST", "NHGISCTY")
+  )
+#+end_src
+
+#+RESULTS:
+
 * TODO Japanese American Redress Verification Information System (JARVIS) Files
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment* :results silent
@@ -920,7 +933,31 @@ data |>
 library(tidyverse)
 
 JARVIS_path <- "data/JARVIS_PublicUse/Data_CodeLists/"
+master_file <- paste(JARVIS_path,"MASTER.TXT", sep = "")
 history_file <- paste(JARVIS_path,"HISTORY.TXT", sep = "")
+addresses_file <- paste(JARVIS_path, "ADDRESS.2021.PU.TXT", sep = "")
+files <- c(master_file, history_file, addresses_file)
+#+end_src
 
-history_dt <- read_delim(history_file, delim = "~^~")
+#+begin_src R
+read_jarvis_raw <- function(file) {
+  # read lines, remove start & end ~ and split on ~^~
+  lines <- read_lines(file)
+  lines_cleaned <- str_remove_all(lines, "^~|~$")
+  lines_csv <- str_replace_all(lines_cleaned, "~\\^~", ",")
+
+  # Write to temporary file
+  temp_file <- tempfile(fileext = ".csv")
+  write_lines(lines_csv, temp_file)
+  
+  # Now read it as a CSV
+  data <- read_csv(temp_file)
+  return(data)
+}
+
+# Read all files into a list of tibbles
+all_dfs <- map(files, read_jarvis_raw)
+
+# Join all by 'DOJ' (assuming unique DOJ values per file)
+master <- reduce(all_dfs, full_join, by = "DOJ")
 #+end_src
