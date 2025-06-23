@@ -252,10 +252,8 @@ library(fixest)
 df <- read_csv("data/linked_sample.csv") |>
   mutate(wage_change = wage_1950 - wage_1940,
          INCWAGE_change = INCWAGE_1950 - INCWAGE_1940,
-         OCCSCORE_change = OCCSCORE_1950 - OCCSCORE_1940) |>
-  mutate(
-    interned = ifelse(treat=="Interned", 1, 0)
-    )
+         moved = ifelse(moved==TRUE, 1, 0),
+         OCCSCORE_change = OCCSCORE_1950 - OCCSCORE_1940)
 #+end_src
 
 #+RESULTS:
@@ -263,59 +261,23 @@ df <- read_csv("data/linked_sample.csv") |>
 ** Summary Statistics
 #+begin_src R :colnames yes
 df |>
-  group_by(treat) |>
+  group_by(group) |>
   summarise(
     n = n(),
-    across(c(wage_1940, wage_1950, OCCSCORE_1940, female, age_1940, employed_1940, employed_1950),
+    across(c(wage_1940, wage_1950, OCCSCORE_1940, female, age_1940, employed_1940, employed_1950, moved),
            ~round(mean(., na.rm=T), digits = 2)
            )
   )
 #+end_src
 
 #+RESULTS:
-| treat        |    n | wage_1940 | wage_1950 | OCCSCORE_1940 | female | age_1940 | employed_1940 | employed_1950 |
-|--------------+------+-----------+-----------+---------------+--------+----------+---------------+---------------|
-| Interned     | 2784 |    368.98 |    282.31 |         11.03 |   0.47 |    41.49 |          0.58 |          0.59 |
-| Non-interned | 5038 |    530.54 |    247.13 |         14.59 |    0.3 |    36.97 |          0.54 |          0.64 |
+| group                 |    n | wage_1940 | wage_1950 | OCCSCORE_1940 | female | age_1940 | employed_1940 | employed_1950 | moved |
+|-----------------------+------+-----------+-----------+---------------+--------+----------+---------------+---------------+-------|
+| Chinese               | 4397 |    553.47 |    264.65 |         15.29 |   0.29 |    36.59 |          0.54 |          0.64 |   0.1 |
+| Interned Japanese     | 2784 |    368.98 |    282.31 |         11.03 |   0.47 |    41.49 |          0.58 |          0.59 |  0.16 |
+| Non-interned Japanese |  641 |    373.25 |    126.99 |          9.84 |   0.38 |    39.54 |          0.51 |          0.63 |  0.13 |
 
-** Difference
-#+begin_src R
-feols(wage_change ~ interned, data = df)
-feols(INCWAGE_change ~ interned, data = df)
-feols(OCCSCORE_change ~ interned, data = df)
-#+end_src
-
-#+RESULTS:
-
-#+begin_src R
-feols(wage_change ~ (interned)
-      + female + age_1950 + age_1950^2 + as.factor(EDUC_1940), data = df)
-feols(INCWAGE_change ~ (interned)
-      + female + age_1950 + age_1950^2 + as_factor(EDUC_1940), data = df)
-feols(OCCSCORE_change ~ (interned)
-      + female + age_1950 + age_1950^2 + as_factor(EDUC_1940), data = df)
-#+end_src
-
-#+RESULTS:
-
-#+begin_src R
-feols(wage_change ~ (interned)
-      + female + age_1950 + age_1950^2 + as_factor(EDUC_1940) + as_factor(BPL), data = df)
-feols(INCWAGE_change ~ (interned)
-      + female + age_1950 + age_1950^2 + as_factor(EDUC_1940) + as_factor(BPL), data = df)
-feols(OCCSCORE_change ~ (interned)
-      + female + age_1950 + age_1950^2 + as_factor(EDUC_1940) + as_factor(BPL), data = df)
-#+end_src
-
-#+RESULTS:
-
-** Diff-in-Diff
-*** Wages
-\begin{equation}
-w_{ij}(a) = \mu_j + \nu_{ij} +G(X_i, a, t) + \eta_i + \epsilon_{ij}(a)
-\end{equation}
-
-- $w_{ij}$: log wages in 1940 adjusted dollars
+** Regressions
 #+begin_src R
 long_df <- read_csv("data/linked_sample.csv") |>
   pivot_longer(
@@ -325,127 +287,69 @@ long_df <- read_csv("data/linked_sample.csv") |>
   ) |>
   mutate(
     i_1950 = ifelse(YEAR==1950, 1, 0),
-    interned = ifelse(treat=="Interned", 1, 0)
     )
 #+end_src
 
 #+RESULTS:
 
+*** Individual Fixed-Effects
+\begin{equation}
+y_{it} = \alpha_{i} + \tau\mathbb{I}(t=1950) + \gamma_{1} \text{age}_{it} + \gamma_{2} \text{age}_{it}^{2}
++ \beta \hat{E}[I_i=1|c_{i,1940}] \times \mathbb{I}(t=1950) + \epsilon_i
+\end{equation}
+
+- $y_{it}$: outcome of individual $i$ in year $t$
+
 #+begin_src R :colnames yes
-reg_did_1 <- feols(
-  INCWAGE ~ interned:i_1950 + interned + i_1950 + female + age + age^2, data = long_df)
-
-reg_did_2 <- feols(
-  INCWAGE ~ interned:i_1950 + interned + i_1950 + female + age + age^2 |
+etable(feols(
+  c(INCWAGE, log(INCWAGE), haswage, employed, OCCSCORE) ~ japanese:p_ij:i_1950 + i_1950 + japanese + age + age^2 |
     id,
-  data = long_df)
-
-reg_did_3 <- feols(
-  INCWAGE ~ interned:i_1950 + interned + i_1950 + female + age + age^2 |
-    as_factor(STATEFIP) + id,
-  data = long_df)
-
-reg_did_4 <- feols(
-  INCWAGE ~ interned:i_1950 + interned + i_1950 + female + age + age^2 |
-    as_factor(STATEFIP),
-  data = long_df)
-
-etable(reg_did_1, reg_did_2, reg_did_3, reg_did_4
-       , tex = TRUE
-       )
+  data = long_df))
 #+end_src
 
 #+RESULTS:
-| x                                                                                                   |
-|-----------------------------------------------------------------------------------------------------|
-| \begingroup                                                                                         |
-| \centering                                                                                          |
-| \begin{tabular}{lcccc}                                                                              |
-| \tabularnewline \midrule \midrule                                                                   |
-| Dependent Variable: & \multicolumn{4}{c}{INCWAGE}\\                                                 |
-| Model:                      & (1)             & (2)            & (3)            & (4)\\             |
-| \midrule                                                                                            |
-| \emph{Variables}\\                                                                                  |
-| Constant                    & -645.2$^{***}$  &                &                &   \\              |
-| & (75.90)         &                &                &   \\                                          |
-| interned                    & -52.76$^{**}$   &                & -486.0         & -71.24$^{***}$\\  |
-| & (26.23)         &                & (4,708,932.5)  & (17.21)\\                                     |
-| i\_1950                     & 465.5$^{***}$   & 342.3$^{*}$    & 348.7          & 468.3$^{***}$\\   |
-| & (34.48)         & (178.6)        & (353.3)        & (24.26)\\                                     |
-| female                      & -712.9$^{***}$  &                & -187.5         & -699.3$^{***}$\\  |
-| & (23.49)         &                & (1,896,555.1)  & (30.35)\\                                     |
-| age                         & 78.18$^{***}$   & 122.0$^{***}$  & 122.2$^{***}$  & 75.86$^{***}$\\   |
-| & (3.849)         & (21.58)        & (37.81)        & (3.244)\\                                     |
-| age square                  & -0.9543$^{***}$ & -1.341$^{***}$ & -1.349$^{***}$ & -0.9276$^{***}$\\ |
-| & (0.0460)        & (0.1169)       & (0.1372)       & (0.0386)\\                                    |
-| interned $\times$ i\_1950   & 167.8$^{***}$   & 197.8$^{***}$  & 182.9$^{*}$    & 163.1$^{***}$\\   |
-| & (53.98)         & (72.59)        & (99.16)        & (41.97)\\                                     |
-| \midrule                                                                                            |
-| \emph{Fixed-effects}\\                                                                              |
-| id                          &                 & Yes            & Yes            & \\                |
-| as\_factor(STATEFIP)        &                 &                & Yes            & Yes\\             |
-| \midrule                                                                                            |
-| \emph{Fit statistics}\\                                                                             |
-| Observations                & 9,319           & 9,319          & 9,319          & 9,319\\           |
-| R$^2$                       & 0.14501         & 0.80369        & 0.80586        & 0.16217\\         |
-| Within R$^2$                &                 & 0.15088        & 0.14861        & 0.14241\\         |
-| \midrule \midrule                                                                                   |
-| \multicolumn{5}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\                             |
-| \end{tabular}                                                                                       |
-| \par\endgroup                                                                                       |
+|                          | feols(c(INCWAGE..1 | feols(c(INCWAGE,..2 | feols(c(INCWAGE, ..3 | feols(c(INCWAGE, ..4 | feols(c(INCWAGE,..5 |
+|--------------------------+--------------------+---------------------+----------------------+----------------------+---------------------|
+| Dependent Var.:          | INCWAGE            | log(INCWAGE)        | haswage              | employed             | OCCSCORE            |
+|                          |                    |                     |                      |                      |                     |
+| i_1950                   | 350.0. (179.0)     | 0.1163 (0.2470)     | -0.7121*** (0.0326)  | -0.0270 (0.0302)     | -1.757. (0.9785)    |
+| age                      | 122.6*** (21.60)   | 0.1635*** (0.0381)  | 0.0271*** (0.0040)   | 0.0851*** (0.0038)   | 2.085*** (0.1196)   |
+| age square               | -1.343*** (0.1169) | -0.0016*** (0.0003) | -0.0003*** (2.27e-5) | -0.0009*** (2.25e-5) | -0.0212*** (0.0007) |
+| japanese x p_ij x i_1950 | 216.7* (86.81)     | 0.0577 (0.1873)     | 0.0758*** (0.0150)   | -0.0252. (0.0153)    | -0.3791 (0.4075)    |
+| Fixed-Effects:           | ------------------ | ------------------- | -------------------- | -------------------- | ------------------- |
+| id                       | Yes                | Yes                 | Yes                  | Yes                  | Yes                 |
+| ________________________ | __________________ | ___________________ | ____________________ | ____________________ | ___________________ |
+| S.E.: Clustered          | by: id             | by: id              | by: id               | by: id               | by: id              |
+| Observations             | 9,319              | 3,392               | 15,644               | 15,644               | 15,644              |
+| R2                       | 0.80352            | 0.91531             | 0.74302              | 0.7302               | 0.74093             |
+| Within R2                | 0.15015            | 0.17875             | 0.64837              | 0.18376              | 0.12527             |
 
-*** Other Outcomes
+*** 1940-1950 Changes
+\begin{align}
+\Delta y_{i} & = \alpha + \beta_{1} \text{japanese} + \beta_{2} \text{moved} + \beta_{3} Pr(I_{i}=1)_{c(i)_{1940}} + \gamma_{1} \text{age}_{i,1940} + \gamma_{2} \text{age}_{i,1940}^2 \\
+& + \beta_{4} \text{japanese} \times \text{moved} + \beta_{5} \text{japanese} \times Pr(I_{i}=1)_{c(i)_{1940}} + \gamma_{6} \text{moved} \times Pr(I_{i}=1)_{c(i)_{1940}} \\
+& + \beta_{7}  \text{japanese} \times \text{moved} \times  Pr(I_{i}=1)_{c(i)_{1940}} + \epsilon_{i}
+\end{align}
 #+begin_src R
-wide_df <- df |>
-  pivot_wider(id_cols = id, names_from = YEAR, values_from = STATEICP:group) |>
-  mutate(lf_drop = case_when(EMPSTAT_1940 == 1 & EMPSTAT_1950 !=1),
-         OCCSCORE
+etable(feols(c(INCWAGE_change, employed_1950, OCCSCORE_change) ~ japanese + moved + p_ij + japanese*moved + japanese*p_ij + moved*p_ij + japanese*moved*p_ij + age_1940 + age_1940^2, data = df))
 #+end_src
 
 #+RESULTS:
+| Dependent Var.:         | INCWAGE_change     | employed_1950        | OCCSCORE_change    |
+|                         |                    |                      |                    |
+| Constant                | 2,268.0*** (238.6) | 0.7426*** (0.0371)   | 27.72*** (1.182)   |
+| japanese                | -369.5* (153.2)    | -0.0202 (0.0215)     | -0.0759 (0.6839)   |
+| moved                   | -326.4 (235.6)     | 0.0027 (0.0322)      | 2.277* (1.025)     |
+| p_ij                    | -435.1** (166.5)   | -0.1035*** (0.0246)  | -0.2983 (0.7837)   |
+| age_1940                | -67.29*** (12.72)  | 0.0036. (0.0019)     | -1.065*** (0.0614) |
+| age_1940 square         | 0.5434** (0.1664)  | -0.0001*** (2.44e-5) | 0.0083*** (0.0008) |
+| japanese x moved        | 1,371.9** (431.4)  | -0.0516 (0.0594)     | -2.126 (1.892)     |
+| japanese x p_ij         | 837.9*** (246.1)   | 0.0781* (0.0359)     | -0.0583 (1.143)    |
+| moved x p_ij            | 430.9 (483.9)      | -0.0141 (0.0717)     | -0.7681 (2.284)    |
+| japanese x moved x p_ij | -1,537.7* (679.2)  | 0.0715 (0.0986)      | 0.4379 (3.139)     |
+| _______________________ | __________________ | ____________________ | __________________ |
+| S.E. type               | IID                | IID                  | IID                |
+| Observations            | 1,906              | 7,822                | 7,822              |
+| R2                      | 0.06932            | 0.04493              | 0.13819            |
+| Adj. R2                 | 0.0649             | 0.04383              | 0.1372             |
 
-
-#+begin_src R :colnaes yes
-wage_reg <- feols(
-  wage ~ interned:i_1950 + interned + i_1950 + female + age + age^2 | id, data = long_df)
-
-emp_reg <- feols(
-  employed ~ interned:i_1950 + interned + i_1950 + female + age + age^2 | id, data = long_df)
-
-mvd_reg <- feols(
-  moved ~ interned:i_1950 + interned + i_1950 + female + age + age^2 | id, data = long_df)
-
-etable(wage_reg, emp_reg, mvd_reg
-       , tex = TRUE
-       )
-#+end_src
-
-#+RESULTS:
-| \begingroup                                                                                    |
-| \centering                                                                                     |
-| \begin{tabular}{lccc}                                                                          |
-| \tabularnewline \midrule \midrule                                                              |
-| Dependent Variables:        & wage            & employed                & moved\\              |
-| Model:                      & (1)             & (2)                     & (3)\\                |
-| \midrule                                                                                       |
-| \emph{Variables}\\                                                                             |
-| i\_1950                     & -368.9$^{***}$  & -0.0269                 & $0\times 10^{-16}$\\ |
-| & (67.98)         & (0.0302)                & (NaN)\\                                          |
-| age                         & 80.13$^{***}$   & 0.0851$^{***}$          & $0\times 10^{-16}$\\ |
-| & (8.484)         & (0.0038)                & (NaN)\\                                          |
-| age square                  & -0.8503$^{***}$ & -0.0009$^{***}$         & $0\times 10^{-16}$\\ |
-| & (0.0490)        & ($2.25\times 10^{-5}$)  & (NaN)\\                                          |
-| interned $\times$ i\_1950   & 271.4$^{***}$   & -0.0197                 & $0\times 10^{-16}$\\ |
-| & (29.45)         & (0.0123)                & (NaN)\\                                          |
-| \midrule                                                                                       |
-| \emph{Fixed-effects}\\                                                                         |
-| id                          & Yes             & Yes                     & Yes\\                |
-| \midrule                                                                                       |
-| \emph{Fit statistics}\\                                                                        |
-| Observations                & 15,644          & 15,644                  & 15,644\\             |
-| R$^2$                       & 0.56781         & 0.73019                 & 1\\                  |
-| Within R$^2$                & 0.06673         & 0.18375                 & NaN\\                |
-| \midrule \midrule                                                                              |
-| \multicolumn{4}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\                        |
-| \end{tabular}                                                                                  |
-| \par\endgroup                                                                                  |
