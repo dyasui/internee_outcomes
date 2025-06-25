@@ -89,6 +89,31 @@ clean_ipums <- function(data) {
         NATIVITY %in% 2:4 ~ "second", # both or either parent foriegn born
         NATIVITY == 1 & (NATIVITY_POP %in% 2:4 | NATIVITY_MOM %in% 2:4) ~ "third"
         ## .default == NA
+      ),
+      educ = case_when(
+        EDUCD == "Missing" ~ NA,
+        EDUCD == "No schooling completed" ~ 0,
+        EDUCD == "Kindergarten" ~ 0,
+        EDUCD == "Grade 1" ~ 1,
+        EDUCD == "Grade 2" ~ 2,
+        EDUCD == "Grade 3" ~ 3,
+        EDUCD == "Grade 4" ~ 4,
+        EDUCD == "Grade 5" ~ 5,
+        EDUCD == "Grade 6" ~ 6,
+        EDUCD == "Grade 7" ~ 7,
+        EDUCD == "Grade 8" ~ 8,
+        EDUCD == "Grade 9" ~ 9,
+        EDUCD == "Grade 10" ~ 10,
+        EDUCD == "Grade 11" ~ 11,
+        EDUCD == "Grade 12" ~ 12,
+        EDUCD == "1 year of college" ~ 13,
+        EDUCD == "2 years of college" ~ 14,
+        EDUCD == "3 years of college" ~ 15,
+        EDUCD == "4 years of college" ~ 16,
+        EDUCD == "5 years of college" ~ 17,
+        EDUCD == "6 years of college" ~ 18,
+        EDUCD == "7 years of college" ~ 19,
+        EDUCD == "8+ years of college" ~ 20,
         )
     )
 }
@@ -383,57 +408,6 @@ if (is_extract_ready(usa_extract_submitted)) {
   }
 #+end_src
 
-*** Immigrant Groups
-For the group of Japanese and Chinese Americans who make up the treatment and control panel for the main regressions,
-I download each respondant's county of residence at the time of being surveyed, as well as demographics including sex, birthyear, race, and birthplace.
-#+name: download-lr-migration-data
-#+begin_src R :results silent
-# only select Japanese and Chinese Americans
-immigrant_vars <- list(
-  list(
-  "STATEFIP", "STATEICP", "COUNTYICP", "ENUMDIST", "CITY", # geographic variables
-  "SEX", "BIRTHYR", "MARST",# demographics
-  var_spec("BPL", attached_characteristics = c("mother", "father")),
-  var_spec("NATIVITY",  attached_characteristics = c("mother", "father", "spouse")),
-  "FARM", "URBAN", 
-  "CITIZEN",  "EDUC", # assimilation/culture
-  "LABFORCE", "OCC1950", "EMPSTAT", # labor market status
-  "OCCSCORE", "INCTOT", "INCWAGE", "INCBUSFM"
-  "MIGRATE5", "MIGPLAC5", "MIGCOUNTYICP5", "SAMEPLAC5", #migration (1940 only)
-  var_spec("RACE", case_selections = c("4","5"))
-  )
-)
-
-# download data using IPUMS API
-internment_extract <- define_extract_micro(
-  collection = "usa",
-  description = "linked microdata for internee and control population from 1940 to 1950",
-  samples = ipums_samples,
-  variables = immigrant_vars
-) |>
-  submit_extract() |>
-  wait_for_extract() |>
-  download_extract("data/fullcount_census")
-#+end_src
-
-To use the latest versions of the MLP linkages from IPUMS, I download the crosswalk files as csv's from https://usa.ipums.org/usa/mlp/mlp_census_crosswalks.shtml.
-
-Microdata extracted from IPUMS using =ipumsr::download_extract()= function
-downloads both the compressed data file (e.g., =usa_00122.dat.gz=)
-and the codebook ddi file which is used to label the variables (e.g., =usa_00122.xml=).
-
-For this project, the files needed are located in the =data/= subdirectory:
-#+begin_example
-├── data/
-│   ├── mlp_1940_1950_v1_2_csv
-│   │   ├── mlp_1940_1950_v1.2.csv
-│   │   └── README_mlp_csv.txt
-│   ├── nhgis0032_shape.zip
-│   ├── usa_00123.dat.gz
-│   ├── usa_00123.xml
-│   └── ...
-#+end_example
-
 ** County-Level Wages
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment*
@@ -549,6 +523,7 @@ dp_demo |>
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:ipums* :results silent
 :END:
+To use the latest versions of the MLP linkages from IPUMS, I download the crosswalk files as csv's from https://usa.ipums.org/usa/mlp/mlp_census_crosswalks.shtml.
 ** DuckDB Storage of Linking Variables
 The original micro data files from IPUMS are too large to fit in memory,
 and the MLP v1.2 linkages are provided as crosswalks which have to be joined to the data.
