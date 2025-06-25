@@ -53,52 +53,54 @@ form26_drop_dup <- function(fw_data) {
 form26_label <- function(raw_data) {
   library(dplyr)
   library(haven)
+
+  geo_dict <- c("00"="United States Unspecified", "11"="Washington", "12"="Oregon", "13"="California",
+                "21"="New Mexico", "22"="Colorado", "23"="Idaho", "24"="Montana", "25"="Nevada", "26"="Arizona", "27"="Utah", "28"="Wyoming",
+                "31"="Alabama", "32"="Arkansas", "33"="Kentucky", "34"="Louisiana", "36"="Oklahoma", "37"="Tennessee", "38"="Texas",
+                "4&"="Wisconsin", "4-"="South Dakota", "40"="Ohio", "41"="Illinois", "42"="Indiana", "43"="Iowa", "44"="Kansas", "45"="Michigan", "46"="Minnesota", "47"="Missouri", "48"="Nebraska", "49"="North Dakota",
+                "5&"="West Virginia", "5-"="Virginia", "51"="District of Columbia", "53"="Florida", "54"="Georgia", "55"="Maryland", "56"="New Jersey", "57"="New York", "59"="Pennsylvania",
+                "61"="Connecticut", "62"="Maine", "63"="Massachusetts", "64"="New Hampshire", "65"="Rhode Island", "65"="Vermont",
+                "70"="Hawaii, Unspecified", "71"="Hawaii County", "72"="Honolulu County", "73"="Kauai County", "74"="Maui County",
+                "81"="Alaska", "82"="Canada", "83"="Mexico", "84"="South America",
+                "85"="American Samoa", "86"="Guam", "87"="Puerto Rico", "88"="Virgin Islands", "89"="Wake Island",
+                "80"="Poland", "8-"="Germany", "8&"="Ireland",
+                "90"="Japan, Unspecified", "91"="Sakhalin or Saghalien or Karafuto Is", "92"="Hokkaido or Yezu Is.", "93"="Honshu Northern Division", "94"="Honshu Central Division", "95"="Honshu Central Division", "96"="Honshu Southern Division", "97"="Urban Prefectures (Kyoto, Osaka, and Tokyo)", "98"="Shikoku", "99"="Kyushu", "9-"="Formosa/Taiwan", "9&"="Chosen/Korea",
+                "--"="Other")
+  
   raw_data |> 
     mutate(
-      camp = labelled(as.integer(camp),
-                      c("Manzanar"       = 1,
-                        "Poston"         = 2,
-                        "Gila River"     = 3,
-                        "Tule Lake"      = 4,
-                        "Minidoka"       = 5,
-                        "Topaz"          = 6,
-                        "Heart Mountain" = 7,
-                        "Granada"        = 8,
-                        "Rohwer"         = 9,
-                        "Jerome"         = 0 )
-                      ),
-      assembly = case_when(assembly == "-" ~ "10",
-                           assembly == "A" ~ "11",
-                           assembly == "B" ~ "12",
-                           assembly == "C" ~ "13",
-                           assembly == "D" ~ "14",
-                           assembly == "E" ~ "15",
-                           assembly == "F" ~ "16",
-                           assembly %in% c("T", "Z") ~ "",
-                           .default = assembly),
-      assembly = labelled(as.integer(assembly),
-                          c("none"        = 0 ,
-                            "Manzanar"    = 1 ,
-                            "Fresno"      = 2 ,
-                            "Marysville"  = 3 ,
-                            "Mayor"       = 4 ,
-                            "Merced"      = 5 ,
-                            "Pinedale"    = 6 ,
-                            "Pomona"      = 7 ,
-                            "Portland"    = 8 ,
-                            "Puyallup"    = 9 ,
-                            "Sacramento"  = 10,
-                            "Salinas"     = 11,
-                            "Santa Anita" = 12,
-                            "Stockton"    = 13,
-                            "Tanforan"    = 14,
-                            "Tulare"      = 15,
-                            "Turlock"     = 16 )
-                          ),
+      camp = case_when(camp==1 ~ "Manzanar",
+                       camp==2 ~ "Poston",
+                       camp==3 ~ "Gila River",
+                       camp==4 ~ "Tule Lake",
+                       camp==5 ~ "Minidoka",
+                       camp==6 ~ "Topaz",
+                       camp==7 ~ "Heart Mountain",
+                       camp==8 ~ "Granada",
+                       camp==9 ~ "Rohwer",
+                       camp==0 ~ "Jerome"),
+      assembly = case_when(assembly==0 ~ "none",
+                           assembly==1 ~ "Manzanar",
+                           assembly==2 ~ "Fresno",
+                           assembly==3 ~ "Marysville",
+                           assembly==4 ~ "Mayor",
+                           assembly==5 ~ "Merced",
+                           assembly==6 ~ "Pinedale",
+                           assembly==7 ~ "Pomona",
+                           assembly==8 ~ "Portland",
+                           assembly==9 ~ "Puyallup",
+                           assembly=="-"~ "Sacramento",
+                           assembly=="A"~ "Salinas",
+                           assembly=="B"~ "Santa Anita",
+                           assembly=="C"~ "Stockton",
+                           assembly=="D"~ "Tanforan",
+                           assembly=="E"~ "Tulare",
+                           assembly=="F"~ "Turlock",
+                           .default = NA ),
       sex = case_when(sex_marrge %in% c("1", "2", "3", "4", "5", "0") ~ 1, # men
                       sex_marrge %in% c("6", "7", "8", "9", "-", "&") ~ 2, # women
                       .default = NA),
-      sex = labelled(as.integer(sex), c("male" = 1, "female" = 2)),
+      sex = labelled(as.integer(sex), c("Male" = 1, "Female" = 2)),
       marst = case_when(sex_marrge %in% c("1", "6") ~ 1, # single
                         sex_marrge %in% c("2", "9") ~ 2, # married
                         sex_marrge %in% c("3", "8") ~ 3, # widowed
@@ -115,6 +117,9 @@ form26_label <- function(raw_data) {
                         as.integer(birth_yr) + 1900), # born before or during 1942
       race = case_when(race %in% c("4", "7", "L", "O", "V", "5", "J", "M", "P", "W", "6", "K", "N", "Q", "X") ~ 5, # japanese including mixed-race
                        race %in% c("8", "S", "T", "U") ~ 1, # white non-japanese
+                       birthplace %in% c("81", "82", "83", "84", "80", "8-", "8&",
+                          "9-", "90", "92", "93", "94", "95", "96", "97", "98",
+                          "99") ~ 5,
                        race %in% c("1", "2", NA) ~ NA), # other race or not specified
       race = labelled(race, c("White" = 1, "Japanese" = 5)),
       bpl_pop = case_when(brth_cntry_pnts %in% c("B", "1", "4", "7", "C") ~ 501, # japan
@@ -127,15 +132,35 @@ form26_label <- function(raw_data) {
                           brth_cntry_pnts %in% c("S", "7", "8", "9", "V") ~ 15, # Hawaii
                           .default = NA),
       bpl_mom = labelled(bpl_mom, c("Japan" = 501, "United States, ns" = 99, "Hawaii" = 15)),
-      yrimmig = if_else(as.integer(birth_yr) > 42,
-                        as.integer(birth_yr) + 1800, # arrived after 1842
-                        as.integer(birth_yr) + 1900), # arrived before or during 1942
+      yrimmig = if_else(as.integer(arrival_us) > 42,
+                        as.integer(arrival_us) + 1800, # arrived after 1842
+                        as.integer(arrival_us) + 1900), # arrived before or during 1942
+      birth_country = case_when(
+        birthplace %in% c("00", "01", "11", "12", "13", "21", "22", "23",
+                          "24", "25", "26", "27", "28", "32", "33", "34",
+                          "36", "37", "38", "4&", "4-", "40", "41", "42",
+                          "42", "43", "44", "45", "46", "47", "48", "49",
+                          "5&", "51", "53", "54", "55", "56", "57", "59",
+                          "61", "62", "63", "64", "70", "71", "72", "73",
+                          "74", "81", "82", "83", "84") ~ "United States",
+        birthplace == "80" ~ "Poland",
+        birthplace == "8-" ~ "Germany",
+        birthplace == "8&" ~ "Ireland",
+        birthplace == "82" ~ "Canada",
+        birthplace == "83" ~ "Mexico",
+        birthplace == "84" ~ "South America",
+        birthplace %in% c("9-", "90", "91", "92", "93", "94", "95", "96",
+                          "97", "98", "99") ~ "Japan",
+        birthplace == "--" ~ "Other",
+      ),
       nativity = case_when(
-        bpl_pop == 1 & bpl_mom == 1 ~ 1,  # both parents native-born
-        bpl_pop == 2 & bpl_mom == 1 ~ 2,  # foreign father, native mother
-        bpl_pop == 1 & bpl_mom == 2 ~ 3,  # native father, foreign mother
-        bpl_pop == 2 & bpl_mom == 2 ~ 4,  # both parents foreign-born
-        !(birthplace %in% 0:74) ~ 5,       # is foreign born themselves
+        (birth_country=="United States" & bpl_pop %in% c(15,99) & bpl_mom %in% c(15,99)) ~ 1,  # both parents native-born
+        (birth_country=="United States" & bpl_pop == 501 & bpl_mom %in% c(15,99)) ~ 2,  # foreign father, native mother
+        (birth_country=="United States" & bpl_pop %in% c(15,99) & bpl_mom == 501) ~ 3,  # native father, foreign mother
+        (birth_country=="United States" & bpl_pop == 501 & bpl_mom == 501) ~ 4,  # both parents foreign-born
+        birthplace %in% c("81", "82", "83", "84", "80", "8-", "8&",
+                          "9-", "90", "92", "93", "94", "95", "96", "97", "98",
+                          "99") ~ 5,       # is foreign born themselves
         .default = NA_real_                    # for any other cases, assign NA
       ),
       nativity = labelled(nativity, c("Native born, native parents"=1,
@@ -143,6 +168,11 @@ form26_label <- function(raw_data) {
                                       "Native born, native father"=3,
                                       "Native born, foreign parents"=4,
                                       "Foreign born"=5)),
+      generation = case_when(
+        (race==5 & nativity == 5) ~ "Issei",
+        (race==5 & nativity %in% 2:4) ~ "Nisei",
+        (race==5 & nativity == 1) ~ "Sansei",
+      ),
       fath_occ_us = if_else(fath_occ_us %in% c("&", "-"), NA, fath_occ_us),
       fath_occ_us = labelled(as.integer(fath_occ_us),
                              c("Professional & semiprofessional"=1,
@@ -236,7 +266,7 @@ form26_label <- function(raw_data) {
         educ %in% c("_", "9") ~ 18,
         .default = NA
       ),
-      bpl = case_when(
+      bpl = case_when( # match birthplace codes from IPUMS
         birthplace == 31 ~ 001,  # Alabama
         birthplace == 81 ~ 002,  # Alaska
         birthplace == 26 ~ 004,  # Arizona
@@ -293,8 +323,23 @@ form26_label <- function(raw_data) {
         birthplace == 82 ~ 150,  # Canada
         birthplace == 83 ~ 200, # Mexico
         birthplace == 84 ~ 300, # South America
-        .default = NA
-      ),
+        .default = NA),
+      bpl = labelled(bpl, c("Alabama" = 001, "Alaska" = 002, "Arizona"
+                            = 004, "Arkansas" = 005, "California" = 006, "Colorado" = 008,
+      "Connecticut" = 009, "Delaware" = 010, "District of Columbia" =
+      011, "Florida" = 012, "Georgia" = 013, "Hawaii" = 015, "Idaho" =
+      016, "Illinois" = 017, "Indiana" = 018, "Iowa" = 019, "Kansas" =
+      020, "Kentucky" = 021, "Louisiana" = 022, "Maine" = 023,
+      "Maryland" = 024, "Massachusetts" = 025, "Michigan" = 026,
+      "Minnesota" = 027, "Mississippi" = 028, "Missouri" = 029,
+      "Montana" = 030, "Nebraska" = 031, "Nevada" = 032, "New Hampshire" = 033, "New Jersey" = 034, "New Mexico" = 035, "New York" = 036, "North Carolina" = 037, "North Dakota" = 038, "Ohio"
+      = 039, "Oklahoma" = 040, "Oregon" = 041, "Pennsylvania" = 042,
+      "Rhode Island" = 044, "South Carolina" = 045, "South Dakota" =
+      046, "Tennessee" = 047, "Texas" = 048, "Utah" = 049, "Vermont" =
+      050, "Virginia" = 051, "Washington" = 053, "West Virginia" =
+      054, "Wisconsin" = 055, "Wyoming" = 056, "United states, ns" =
+      099, "Japan" = 501, "Canada" = 150, "Mexico" = 200, "South America" = 300) ),
+      birthplace = recode(birthplace, !!! geo_dict),
       )
 }
 
@@ -313,25 +358,34 @@ get_nhgis_codes <- function(shp) {
   return(nhgis_codes)
 }
 
+wra_counties <- function(nhgis, addr) {
+  # read nhgiscodes from shapefile
+  nhgis_codes <- read_csv(nhgis)
+  wra_counties <- read_csv(addr)
+  join_counties <- inner_join(wra_counties, nhgis_codes,
+                              by = c("state" = "STATENAM", "county" = "NHGISNAM") )
+  return(join_counties)
+}
+
 compile_WRA <- function(file="data/WRA.FORM26.PU.txt",
-                        addr_file="data/WRA_counties.csv") {
+                        addr) {
   library(dplyr)
   data_labelled <- read_fw_form26(file) |>
     form26_drop_dup() |>
     form26_label()
 
   data_int <- data_labelled |>
-    left_join(read_csv(addr_file), by = "prev_address") |>
+    left_join(addr, by = "prev_address") |>
     select(ind_number, state, county, NHGISST, NHGISCTY,
            camp, assembly, race, sex, birthyr, bpl, birthplace,
-           bpl_pop, bpl_mom, yrimmig, nativity, 
+           bpl_pop, bpl_mom, yrimmig, nativity, generation,
            degfield, high_deg, educ, 
            fath_occ_us, fath_occ_abroad, school_jap,
            last_name, first_name)
 }
 
 count_internees <- function(data,
-                            vars=c("state", "county", "NHGISST", "NHGISCTY")) {
+                            vars=c("state", "county")) {
   library(tidyverse)
   groups <- data |>
     filter(!is.na(state)) |>

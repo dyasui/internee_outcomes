@@ -1,0 +1,16 @@
+name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iteration|parent|children|seconds|warnings|error
+form26_file|stem|11e8aa3100675520|6293d8226f4fd12a|2c530c1562a7fbd1|1522383917|data/WRA.FORM26.PU.txt|t16829.9232638889s|s8969488b|8969488|file|local|vector|||0.576||
+shp|stem|6560877e41eff557|7ec2681f1c675af0|2c530c1562a7fbd1|535786637|data/nhgis0035_shape.zip|t20237.9617455549s|s313167188b|313167188|file|local|vector|||0.572||
+wra_addr|stem|88c59a215fd5d231|1a3d780adc602be7|2c530c1562a7fbd1|-825283821|data/WRA_prev_address_list.csv|t20245.8911716354s|s10603b|10603|file|local|vector|||0||
+nhgis|stem|c5ae0ada8dfbcf1c|7b38f3da7155e86f|2c530c1562a7fbd1|-441644372|data/nhgis_codes.csv|t20262.9794756982s|s81471b|81471|file|local|vector|||0.544||
+wract|stem|4d25b1d777ea3147|e35add76882886d5|3b9852c10bb11d50|-186488897||t20262.9810842346s|s12669b|12669|fst_tbl|local|vector|||0.132|One or more parsing issues, call `problems()` on your data frame for details, e.g.:   dat <- vroom(...)   problems(dat)|
+clean_ipums|function|0259b66d8190fe93
+read_fw_form26|function|e17e38fad0399e86
+form26_label|function|9f5823bd88590e8f
+predict_internment|function|8bc68165c8378015
+wra_counties|function|5405300fecc2a333
+form26_drop_dup|function|e6b06c6c08eb4926
+count_internees|function|661cdefab129e947
+get_nhgis_codes|function|00c08f845e1735ce
+compile_WRA|function|c8bb65eb3c12765e
+wra_data|stem|1fa62cc7a86e4f46|83bfb685e081a022|d3c728de370ef74e|-1309043206||t20262.9850161765s|s8188635b|8188635|fst_tbl|local|vector|||1.974|There were 8 warnings in `mutate()`. The first warning was: ℹ In argument: `birthyr = if_else(...)`. Caused by warning in `is_logical()`: ! NAs introduced by coercion ℹ Run `dplyr::last_dplyr_warnings()` to see the 7 remaining warnings.|

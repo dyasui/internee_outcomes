@@ -474,12 +474,15 @@ get_nhgis_codes <- function(shp) {
 #+end_src
 
 I'm going to save these wra counties with nhgis codes to a separate file than the original for now, in case I go back later to change the original.
-#+begin_src R :results silent :tangle no
-nhgis_codes <- get_nhgis_codes("data/nhgis0035_shape.zip")
-wra_counties <- read_csv("data/WRA_prev_address_list.csv")
-join_counties <- inner_join(wra_counties, nhgis_codes,
-                           by = c("state" = "STATENAM", "county" = "NHGISNAM") )
-write_csv(join_counties, file="data/WRA_counties.csv")
+#+begin_src R :results silent 
+wra_counties <- function(nhgis, addr) {
+  # read nhgiscodes from shapefile
+  nhgis_codes <- read_csv(nhgis)
+  wra_counties <- read_csv(addr)
+  join_counties <- inner_join(wra_counties, nhgis_codes,
+                              by = c("state" = "STATENAM", "county" = "NHGISNAM") )
+  return(join_counties)
+}
 #+end_src
 
 #+RESULTS:
@@ -487,14 +490,14 @@ write_csv(join_counties, file="data/WRA_counties.csv")
 ** Individual Internees Data Cleaned
 #+begin_src R
 compile_WRA <- function(file="data/WRA.FORM26.PU.txt",
-                        addr_file="data/WRA_counties.csv") {
+                        addr) {
   library(dplyr)
   data_labelled <- read_fw_form26(file) |>
     form26_drop_dup() |>
     form26_label()
 
   data_int <- data_labelled |>
-    left_join(read_csv(addr_file), by = "prev_address") |>
+    left_join(addr, by = "prev_address") |>
     select(ind_number, state, county, NHGISST, NHGISCTY,
            camp, assembly, race, sex, birthyr, bpl, birthplace,
            bpl_pop, bpl_mom, yrimmig, nativity, generation,
