@@ -80,153 +80,159 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 12521,Oregon,Multnomah,NA,410,0510
 12523,Oregon,Multnomah,NA,410,0510
 12524,Oregon,Multnomah,NA,410,0510
-13&10,California,San Diego,NA,060,0730
-13&11,California,San Diego,NA,060,0730
-13&12,California,San Diego,NA,060,0730
-13&13,California,San Diego,NA,060,0730
-13&14,California,San Diego,NA,060,0730
+13&10,California,San Diego,El Cajon,060,0730
+13&11,California,San Diego,Escondido/La Mesa/Oceanside,060,0730
+13&12,California,San Diego,Chula Vista/Coronado,060,0730
+13&13,California,San Diego,National City,060,0730
+13&14,California,San Diego,San Diego,060,0730
 13-10,California,Santa Clara,NA,060,0850
-13-11,California,Santa Clara,NA,060,0850
-13-12,California,Santa Clara,NA,060,0850
-13-13,California,Santa Clara,NA,060,0850
-13-14,California,Santa Clara,NA,060,0850
+13-11,California,Santa Clara,Gilroy/Los Gatos/Mountain View/Sunnyvale,060,0850
+13-12,California,Santa Clara,Santa Clara,060,0850
+13-13,California,Santa Clara,Palo Alto,060,0850
+13-14,California,Santa Clara,San Jose,060,0850
 13010,California,Los Angeles,NA,060,0370
-13011,California,Los Angeles,NA,060,0370
-13012,California,Los Angeles,NA,060,0370
-13013,California,Los Angeles,NA,060,0370
-13014,California,Los Angeles,NA,060,0370
-13015,California,Los Angeles,NA,060,0370
 13017,California,Los Angeles,NA,060,0370
 1301F,California,Los Angeles,NA,060,0370
+13011,California,Los Angeles,Signal Hill/El Segundo/Glendora/Clarmont/La Verne/Sierra Madre/El Monte/Alhambra,060,0370
+13012,California,Los Angeles,Arcadia/Azusa/Gardena/Culver City/Hawthorne/Hermosa Beach/San Fernando/San Marino/Manhattan Beach/Torrance/Montebello/Monterey Park,060,0370
+13013,California,Los Angeles,South Pasadena/Pomona/Redondo Beach/San Gabriel/Compton/Lynwood/Maywood/Monrovia/Whittier,060,0370
+13014,California,Los Angeles,Belvedere Township/Glendale/Beverly Hills/Huntington Park/Pasadena/Inglewood/Burbank/Santa Monica/Long Beach/South Gate,060,0370
+13015,California,Los Angeles,Los Angeles/Bell,060,0370
 13020,California,Orange,NA,060,0590
-13021,California,Orange,NA,060,0590
-13022,California,Orange,NA,060,0590
-13023,California,Orange,NA,060,0590
-13024,California,Orange,NA,060,0590
+13021,California,Orange,Newport Beach/Brea/Huntington Beach/Laguna Beach,060,0590
+13022,California,Orange,Orange,060,0590
+13023,California,Orange,Anaheim/Fullerton,060,0590
+13024,California,Orange,Santa Ana,060,0590
+13110,California,Del Norte,Crescent City,060,0150
+13120,California,Humboldt,NA,060,0230
+13123,California,Humboldt,Eureka,060,0230
 13130,California,Lake,NA,060,0330
 13140,California,Mendocino,NA,060,0450
 13141,California,Mendocino,NA,060,0450
 13143,California,Mendocino,NA,060,0450
 13150,California,Napa,NA,060,0550
-13152,California,Napa,NA,060,0550
+13152,California,Napa,Napa,060,0550
 13160,California,Sonoma,NA,060,0970
-13161,California,Sonoma,NA,060,0970
-13162,California,Sonoma,NA,060,0970
-13163,California,Sonoma,NA,060,0970
-132&0,California,Shasta,NA,060,0890
-13200,California,Plumas,NA,060,0630
+13161,California,Sonoma,Healdsburg,060,0970
+13162,California,Sonoma,Petaluma,060,0970
+13163,California,Sonoma,Santa Rosa,060,0970
+132&0,California,Siskiyou,NA,060,0930
+132-0,California,Shasta,NA,060,0890
+132-2,California,Shasta,Redding,060,0890
+13220,California,Amador,NA,060,0050
+13230,California,Calaveras,NA,060,0090
 13240,California,El Dorado,NA,060,0170
-13241,California,El Dorado,NA,060,0170
-13270,California,Modoc,NA,060,0490
-13272,California,Modoc,NA,060,0490
+13241,California,El Dorado,Placerville,060,0170
+13270,California,Modoc,Alturas,060,0490
 13280,California,Nevada,NA,060,0570
-13282,California,Nevada,NA,060,0570
+13282,California,Nevada,Grass Valley,060,0570
 13290,California,Placer,NA,060,0610
-13291,California,Placer,NA,060,0610
-13292,California,Placer,NA,060,0610
+13291,California,Placer,Auburn,060,0610
+13292,California,Placer,Roseville,060,0610
 13310,California,Butte,NA,060,0070
-13311,California,Butte,NA,060,0070
-13312,California,Butte,NA,060,0070
-13313,California,Butte,NA,060,0070
+13311,California,Butte,Oroville,060,0070
+13312,California,Butte,Chico,060,0070
 13320,California,Colusa,NA,060,0110
+13330,California,Glenn,NA,060,0210
 13340,California,Sutter,NA,060,1010
-13341,California,Sutter,NA,060,1010
+13341,California,Sutter,Yuba City,060,1010
 13350,California,Tehama,NA,060,1030
-13351,California,Tehama,NA,060,1030
-13360,California,Yolo,NA,060,1130
-13362,California,Yolo,NA,060,1130
-13370,California,Yuba,NA,060,1150
-13372,California,Yuba,NA,060,1150
+13351,California,Tehama,Red Bluff,060,1030
+13360,California,Yolo,Davis/Winters,060,1130
+13362,California,Yolo,Woodland,060,1130
+13370,California,Yuba,Wheatland,060,1150
+13372,California,Yuba,Marysville,060,1150
 13410,California,Monterey,NA,060,0530
-13411,California,Monterey,NA,060,0530
-13412,California,Monterey,NA,060,0530
-13413,California,Monterey,NA,060,0530
+13411,California,Monterey,Carmel-by-the-sea,060,0530
+13412,California,Monterey,Pacific Grove,060,0530
+13413,California,Monterey,Monterey/Salinas,060,0530
 13414,California,Monterey,NA,060,0530
 13415,California,Monterey,NA,060,0530
 13420,California,San Benito,NA,060,0690
-13421,California,San Benito,NA,060,0690
+13421,California,San Benito,Hollister,060,0690
 13430,California,San Luis Obispo,NA,060,0790
-13431,California,San Luis Obispo,NA,060,0790
-13432,California,San Luis Obispo,NA,060,0790
+13431,California,San Luis Obispo,Paso Robles,060,0790
+13432,California,San Luis Obispo,San Luis Obisbo,060,0790
 13440,California,Santa Cruz,NA,060,0870
-13442,California,Santa Cruz,NA,060,0870
-13443,California,Santa Cruz,NA,060,0870
+13442,California,Santa Cruz,Watsonville,060,0870
+13443,California,Santa Cruz,Santa Cruz,060,0870
 13510,California,Fresno,NA,060,0190
 13511,California,Fresno,NA,060,0190
-13512,California,Fresno,NA,060,0190
+13512,California,Fresno,Coalinga,060,0190
 13513,California,Fresno,NA,060,0190
-13514,California,Fresno,NA,060,0190
+13514,California,Fresno,Fresno,060,0190
 13520,California,Kern,NA,060,0290
-13521,California,Kern,NA,060,0290
-13524,California,Kern,NA,060,0290
+13521,California,Kern,Delano,060,0290
+13524,California,Kern,Bakersfield,060,0290
 13530,California,Kings,NA,060,0310
 13532,California,Kings,NA,060,0310
 13533,California,Kings,NA,060,0310
 13540,California,Madera,NA,060,0390
-13542,California,Madera,NA,060,0390
+13542,California,Madera,Madera,060,0390
 13544,California,Madera,NA,060,0390
 13550,California,Merced,NA,060,0470
-13553,California,Merced,NA,060,0470
-13560,California,San Joaquin,NA,060,0770
-13561,California,San Joaquin,NA,060,0770
-13563,California,San Joaquin,NA,060,0770
-13564,California,San Joaquin,NA,060,0770
+13553,California,Merced,Merced,060,0470
+13560,California,San Joaquin,Manteca,060,0770
+13561,California,San Joaquin,Tracy,060,0770
+13563,California,San Joaquin,Lodi,060,0770
+13564,California,San Joaquin,Stockton,060,0770
 13569,California,San Joaquin,NA,060,0770
 13570,California,Stanislaus,NA,060,0990
 13571,California,Stanislaus,NA,060,0990
-13573,California,Stanislaus,NA,060,0990
+13573,California,Stanislaus,Modesto,060,0990
 13580,California,Tulare,NA,060,1070
 13581,California,Tulare,NA,060,1070
 13582,California,Tulare,NA,060,1070
 13584,California,Tulare,NA,060,1070
 13610,California,Santa Barbara,NA,060,0830
 13611,California,Santa Barbara,NA,060,0830
-13612,California,Santa Barbara,NA,060,0830
-13614,California,Santa Barbara,NA,060,0830
+13612,California,Santa Barbara,Santa Maria,060,0830
+13614,California,Santa Barbara,Santa Barbara,060,0830
 13620,California,Ventura,NA,060,1110
-13621,California,Ventura,NA,060,1110
+13621,California,Ventura,Filmore,060,1110
 13622,California,Ventura,NA,060,1110
-13623,California,Ventura,NA,060,1110
+13623,California,Ventura,Beuenaventura,060,1110
 13710,California,Imperial,NA,060,0250
 13711,California,Imperial,NA,060,0250
-13712,California,Imperial,NA,060,0250
+13712,California,Imperial,Calexico,060,0250
 13713,California,Imperial,NA,060,0250
 13714,California,Imperial,NA,060,0250
 1371B,California,Imperial,NA,060,0250
 13720,California,Riverside,NA,060,0650
 13721,California,Riverside,NA,060,0650
+13722,California,Riverside,Riverside/Corona,060,0650
 13724,California,Riverside,NA,060,0650
 13730,California,San Bernardino,NA,060,0710
-13731,California,San Bernardino,NA,060,0710
-13732,California,San Bernardino,NA,060,0710
-13733,California,San Bernardino,NA,060,0710
-13734,California,San Bernardino,NA,060,0710
-13810,California,Alameda,NA,060,0010
-13811,California,Alameda,NA,060,0010
-13812,California,Alameda,NA,060,0010
-13813,California,Alameda,NA,060,0010
-13814,California,Alameda,NA,060,0010
+13731,California,San Bernardino,Chino/Needles,060,0710
+13732,California,San Bernardino,Colton/Upland,060,0710
+13733,California,San Bernardino,Ontario/Redlands,060,0710
+13734,California,San Bernardino,San Bernardino,060,0710
+13810,California,Alameda,Pleasanton,060,0010
+13811,California,Alameda,Everyville/Livermore,060,0010
+13812,California,Alameda,Piedmont/Albany/Hayward,060,0010
+13813,California,Alameda,San Leandro,060,0010
+13814,California,Alameda,Alameda/Oakland/Berkeley,060,0010
 13820,California,Contra Costa,NA,060,0130
-13822,California,Contra Costa,NA,060,0130
+13822,California,Contra Costa,Antioch/El Cerrito/Martinez/Pittsburg,060,0130
 13823,California,Contra Costa,NA,060,0130
 13825,California,Contra Costa,NA,060,0130
 13830,California,Marin,NA,060,0410
-13831,California,Marin,NA,060,0410
-13832,California,Marin,NA,060,0410
+13831,California,Marin,Mill Valley/Sausalito,060,0410
+13832,California,Marin,San Anselmo/San Rafael,060,0410
 13841,California,San Francisco,NA,060,0750
-13844,California,San Francisco,NA,060,0750
+13844,California,San Francisco,San Francisco,060,0750
 13850,California,San Mateo,NA,060,0810
-13851,California,San Mateo,NA,060,0810
-13852,California,San Mateo,NA,060,0810
-13853,California,San Mateo,NA,060,0810
+13851,California,San Mateo,Hillsborough/Menlo Park/San Carlos,060,0810
+13852,California,San Mateo,Daly City/South San Francisco,060,0810
+13853,California,San Mateo,San Mateo/Burlingame/Redwood City,060,0810
 13855,California,San Mateo,NA,060,0810
 13860,California,Solano,NA,060,0950
-13863,California,Solano,NA,060,0950
+13863,California,Solano,Vallejo,060,0950
 13910,California,Sacramento,NA,060,0670
-13911,California,Sacramento,NA,060,0670
+13911,California,Sacramento,North Sacramento,060,0670
 13912,California,Sacramento,NA,060,0670
 13913,California,Sacramento,NA,060,0670
-13914,California,Sacramento,NA,060,0670
+13914,California,Sacramento,Sacramento,060,0670
 13915,California,Sacramento,NA,060,0670
 13919,California,Sacramento,NA,060,0670
 1391O,California,Sacramento,NA,060,0670
@@ -248,7 +254,7 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 26160,Arizona,Yavapai,Jerome,040,0250
 26210,Arizona,Cochise,NA,040,0030
 26240,Arizona,Maricopa,NA,040,0130
-26241,Arizona,Maricopa,NA,040,0130
+26241,Arizona,Maricopa,Glendale/Tempe,040,0130
 26242,Arizona,Maricopa,Mesa,040,0130
 26244,Arizona,Maricopa,Phoenix,040,0130
 26254,Arizona,Pinal,Tucson,040,0210
