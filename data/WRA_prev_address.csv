@@ -119,6 +119,9 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 132&0,California,Siskiyou,NA,060,0930
 132-0,California,Shasta,NA,060,0890
 132-2,California,Shasta,Redding,060,0890
+13200,California,Plumas,NA,060,0630
+13210,California,Alpine,NA,060,0030
+13211,California,Alpine,NA,060,0030
 13220,California,Amador,NA,060,0050
 13230,California,Calaveras,NA,060,0090
 13240,California,El Dorado,NA,060,0170
@@ -278,6 +281,7 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 57014,New York,Dutchess,Poughkeepsie,360,0270
 57024,New York,Chemung,Elmira,360,0150
 57025,New York,Chemung,Elmira,360,0150
+57035,New York,New York,New York,360,0610
 5900&,Pennsylvania,Lackawanna,Carbondale,420,0690
 59014,Pennsylvania,York,York,420,1330
 59025,Pennsylvania,Philadelphia,Philadelphia,420,1010
@@ -307,3 +311,8 @@ prev_address,state,county,city,NHGISST,NHGISCTY
 81010,Alaska,First Judicial Dist,NA,025,0015
 81011,Alaska,First Judicial Dist,Ketchikan,025,0015
 81012,Alaska,First Judicial Dist,Juneau,025,0015
+81020,Alaska,Second Judicial Dist,NA,025,0075
+81030,Alaska,Third Judicial Dist,NA,025,0115
+81031,Alaska,Third Judicial Dist,Anchorage,025,0115
+81040,Alaska,Fourth Judicial Dist,NA,025,0035
+81041,Alaska,Fourth Judicial Dist,Fairbanks,025,0035
