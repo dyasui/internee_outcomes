@@ -423,10 +423,12 @@ countystat_cb <- function(x, pos) {
   x |>
     group_by(STATEFIP, COUNTYICP) |>
     mutate(
+      NHGISST = str_pad(string = STATEFIP*10, width = 3, side = "left", pad = "0"),
+      NHGISCTY = str_pad(COUNTYICP, width = 4, side = "left", pad = "0"),
       INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE),
       # adjust 1940 wages for inflation to 1950 dollars
       INCWAGE = ifelse(YEAR == 1940, INCWAGE * 1.71, INCWAGE) ) |>
-    group_by(YEAR, STATEFIP, COUNTYICP) |>
+    group_by(YEAR, STATEFIP, STATEICP, COUNTYICP, CITY) |>
     summarise(
       mean_wage = mean(INCWAGE, na.rm=T),
       pop       = n(),
@@ -444,7 +446,7 @@ county_data <- read_ipums_micro_chunked(
   chunk_size = 1e5,
   verbose = TRUE
 ) |>
-  group_by(YEAR, STATEFIP, COUNTYICP) |>
+  group_by(YEAR, STATEFIP, STATEICP, COUNTYICP) |>
   summarise(
     mean_wage = mean(mean_wage, na.rm=T),
     pop       = sum(pop),
