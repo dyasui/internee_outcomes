@@ -132,15 +132,9 @@ The WDC's final exclusion area included the western halves of Washington and Ore
 [[./figures/external/WDC-evac-areas_map.png]]
 
 * Full Count Census
-:PROPERTIES:
-:header-args:R: :session *R:ipums* :colnames yes :tangle R/download-ipums.R
-:END:
 ** IPUMS Census Variables Definitions
 [fn::defintions quoted from IPUMS online documentation: https://usa.ipums.org/usa-action/variables/group]
 **** Geographic:
-#+begin_src R :results silent
-geo_vars <- c("STATEFIP", "STATEICP", "COUNTYICP", "ENUMDIST", "CITY", "URBAN", "FARM")
-#+end_src
 ***** =STATEFIP=:
   "STATE/FIP/ reports the state in which the household was located, using the
   Federal Information Processing Standards (FIPS) coding scheme, which orders
@@ -163,9 +157,6 @@ geo_vars <- c("STATEFIP", "STATEICP", "COUNTYICP", "ENUMDIST", "CITY", "URBAN", 
   unorganized territory when Kansas was admitted as a state in 1861. So the
   historical county of Arapahoe, Kansas, shows up as =COUYNTYICP= code =0055=.
 **** Demographic:
-#+begin_src R :results silent
-dem_vars <-c("SEX", "BIRTHYR", "AGE", "MARST", "CHBORN")
-#+end_src
 ***** =SEX=: 
 Indicator equal to =1= if male, =2= if female respondent.
 ***** =BIRTHYR=:
@@ -191,13 +182,13 @@ Respondents years of age as of their last birthday.
 - =99=: Missin
 
 **** Family Interrelationship
-#+begin_src R :results silent
-fam_vars <-c("MOMLOC", "POPLOC", "SPLOC", "NCHILD", "NSIBS", "NFAMS")
-#+end_src
+***** =MOMLOC=
+***** =POPLOC=
+***** =SPLOC=
+***** =NCHILD=
+***** =NSIBS=
+***** =NFAMS=
 **** Race and Nativity:
-#+begin_src R :results silent
-nat_vars <- c("RACE", "BPL", "MBPL", "FBPL", "NATIVITY", "CITIZEN")
-#+end_src
 ***** =RACE=: Racial Category
 "Prior to 1960, the census enumerator was responsible for categorizing persons
 and was not specifically instructed to ask the individual his or her race."
@@ -221,9 +212,6 @@ classified as "U.S. outlying areas" in BPL are considered foreign."
 | Foreign born, status not reported    |    5 |
 
 **** Education and Literacy:
-#+begin_src R :results silent
-edu_vars <- c("EDUC", "SCHOOL", "HIGRADE")
-#+end_src
 - =SCHOOL=: School Attendence
   "indicates whether the respondent attended school during a specified period"
   Equal to =1= if not in school, =2= if yes to in school.
@@ -233,11 +221,6 @@ edu_vars <- c("EDUC", "SCHOOL", "HIGRADE")
   Categorical variable with different values for no schooling, middle school,
   how many years of high school or college.
 **** Labor Market and Economic
-#+begin_src R :results silent
-emp_vars <- c("EMPSTAT", "LABFORCE", "CLASSWKR",
-                 "OCC", "OCC1950", "IND", "IND1950",
-                 "WKSWORK1", "HRSWORK1", "DURUNEMP")
-#+end_src
 ***** =EMPSTAT=: Employment Status
 Universe includes all persons 14 years or older.
 "EMPSTAT indicates whether the respondent was a part of the labor force -- working or seeking work -- and, if so, whether the person was currently unemployed."
@@ -296,19 +279,6 @@ Detailed codes with cases:
   all years included in the IPUMS. IND1950 was designed the same way as OCC1950
   (Occupation, 1950 basis)"
 **** Income and SES
-#+begin_src R
-inc_vars <- c("INCTOT", "INCWAGE", "INCBUSFM", "INCOTHER", "OCCSCORE")
-#+end_src
-
-#+RESULTS:
-| x        |
-|----------|
-| INCTOT   |
-| INCWAGE  |
-| INCBUSFM |
-| INCOTHER |
-| OCCSCORE |
-
 ***** =INCWAGE=: Wages and Salary Income
 "total pre-tax wage and salary income - that is, money received as an employee - for the previous year"
 - _Universe_:
@@ -351,7 +321,9 @@ inc_vars <- c("INCTOT", "INCWAGE", "INCBUSFM", "INCOTHER", "OCCSCORE")
 =MIGCOUNTYICP5=: ICPSR code for county of residence 5 years ago
   
 ** IPUMS API Download
-#+name: load-packages
+:PROPERTIES:
+:header-args:R: :session *R:ipums* :colnames yes :tangle R/download-ipums.R
+:END:
 #+begin_src R :results silent
 library(ipumsr)
 library(tidyverse)
@@ -360,8 +332,20 @@ ipums_samples <- c("us1940b", "us1950b")
 
 I download linked full-count census microdata from the IPUMS [[https://usa.ipums.org/usa/mlp/mlp.shtml][Multigenerational Longitudinal Panel]] for the census years 1940 and 1950.
 
-*** General Population
-#+begin_src R extract-fullcount :results silent
+Here I list out all variables by category for all factors which could potentially be relevant.
+Not all of these will be needed in the final analysis, so feel free to adjust these before you send out an extract request to IPUMS.
+#+begin_src R
+geo_vars <- c("STATEFIP", "STATEICP", "COUNTYICP", "ENUMDIST", "CITY", "URBAN", "FARM")
+dem_vars <-c("SEX", "BIRTHYR", "AGE", "MARST", "CHBORN")
+fam_vars <-c("MOMLOC", "POPLOC", "SPLOC", "NCHILD", "NSIBS", "NFAMS")
+nat_vars <- c("RACE", "BPL", "MBPL", "FBPL", "NATIVITY", "CITIZEN")
+edu_vars <- c("EDUC", "SCHOOL", "HIGRADE")
+emp_vars <- c("EMPSTAT", "LABFORCE", "CLASSWKR",
+                 "OCC", "OCC1950", "IND", "IND1950",
+                 "WKSWORK1", "HRSWORK1", "DURUNEMP")
+inc_vars <- c("INCTOT", "INCWAGE", "INCBUSFM", "INCOTHER", "OCCSCORE")
+
+# list all variables to be downloaded
 fcount_vars <- list(
   geo_vars,
   dem_vars,
@@ -374,38 +358,45 @@ fcount_vars <- list(
 ) |>
   unlist() |>
   as.list()
+#+end_src
+
+#+begin_src R extract-fullcount :results silent
 # download data using IPUMS API
-fullcount_extract <- define_extract_micro(
-  collection = "usa",
-  description = "Full count census data for 1940 and 1950",
-  samples = ipums_samples,
-  variables = fcount_vars
-)
+define_ipums_extract <- function(samples = c("us1940b","us1950b"),
+                                 vars,
+                                 description = "Full count census data for 1940 and 1950") {
+  define_extract_micro(
+    collection = "usa",
+    description = description,
+    samples = samples,
+    variables = vars
+  )
+}
 #+end_src
 
+Once all variables are defined, you can run =submit_extract()= to request that the IPUMS server process your data request (assuming you have set up the API key).
 #+begin_src R download-fullcount
-submit_extract(fullcount_extract)
+submit_and_download_extract <- function(extract_def, download_dir = "data/fullcount_census") {
+  existing <- get_extract_history("usa")
+  match <- purrr::detect(existing, ~ identical(.x$definition, extract_def$definition))
+
+  if (!is.null(match) && match$status == "completed") {
+    return(download_extract(match, download_dir))
+  }
+
+  submitted <- submit_extract(extract_def)
+  ready <- wait_for_extract(submitted)
+  download_extract(ready, download_dir)
+  return(ready)
+}
 #+end_src
 
-
-#+begin_example
-Unsubmitted IPUMS USA extract 
-Description: Full count census data for 1940 and 1950
-
-Samples: (2 total) us1940b, us1950b
-Variables: (40 total) STATEFIP, STATEICP, COUNTYICP, ENUMDIST, CITY,...
-> Successfully submitted IPUMS USA extract number 128
-#+end_example
-
-#+begin_src R :results silent
-# get extract number of most recent submitted extract
-usa_extract_submitted <- get_last_extract_info("usa")
-# download to disk if extract is ready
-if (is_extract_ready(usa_extract_submitted)) {
+The function =wait_for_extract= will keep checking your request until it is completed and ready for download.
+If you don't want your R session to stay busy checking for the extract (in my experience it can take several hours for a large request),
+you can use =is_extract_ready= instead.
+#+begin_src R :results silent :tangle no
+wait_for_extract(fullcount_extract) |> 
   download_extract("data/fullcount_census")
-  } else {
-    print("Still waiting, check back later")
-  }
 #+end_src
 
 ** County-Level Wages
@@ -428,7 +419,7 @@ countystat_cb <- function(x, pos) {
       INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE),
       # adjust 1940 wages for inflation to 1950 dollars
       INCWAGE = ifelse(YEAR == 1940, INCWAGE * 1.71, INCWAGE) ) |>
-    group_by(YEAR, STATEFIP, STATEICP, COUNTYICP, CITY) |>
+    group_by(YEAR, STATEFIP, STATEICP, COUNTYICP, NHGISST, NHGISCTY) |>
     summarise(
       mean_wage = mean(INCWAGE, na.rm=T),
       pop       = n(),
@@ -446,7 +437,7 @@ county_data <- read_ipums_micro_chunked(
   chunk_size = 1e5,
   verbose = TRUE
 ) |>
-  group_by(YEAR, STATEFIP, STATEICP, COUNTYICP) |>
+  group_by(YEAR, STATEFIP, STATEICP, COUNTYICP, NHGISST, NHGISCTY) |>
   summarise(
     mean_wage = mean(mean_wage, na.rm=T),
     pop       = sum(pop),
@@ -461,7 +452,6 @@ write_csv(county_data, "data/county_stats.csv")
 #+end_src
 
 #+RESULTS:
-: TRUE
 ** Japanese Summary Statistics
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment*
@@ -539,9 +529,11 @@ library(ipumsr)
 library(dplyr)
 library(dbplyr)
 library(duckdb)
+source("config.R")
+
 database <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
 # data extract file
-extract <- "data/fullcount_census/usa_00124.xml"
+ddi_path <- sprintf("data/fullcount_census/usa_%05d.xml", ipums_extract_number)
 ddi <- read_ipums_ddi(extract)
 # table name in database
 tbl <- "ipums_microdata"
@@ -682,61 +674,6 @@ This initial procedure leaves 11,079 linked MLP individuals across all MLP recor
 :END:
 
 #+begin_src R
-predict_internment <- function(census_1940, internees="data/all_internees.dta", vars=c("STATEFIP", "COUNTYICP", "SEX", "RACE")) {
-  library(tidyverse)
-  library(dbplyr)
- 
-  # Ensure internee_data is a tibble; read if character
-  if (is.character(internees)) {
-    internees <- haven::read_dta(internees)
-  }
-  # Cleanup internee data
-  data_int <- internees |>
-    rename_with(toupper) |>
-    mutate(STATEFIP = as.integer(NHGISST)/10,
-           COUNTYICP = as.integer(NHGISCTY),
-           across(RACE:FATH_OCC_ABROAD, as.numeric)) |>
-    filter(!is.na(STATE),!is.na(COUNTY)) |>
-    # AK, HI don't have census data, so drop them here
-    filter(!STATE %in% c("Alaska", "Hawaii"))
-
-  # Check required columns
-  missing_census <- setdiff(vars, colnames(census_1940))
-  if (length(missing_census) > 0) {
-    stop("Census data is missing required columns: ",
-         paste(missing_census, collapse = ", "))
-  }
-
-  # Count by group in census
-  pop_grp <- census_1940 |>
-    group_by(across(all_of(vars))) |>
-    summarise(n_j=n(), .groups = "drop")
-
-  # Count by group in internee data
-  int_grp <- data_int |>
-    group_by(across(all_of(vars))) |>
-    summarise(n_i = n(), .groups = "drop")
-  
-  # Join and calculate fraction
-  combined <- pop_grp |>
-    full_join(int_grp, by = vars) |>
-    mutate(
-      n_i = replace_na(n_i, 0),
-      p_ij = n_i / n_j,
-      p_ij = replace_na(p_ij, 0),
-    )
-
-  # Attach back to census data
-  census_augmented <- census_1940 |>
-    left_join(combined, by = vars)
-
-  return(census_augmented)
-}
-#+end_src
-
-#+RESULTS:
-
-#+begin_src R
 library(tidyverse)
 library(haven)
 mlp_panel <- read_csv("data/mlp_sample.csv") |>
@@ -751,7 +688,7 @@ library(duckdb)
 # data extract file
 db <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
 tbl = "ipums_microdata"
-linking_vars <- c("STATEFIP", "COUNTYICP")
+linking_vars <- c("STATEFIP", "COUNTYICP", "RACE", "SEX", "BIRTHYR", "BPL")
 
 census_dat <- tbl(db,tbl) |>
   filter(YEAR==1940) |>
@@ -759,10 +696,15 @@ census_dat <- tbl(db,tbl) |>
   collect()
 dbDisconnect(db)
 
-intern_prob <- census_dat |>
-  predict_internment(vars=linking_vars) |>
-  group_by(STATEFIP, COUNTYICP) |> 
-  distinct(p_ij)
+predict_internment_linked <- function(linked_dat, census_dat, vars) {
+  census_groups <- predict_internment(census_dat, vars = vars) |>
+    select(all_of(vars), p_ij)
+
+  results <- linked_dat |>
+    left_join(census_groups, by = vars)
+
+  return(results)
+}
 
 mlp_panel_linked <- mlp_panel |>
   left_join(intern_prob, by = c("STATEFIP_1940"="STATEFIP",
@@ -774,13 +716,19 @@ mlp_panel_linked <- mlp_panel |>
          BPL = "BPL_1940", RACE = "RACE_1940") |>
   mutate(
     # create indicator for migration status
-    moved = ifelse(COUNTYICP_1940!=COUNTYICP_1950, T, F),
-    # indicator for whether the respondent has a wage
-    haswage_1940 = !is.na(INCWAGE_1940),
-    haswage_1950 = !is.na(INCWAGE_1950),
-    # assign probable internment status
-    japanese = ifelse(RACE==5, 1, 0)
+    moved = ifelse(COUNTYICP_1940!=COUNTYICP_1950, 1, 0),
     ) |>
+  predict_internment_linked(census_dat=census_dat, vars=c("STATEFIP", "COUNTYICP")) |>
+  rename(prInt_county = p_ij) |>
+  predict_internment_linked(census_dat=census_dat, vars=c("STATEFIP", "COUNTYICP", "BPL", "SEX", "cohort")) |>
+  rename(prInt_demo = p_ij) |>
+  predict_internment_linked(census_dat=census_dat, vars=c("STATEFIP", "BPL", "SEX", "cohort")) |>
+  rename(prInt_AB = p_ij) |>
+  pivot_longer(
+    cols = matches("_(1940|1950)$"),
+    names_to = c(".value", "YEAR"),
+    names_pattern = "(.*)_(1940|1950)"
+  ) |>
   select(id, japanese, female, BIRTHYR, BPL, p_ij,
          age_1940, age_1950,
          STATEFIP_1940, STATEFIP_1950, COUNTYICP_1940, COUNTYICP_1950, moved,
@@ -900,6 +848,58 @@ nhgis_codes <- read_ipums_sf(nhgis_shp, bind_multiple = T) |>
 
 #+RESULTS:
 
+** Census Designated Places
+:PROPERTIES:
+:header-args:R: :session *R:downloads*
+:END:
+
+#+begin_src R :results silent
+library(ipumsr)
+library(tidyverse)
+library(sf)
+#+end_src
+
+I want the place points for 1950 census-designated cities to compare to the few cities identifiable in the WRA records.
+
+#+begin_src R
+ipumsr::get_metadata_nhgis(type = "shapefiles") |>
+  filter(year==1950)
+#+end_src
+
+#+RESULTS:
+| us_state_1950_tl2000       | 1950 | State                                  | United States | 2000 TIGER/Line +              | 62 |
+| us_county_1950_tl2000      | 1950 | County                                 | United States | 2000 TIGER/Line +              | 63 |
+| us_county_1950_tl2008      | 1950 | County                                 | United States | 2008 TIGER/Line +              | 64 |
+| us_tract_1950_tl2000       | 1950 | Census Tract                           | United States | 2000 TIGER/Line +              | 65 |
+| us_tract_1950_tl2008       | 1950 | Census Tract                           | United States | 2008 TIGER/Line +              | 66 |
+| us_place_point_1950_tlgnis | 1950 | Place (Points)                         | United States | GNIS, TIGER/Line & Census Maps | 67 |
+| us_smsa_1950_tl2000        | 1950 | Standard Metropolitan Statistical Area | United States | 2000 TIGER/Line +              | 68 |
+
+#+begin_src R 
+nhgis_place_extract <- define_extract_nhgis(
+  description = "1950 census designated place coordinates",
+  shapefiles = "us_place_point_1950_tlgnis" ) |>
+  submit_extract()
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R 
+if (is_extract_ready(nhgis_place_extract)) {
+  download_extract(nhgis_place_extract, download_dir = "data"
+  }
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R
+nhgis_place_shp <- "data/nhgis0038_shape.zip"
+nhgis_place_codes <- read_ipums_sf(nhgis_place_shp) |>
+  st_drop_geometry()
+#+end_src
+
+#+RESULTS:
+
 * TODO Japanese American Redress Verification Information System (JARVIS) Files
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment* :results silent
@@ -913,6 +913,7 @@ JARVIS_path <- "data/JARVIS_PublicUse/Data_CodeLists/"
 master_file <- paste(JARVIS_path,"MASTER.TXT", sep = "")
 history_file <- paste(JARVIS_path,"HISTORY.TXT", sep = "")
 addresses_file <- paste(JARVIS_path, "ADDRESS.2021.PU.TXT", sep = "")
+contacts_file <- paste(JARVIS_path, "CONTACTS.TXT", sep = "")
 files <- c(master_file, history_file, addresses_file)
 #+end_src
 
@@ -937,4 +938,14 @@ all_dfs <- map(files, read_jarvis_raw)
 
 # Join all by 'DOJ' (assuming unique DOJ values per file)
 master <- reduce(all_dfs, full_join, by = "DOJ")
+
+# read potential recipients data from CONTACTS.TXT
+contacts <- read_jarvis_raw(contacts_file)
+
+#+end_src
+
+* Japanese American Research Project (JARP)
+Download the Issei, Nisei, and Sansei files from Gene Levine's [[https://www.icpsr.umich.edu/web/NACDA/studies/8450/datadocumentation][online repository.]]
+#+begin_src R
+
 #+end_src
