@@ -258,24 +258,24 @@ df <- read_csv("data/linked_sample.csv") |>
 
 #+RESULTS:
 
+
 ** Summary Statistics
 #+begin_src R :colnames yes
 df |>
-  group_by(group) |>
+  group_by(japanese) |>
   summarise(
     n = n(),
-    across(c(wage_1940, wage_1950, OCCSCORE_1940, female, age_1940, employed_1940, employed_1950, moved),
+    across(c(p_ij, wage_1940, wage_1950, OCCSCORE_1940, female, age_1940, employed_1940, employed_1950, moved),
            ~round(mean(., na.rm=T), digits = 2)
            )
   )
 #+end_src
 
 #+RESULTS:
-| group                 |    n | wage_1940 | wage_1950 | OCCSCORE_1940 | female | age_1940 | employed_1940 | employed_1950 | moved |
-|-----------------------+------+-----------+-----------+---------------+--------+----------+---------------+---------------+-------|
-| Chinese               | 4397 |    553.47 |    264.65 |         15.29 |   0.29 |    36.59 |          0.54 |          0.64 |   0.1 |
-| Interned Japanese     | 2784 |    368.98 |    282.31 |         11.03 |   0.47 |    41.49 |          0.58 |          0.59 |  0.16 |
-| Non-interned Japanese |  641 |    373.25 |    126.99 |          9.84 |   0.38 |    39.54 |          0.51 |          0.63 |  0.13 |
+| japanese |    n | p_ij | wage_1940 | wage_1950 | OCCSCORE_1940 | female | age_1940 | employed_1940 | employed_1950 | moved |
+|----------+------+------+-----------+-----------+---------------+--------+----------+---------------+---------------+-------|
+|        0 | 4397 |  0.3 |    553.47 |    264.65 |         15.29 |   0.29 |    36.59 |          0.54 |          0.64 |   0.1 |
+|        1 | 3425 | 0.63 |    369.78 |    253.24 |          10.8 |   0.45 |    41.12 |          0.57 |           0.6 |  0.15 |
 
 ** Regressions
 #+begin_src R
@@ -286,6 +286,7 @@ long_df <- read_csv("data/linked_sample.csv") |>
     names_pattern = "(.*)_(1940|1950)"
   ) |>
   mutate(
+    YEAR = as.numeric(YEAR),
     i_1950 = ifelse(YEAR==1950, 1, 0),
     )
 #+end_src
@@ -302,8 +303,40 @@ y_{it} = \alpha_{i} + \tau\mathbb{I}(t=1950) + \gamma_{1} \text{age}_{it} + \gam
 
 #+begin_src R :colnames yes
 etable(feols(
-  c(INCWAGE, log(INCWAGE), haswage, employed, OCCSCORE) ~ japanese:p_ij:i_1950 + i_1950 + japanese + age + age^2 |
-    id,
+  c(INCWAGE, log(INCWAGE), haswage, employed, OCCSCORE) ~  japanese + p_ij + i_1950 +  japanese*i_1950 + japanese*p_ij + japanese*p_ij*i_1950
+             +  age + age^2,
+    ## id,
+  ## cluster = ~STATEFIP^COUNTYICP,
+  data = long_df))
+#+end_src
+
+#+RESULTS:
+|                          | feols(c(INCWAGE,..1 | feols(c(INCWAGE, ..2 | feols(c(INCWAGE, l..3 | feols(c(INCWAGE, ..4 | feols(c(INCWAGE,..5 |
+|--------------------------+---------------------+----------------------+-----------------------+----------------------+---------------------|
+| Dependent Var.:          | INCWAGE             | log(INCWAGE)         | haswage               | employed             | OCCSCORE            |
+|                          |                     |                      |                       |                      |                     |
+| Constant                 | -521.4*** (81.84)   | 5.429*** (0.1494)    | 0.8939*** (0.0216)    | -0.2348*** (0.0289)  | -6.807*** (0.8711)  |
+| japanese                 | -145.9** (48.40)    | 0.3418*** (0.0735)   | 0.0051 (0.0150)       | -0.0441* (0.0201)    | -4.323*** (0.6043)  |
+| p_ij                     | -78.57 (55.82)      | -0.0744 (0.0701)     | 0.0256 (0.0174)       | -0.0401. (0.0232)    | 1.131 (0.6999)      |
+| i_1950                   | 543.9*** (55.33)    | 0.3362*** (0.0602)   | -0.6884*** (0.0109)   | 0.0825*** (0.0146)   | 0.3585 (0.4380)     |
+| age                      | 60.01*** (3.995)    | 0.0787*** (0.0071)   | 0.0027** (0.0010)     | 0.0393*** (0.0013)   | 1.062*** (0.0398)   |
+| age square               | -0.7056*** (0.0477) | -0.0009*** (8.36e-5) | -4.91e-5*** (1.11e-5) | -0.0004*** (1.48e-5) | -0.0114*** (0.0004) |
+| japanese x i_1950        | -119.0 (106.6)      | -0.2790* (0.1419)    | 0.0283 (0.0212)       | 0.0235 (0.0284)      | -0.3068 (0.8539)    |
+| japanese x p_ij          | -36.55 (80.68)      | -0.4575*** (0.1150)  | 0.0016 (0.0251)       | 0.1169*** (0.0336)   | -1.364 (1.011)      |
+| p_ij x i_1950            | -171.1 (120.3)      | 0.0627 (0.1410)      | 0.0563* (0.0246)      | -0.0652* (0.0329)    | -0.3907 (0.9898)    |
+| japanese x p_ij x i_1950 | 350.8* (174.0)      | 0.2077 (0.2237)      | -0.0181 (0.0355)      | -0.0519 (0.0474)     | -0.8508 (1.428)     |
+| ________________________ | ___________________ | ____________________ | _____________________ | ____________________ | ___________________ |
+| S.E. type                | IID                 | IID                  | IID                   | IID                  | IID                 |
+| Observations             | 9,319               | 3,392                | 15,644                | 15,644               | 15,644              |
+| R2                       | 0.06318             | 0.06925              | 0.47199               | 0.06127              | 0.07698             |
+| Adj. R2                  | 0.06227             | 0.06677              | 0.47169               | 0.06073              | 0.07644             |
+
+
+#+begin_src R :colnames yes
+etable(feols(
+  c(INCWAGE, log(INCWAGE), haswage, employed, OCCSCORE) ~  japanese + p_ij + i_1950 +  japanese*i_1950 + japanese*p_ij + japanese*p_ij*i_1950
+             +  age + age^2 | id,
+  ## cluster = ~STATEFIP^COUNTYICP,
   data = long_df))
 #+end_src
 
@@ -312,44 +345,208 @@ etable(feols(
 |--------------------------+--------------------+---------------------+----------------------+----------------------+---------------------|
 | Dependent Var.:          | INCWAGE            | log(INCWAGE)        | haswage              | employed             | OCCSCORE            |
 |                          |                    |                     |                      |                      |                     |
-| i_1950                   | 350.0. (179.0)     | 0.1163 (0.2470)     | -0.7121*** (0.0326)  | -0.0270 (0.0302)     | -1.757. (0.9785)    |
-| age                      | 122.6*** (21.60)   | 0.1635*** (0.0381)  | 0.0271*** (0.0040)   | 0.0851*** (0.0038)   | 2.085*** (0.1196)   |
-| age square               | -1.343*** (0.1169) | -0.0016*** (0.0003) | -0.0003*** (2.27e-5) | -0.0009*** (2.25e-5) | -0.0212*** (0.0007) |
-| japanese x p_ij x i_1950 | 216.7* (86.81)     | 0.0577 (0.1873)     | 0.0758*** (0.0150)   | -0.0252. (0.0153)    | -0.3791 (0.4075)    |
+| i_1950                   | 466.7* (183.0)     | 0.1371 (0.2497)     | -0.7322*** (0.0336)  | -0.0168 (0.0312)     | -1.688. (1.014)     |
+| age                      | 124.8*** (21.50)   | 0.1611*** (0.0388)  | 0.0271*** (0.0040)   | 0.0855*** (0.0038)   | 2.088*** (0.1196)   |
+| age square               | -1.354*** (0.1170) | -0.0016*** (0.0003) | -0.0003*** (2.28e-5) | -0.0009*** (2.25e-5) | -0.0212*** (0.0007) |
+| japanese x i_1950        | -140.0 (154.4)     | -0.5322. (0.2780)   | 0.0418. (0.0215)     | 0.0478* (0.0202)     | 0.2441 (0.5864)     |
+| p_ij x i_1950            | -373.6* (171.1)    | -0.0272 (0.2477)    | 0.0560* (0.0243)     | -0.0659** (0.0244)   | -0.4053 (0.8124)    |
+| japanese x p_ij x i_1950 | 604.3* (244.5)     | 0.7063 (0.4389)     | -0.0061 (0.0356)     | -0.0300 (0.0345)     | -0.3569 (1.025)     |
 | Fixed-Effects:           | ------------------ | ------------------- | -------------------- | -------------------- | ------------------- |
 | id                       | Yes                | Yes                 | Yes                  | Yes                  | Yes                 |
 | ________________________ | __________________ | ___________________ | ____________________ | ____________________ | ___________________ |
 | S.E.: Clustered          | by: id             | by: id              | by: id               | by: id               | by: id              |
 | Observations             | 9,319              | 3,392               | 15,644               | 15,644               | 15,644              |
-| R2                       | 0.80352            | 0.91531             | 0.74302              | 0.7302               | 0.74093             |
-| Within R2                | 0.15015            | 0.17875             | 0.64837              | 0.18376              | 0.12527             |
+| R2                       | 0.8041             | 0.91609             | 0.74325              | 0.73083              | 0.74095             |
+| Within R2                | 0.15267            | 0.18632             | 0.64868              | 0.18568              | 0.12534             |
 
-*** 1940-1950 Changes
-\begin{align}
-\Delta y_{i} & = \alpha + \beta_{1} \text{japanese} + \beta_{2} \text{moved} + \beta_{3} Pr(I_{i}=1)_{c(i)_{1940}} + \gamma_{1} \text{age}_{i,1940} + \gamma_{2} \text{age}_{i,1940}^2 \\
-& + \beta_{4} \text{japanese} \times \text{moved} + \beta_{5} \text{japanese} \times Pr(I_{i}=1)_{c(i)_{1940}} + \gamma_{6} \text{moved} \times Pr(I_{i}=1)_{c(i)_{1940}} \\
-& + \beta_{7}  \text{japanese} \times \text{moved} \times  Pr(I_{i}=1)_{c(i)_{1940}} + \epsilon_{i}
-\end{align}
-#+begin_src R
-etable(feols(c(INCWAGE_change, employed_1950, OCCSCORE_change) ~ japanese + moved + p_ij + japanese*moved + japanese*p_ij + moved*p_ij + japanese*moved*p_ij + age_1940 + age_1940^2, data = df))
+#+begin_src R :colnames yes
+etable(feols(
+  c(INCWAGE, log(INCWAGE), haswage, employed, OCCSCORE) ~  japanese + p_ij + i_1950 +  japanese*i_1950 + japanese*p_ij + japanese*p_ij*i_1950
+             +  age + age^2 | id,
+  cluster = ~STATEFIP^COUNTYICP,
+  data = long_df))
 #+end_src
 
 #+RESULTS:
-| Dependent Var.:         | INCWAGE_change     | employed_1950        | OCCSCORE_change    |
-|                         |                    |                      |                    |
-| Constant                | 2,268.0*** (238.6) | 0.7426*** (0.0371)   | 27.72*** (1.182)   |
-| japanese                | -369.5* (153.2)    | -0.0202 (0.0215)     | -0.0759 (0.6839)   |
-| moved                   | -326.4 (235.6)     | 0.0027 (0.0322)      | 2.277* (1.025)     |
-| p_ij                    | -435.1** (166.5)   | -0.1035*** (0.0246)  | -0.2983 (0.7837)   |
-| age_1940                | -67.29*** (12.72)  | 0.0036. (0.0019)     | -1.065*** (0.0614) |
-| age_1940 square         | 0.5434** (0.1664)  | -0.0001*** (2.44e-5) | 0.0083*** (0.0008) |
-| japanese x moved        | 1,371.9** (431.4)  | -0.0516 (0.0594)     | -2.126 (1.892)     |
-| japanese x p_ij         | 837.9*** (246.1)   | 0.0781* (0.0359)     | -0.0583 (1.143)    |
-| moved x p_ij            | 430.9 (483.9)      | -0.0141 (0.0717)     | -0.7681 (2.284)    |
-| japanese x moved x p_ij | -1,537.7* (679.2)  | 0.0715 (0.0986)      | 0.4379 (3.139)     |
-| _______________________ | __________________ | ____________________ | __________________ |
-| S.E. type               | IID                | IID                  | IID                |
-| Observations            | 1,906              | 7,822                | 7,822              |
-| R2                      | 0.06932            | 0.04493              | 0.13819            |
-| Adj. R2                 | 0.0649             | 0.04383              | 0.1372             |
+|                          | feols(c(INCWAGE..1 | feols(c(INCWA..2 | feols(c(INCWAGE,..3 | feols(c(INCWAGE, ..4 | feols(c(INCWAGE,..5 |
+|--------------------------+--------------------+------------------+---------------------+----------------------+---------------------|
+| Dependent Var.:          | INCWAGE            | log(INCWAGE)     | haswage             | employed             | OCCSCORE            |
+|                          |                    |                  |                     |                      |                     |
+| i_1950                   | 466.7 (386.4)      | 0.1371 (0.8664)  | -0.7322*** (0.0496) | -0.0168 (0.0364)     | -1.688 (1.236)      |
+| age                      | 124.8** (46.48)    | 0.1611 (0.1098)  | 0.0271*** (0.0066)  | 0.0855*** (0.0048)   | 2.088*** (0.1218)   |
+| age square               | -1.354*** (0.3303) | -0.0016 (0.0011) | -0.0003*** (6.6e-5) | -0.0009*** (2.48e-5) | -0.0212*** (0.0009) |
+| japanese x i_1950        | -140.0 (323.8)     | -0.5322 (0.6213) | 0.0418 (0.0381)     | 0.0478 (0.0310)      | 0.2441 (1.670)      |
+| p_ij x i_1950            | -373.6 (369.7)     | -0.0272 (0.7805) | 0.0560 (0.0498)     | -0.0659 (0.0528)     | -0.4053 (1.647)     |
+| japanese x p_ij x i_1950 | 604.3 (520.2)      | 0.7063 (0.9960)  | -0.0061 (0.0642)    | -0.0300 (0.0814)     | -0.3569 (2.265)     |
+| Fixed-Effects:           | ------------------ | ---------------- | ------------------- | -------------------- | ------------------- |
+| id                       | Yes                | Yes              | Yes                 | Yes                  | Yes                 |
+| ________________________ | __________________ | ________________ | ___________________ | ____________________ | ___________________ |
+| S.E.: Clustered          | by: STATEFIP-COU.. | by: STATEFIP-C.. | by: STATEFIP-COUN.. | by: STATEFIP-COUNT.. | by: STATEFIP-COUN.. |
+| Observations             | 9,319              | 3,392            | 15,644              | 15,644               | 15,644              |
+| R2                       | 0.8041             | 0.91609          | 0.74325             | 0.73083              | 0.74095             |
+| Within R2                | 0.15267            | 0.18632          | 0.64868             | 0.18568              | 0.12534             |
 
+**** Why the differences in haswage vs employed?
+#+begin_src R :colnames yes
+long_df |> group_by(YEAR, haswage, employed) |> summarise(n = n(), wage = mean(INCWAGE, na.rm = T))
+#+end_src
+
+#+RESULTS:
+| YEAR | haswage | employed |    n |             wage |
+|------+---------+----------+------+------------------|
+| 1940 | FALSE   |        0 |  384 |                  |
+| 1940 | FALSE   |        1 |  154 |                  |
+| 1940 | TRUE    |        0 | 3103 | 86.7564614888815 |
+| 1940 | TRUE    |        1 | 4181 | 820.591413537431 |
+| 1950 | FALSE   |        0 | 2226 |                  |
+| 1950 | FALSE   |        1 | 3561 |                  |
+| 1950 | TRUE    |        0 |  746 | 371.045576407507 |
+| 1950 | TRUE    |        1 | 1289 | 1360.89992242048 |
+
+There are a lot more people in 1950 who are missing wages (even for employed people) than in 1940.
+
+*** Internees moved more than non-internees?
+#+begin_src R
+etable(feols(c(INCWAGE, employed, OCCSCORE) ~ japanese + p_ij + i_1950 +  japanese*i_1950 + japanese*p_ij + japanese*p_ij*i_1950
+             +  age + age^2,
+             data = long_df))
+#+end_src
+
+#+RESULTS:
+| Dependent Var.:          | INCWAGE             | employed             | OCCSCORE            |
+|                          |                     |                      |                     |
+| Constant                 | -521.4*** (81.84)   | -0.2348*** (0.0289)  | -6.807*** (0.8711)  |
+| japanese                 | -145.9** (48.40)    | -0.0441* (0.0201)    | -4.323*** (0.6043)  |
+| p_ij                     | -78.57 (55.82)      | -0.0401. (0.0232)    | 1.131 (0.6999)      |
+| i_1950                   | 543.9*** (55.33)    | 0.0825*** (0.0146)   | 0.3585 (0.4380)     |
+| age                      | 60.01*** (3.995)    | 0.0393*** (0.0013)   | 1.062*** (0.0398)   |
+| age square               | -0.7056*** (0.0477) | -0.0004*** (1.48e-5) | -0.0114*** (0.0004) |
+| japanese x i_1950        | -119.0 (106.6)      | 0.0235 (0.0284)      | -0.3068 (0.8539)    |
+| japanese x p_ij          | -36.55 (80.68)      | 0.1169*** (0.0336)   | -1.364 (1.011)      |
+| p_ij x i_1950            | -171.1 (120.3)      | -0.0652* (0.0329)    | -0.3907 (0.9898)    |
+| japanese x p_ij x i_1950 | 350.8* (174.0)      | -0.0519 (0.0474)     | -0.8508 (1.428)     |
+| ________________________ | ___________________ | ____________________ | ___________________ |
+| S.E. type                | IID                 | IID                  | IID                 |
+| Observations             | 9,319               | 15,644               | 15,644              |
+| R2                       | 0.06318             | 0.06127              | 0.07698             |
+| Adj. R2                  | 0.06227             | 0.06073              | 0.07644             |
+
+
+** Moving and Location
+
+#+begin_src R
+# county-level variables fixed at 1940 levels
+ct_dt <- read_csv("data/county_stats.csv") |>
+  filter(YEAR==1940)
+
+long_df <- long_df |>
+  left_join(ct_dt, by = c("STATEFIP", "COUNTYICP"))
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :colnames yes
+etable(feols(
+  moved ~ japanese + p_ij + japanese*p_ij,
+  data = long_df |> filter(i_1950==1)
+  ),
+  feols(
+  moved ~ japanese + p_ij + japanese*p_ij,
+  cluster = ~ STATEFIP^COUNTYICP,
+  data = long_df |> filter(i_1950==1)
+  ))
+#+end_src
+
+#+RESULTS:
+|                 | feols(moved ~ ja.. | feols(moved ~ j.. |
+|-----------------+--------------------+-------------------|
+| Dependent Var.: | moved              | moved             |
+|                 |                    |                   |
+| Constant        | 0.1013*** (0.0069) | 0.1013** (0.0325) |
+| japanese        | 0.0232. (0.0138)   | 0.0232 (0.0395)   |
+| p_ij            | -0.0042 (0.0159)   | -0.0042 (0.0566)  |
+| japanese x p_ij | 0.0488* (0.0230)   | 0.0488 (0.0502)   |
+| _______________ | __________________ | _________________ |
+| S.E. type       | IID                | by: STATEFIP-CO.. |
+| Observations    | 7,822              | 7,822             |
+| R2              | 0.00724            | 0.00724           |
+| Adj. R2         | 0.00686            | 0.00686           |
+
+Without individiual fixed-effects, or clustered standard errors:
+#+begin_src R :colnames yes
+etable(feols(
+  c(mean_wage, pop, pop_jp/pop) ~  japanese*p_ij + i_1950 + japanese*p_ij*i_1950
+             +  age + age^2,
+  ## cluster = ~STATEFIP^COUNTYICP,
+  data = long_df)
+  )
+#+end_src
+
+#+RESULTS:
+|                          | feols(c(mean_wa..1 | feols(c(mean_wage, po..2 | feols(c(mean_wag..3 |
+|--------------------------+--------------------+--------------------------+---------------------|
+| Dependent Var.:          | mean_wage          | pop                      | pop_jp/pop          |
+|                          |                    |                          |                     |
+| Constant                 | 1,058.0*** (13.31) | 823,848.1*** (61,353.2)  | 0.0015** (0.0005)   |
+| japanese                 | -250.7*** (9.232)  | -480,903.7*** (42,560.3) | 0.0042*** (0.0003)  |
+| p_ij                     | -167.8*** (10.69)  | -304,325.4*** (49,297.7) | 0.0240*** (0.0004)  |
+| i_1950                   | 0.9407 (6.695)     | -37,539.9 (30,862.2)     | 0.0006** (0.0002)   |
+| age                      | 1.474* (0.6086)    | 6,931.2* (2,805.6)       | -1.29e-5 (2.2e-5)   |
+| age square               | -0.0119. (0.0068)  | -73.71* (31.43)          | 1.02e-7 (2.46e-7)   |
+| japanese x p_ij          | 172.0*** (15.44)   | 926,242.6*** (71,174.1)  | -0.0060*** (0.0006) |
+| japanese x i_1950        | -6.022 (13.05)     | 50,079.5 (60,150.8)      | -0.0006 (0.0005)    |
+| p_ij x i_1950            | 12.13 (15.13)      | 76,783.8 (69,728.3)      | -0.0021*** (0.0005) |
+| japanese x p_ij x i_1950 | -0.7908 (21.83)    | -34,782.1 (100,615.6)    | 0.0008 (0.0008)     |
+| ________________________ | __________________ | ________________________ | ___________________ |
+| S.E. type                | IID                | IID                      | IID                 |
+| Observations             | 15,641             | 15,641                   | 15,641              |
+| R2                       | 0.18609            | 0.02438                  | 0.48248             |
+| Adj. R2                  | 0.18562            | 0.02381                  | 0.48218             |
+
+With individual fixed effects: (=p_ij= gets dropped because each individual only gets one internment probability)
+#+begin_src R :colnames yes
+etable(feols(
+  c(mean_wage, pop, pop_jp/pop) ~ p_ij:i_1950 + i_1950  +homestate | id,
+  cluster = ~STATEFIP^COUNTYICP,
+  data = long_df |> filter(moved==T))
+  )
+#+end_src
+
+#+RESULTS:
+|                 | feols(c(mean_..1 | feols(c(mean_wage, po..2 | feols(c(mean_wag..3 |
+|-----------------+------------------+--------------------------+---------------------|
+| Dependent Var.: | mean_wage        | pop                      | pop_jp/pop          |
+|                 |                  |                          |                     |
+| i_1950          | 288.4*** (47.44) | 12,292.3 (146,604.3)     | 0.0031 (0.0033)     |
+| homestate       | -74.58 (64.73)   | 456,478.3 (298,301.2)    | 0.0185 (0.0164)     |
+| p_ij x i_1950   | 143.1* (63.92)   | 783,015.2*** (229,067.9) | -0.0222*** (0.0042) |
+| Fixed-Effects:  | ---------------- | ------------------------ | ------------------- |
+| id              | Yes              | Yes                      | Yes                 |
+| _______________ | ________________ | ________________________ | ___________________ |
+| S.E.: Clustered | by: STATEFIP-C.. | by: STATEFIP-COUNTYICP   | by: STATEFIP-COUN.. |
+| Observations    | 1,926            | 1,926                    | 1,926               |
+| R2              | 0.76598          | 0.49775                  | 0.60184             |
+| Within R2       | 0.65139          | 0.08573                  | 0.26474             |
+
+Compared to non-interned individuals, internees moved to higher-earning counties, with larger total populations.
+They were more likely to move to counties with lower Japanese population per capita.
+
+Were internees moving out of the West Coast?
+#+begin_src R :colnames yes
+df |>
+  filter(COUNTYICP_1940 != COUNTYICP_1950) |>
+  mutate(WC_1940 = ifelse(STATEFIP_1940 %in% c(4,6,41,53), "West Coast", "Other"),
+         WC_1950 = ifelse(STATEFIP_1950 %in% c(4,6,41,53), "West Coast", "Other"),
+         japanese = ifelse(japanese==1, "Japanese", "Chinese") ) |>
+  count(japanese, WC_1940, WC_1950) |>
+  arrange(japanese, desc(n)) |>
+  pivot_wider(names_from = japanese, values_from = n)
+#+end_src
+
+#+RESULTS:
+| WC_1940    | WC_1950    | Chinese | Japanese |
+|------------+------------+---------+----------|
+| West Coast | West Coast |     258 |      376 |
+| Other      | Other      |     109 |       57 |
+| Other      | West Coast |      47 |       14 |
+| West Coast | Other      |      26 |       76 |
