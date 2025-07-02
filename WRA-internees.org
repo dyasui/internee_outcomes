@@ -779,41 +779,9 @@ There might be a better way to do it, but I'm leaving the city work for the futu
 
 #+begin_src R :results silent :tangle no
 # previous address codes transcribed from WRA form 26 documentation
-wra_counties <- read_csv("data/WRA_prev_address.csv") |>
-  select(-city) |>
-  distinct(state, county)
+wra_places <- read_csv("data/WRA_prev_address.csv") |>
+  select(prev_address, state, county, city)
 #+end_src
-
-For the list of state and county names in the WIP previous address list,
-I want to give them appropriate NHGIS codes to make the joins with other datasets easier.
-The county names from the WRA records should match the county names from the NHGIS system for counties in 1940.
-#+begin_src R :colnames yes :tangle no
-nhgis_shp <- "data/nhgis0035_shape.zip"
-nhgis_codes <- read_ipums_sf(nhgis_shp, file_select = matches("us_county_1950")) |>
-    sf::st_drop_geometry() |>
-    mutate(STATENAM = case_when(
-           STATENAM == "Alaska Territory" ~ "Alaska",
-           STATENAM == "Hawaii Territory" ~ "Hawaii",
-           .default = STATENAM
-           )) |>
-    select(STATENAM, NHGISNAM ,NHGISST, NHGISCTY)
-
-full_join(wra_counties, nhgis_codes,
-                             by = c("state" = "STATENAM", "county" = "NHGISNAM") ) |>
-  tail()
-#+end_src
-
-#+RESULTS:
-| state        | county  | NHGISST | NHGISCTY |
-|--------------+---------+---------+----------|
-| Virginia     | York    |     510 |     1990 |
-| Texas        | Young   |     480 |     5030 |
-| Colorado     | Yuma    |      80 |     1250 |
-| Texas        | Zapata  |     480 |     5050 |
-| Texas        | Zavala  |     480 |     5070 |
-| South Dakota | Ziebach |     460 |     1370 |
-
-Overall, the counties match up pretty well.
 
 Here is a function which strips the names and NHGIS codes from a shapefile downloaded via =define_extract_nhgis= in the IPUMSR API.
 
@@ -829,22 +797,52 @@ get_nhgis_codes <- function(shp) {
            STATENAM == "Hawaii Territory" ~ "Hawaii",
            .default = STATENAM
            )) |>
-    select(STATENAM, NHGISNAM ,NHGISST, NHGISCTY)
+    select(STATENAM, NHGISNAM ,NHGISST, NHGISCTY, ICPSRFIP) |>
+    mutate(STATEFIP = as.numeric(NHGISST) /10,
+           COUNTYICP = as.numeric(NHGISCTY))
   return(nhgis_codes)
 }
 #+end_src
+
+For the list of state and county names in the WIP previous address list,
+I want to give them appropriate NHGIS codes to make the joins with other datasets easier.
+The county names from the WRA records should match the county names from the NHGIS system for counties in 1940.
+#+begin_src R :colnames yes :tangle no
+nhgis_shp <- "data/nhgis0035_shape.zip"
+nhgis_codes <- get_nhgis_codes(nhgis_shp)
+
+full_join(wra_places, nhgis_codes,
+                             by = c("state" = "STATENAM", "county" = "NHGISNAM") ) |>
+  tail()
+#+end_src
+
+#+RESULTS:
+| prev_address | state        | county  | city | NHGISST | NHGISCTY | ICPSRFIP | STATEFIP | COUNTYICP |
+|--------------+--------------+---------+------+---------+----------+----------+----------+-----------|
+|              | Virginia     | York    |      |     510 |     1990 |    51199 |       51 |      1990 |
+|              | Texas        | Young   |      |     480 |     5030 |    48503 |       48 |      5030 |
+|              | Colorado     | Yuma    |      |      80 |     1250 |     8125 |        8 |      1250 |
+|              | Texas        | Zapata  |      |     480 |     5050 |    48505 |       48 |      5050 |
+|              | Texas        | Zavala  |      |     480 |     5070 |    48507 |       48 |      5070 |
+|              | South Dakota | Ziebach |      |     460 |     1370 |    46137 |       46 |      1370 |
+
+Overall, the counties match up pretty well.
+
 
 I'm going to save these wra counties with nhgis codes to a separate file than the original for now, in case I go back later to change the original.
 #+begin_src R :results silent :tangle no
 wra_counties <- function(nhgis, addr) {
   library(tidyverse)
   # read nhgiscodes from shapefile
-  nhgis_codes <- read_csv(nhgis)
-  wra_counties <- read_csv(addr)
-  join_counties <- inner_join(wra_counties, nhgis_codes,
+  wra_counties <- read_csv(addr) |>
+    select(prev_address, state, county, city)
+  join_counties <- inner_join(wra_counties, nhgis,
                               by = c("state" = "STATENAM", "county" = "NHGISNAM") )
   return(join_counties)
 }
+
+wra_counties(nhgis_codes, "data/WRA_prev_address.csv") |>
+  write_csv("data/WRA_prev_address.csv")
 #+end_src
 
 #+RESULTS:
@@ -885,6 +883,7 @@ write_dta(data, "data/all_internees.dta")
 #+end_src
 
 #+RESULTS:
+: TRUE
 
 Version without labels to save as csv.
 #+begin_src R :tangle no
@@ -924,100 +923,8 @@ Summarise the internee records file.
 library(modelsummary)
 library(tidyverse)
 library(haven)
+library(ipumsr)
 #+end_src
-
-#+begin_src R
-ddi <- "data/fullcount_census/usa_00126.xml"
-
-# callback function to calculate county summary stats
-jpstat_cb <- function(x, pos) {
-  x |>
-    filter(RACE==5, YEAR==1940) |>
-    mutate(across(c("SEX", "EDUC", "EDUCD", "OCC1950"), as_factor),
-           BIRTHYR = ifelse(BIRTHYR %in% 9996:9999 , NA, BIRTHYR)
-           )
-}
-
-jp_demo <- read_ipums_micro_chunked(
-  ddi,
-  vars = c("YEAR", "RACE", "SEX", "BIRTHYR", "BPL", "EDUC", "EDUCD", "OCC1950"),
-  callback = IpumsDataFrameCallback$new(jpstat_cb),
-  chunk_size = 1e5,
-  verbose = TRUE
-) |>
-  bind_rows()
-#+end_src
-
-#+RESULTS:
-
-#+begin_src R
-cen_demo <- jp_demo |>
-  mutate(educ = case_when(
-           EDUCD == "Missing" ~ NA,
-           EDUCD == "No schooling completed" ~ 0,
-           EDUCD == "Kindergarten" ~ 0,
-           EDUCD == "Grade 1" ~ 1,
-           EDUCD == "Grade 2" ~ 2,
-           EDUCD == "Grade 3" ~ 3,
-           EDUCD == "Grade 4" ~ 4,
-           EDUCD == "Grade 5" ~ 5,
-           EDUCD == "Grade 6" ~ 6,
-           EDUCD == "Grade 7" ~ 7,
-           EDUCD == "Grade 8" ~ 8,
-           EDUCD == "Grade 9" ~ 9,
-           EDUCD == "Grade 10" ~ 10,
-           EDUCD == "Grade 11" ~ 11,
-           EDUCD == "Grade 12" ~ 12,
-           EDUCD == "1 year of college" ~ 13,
-           EDUCD == "2 years of college" ~ 14,
-           EDUCD == "3 years of college" ~ 15,
-           EDUCD == "4 years of college" ~ 16,
-           EDUCD == "5 years of college" ~ 17,
-           EDUCD == "6 years of college" ~ 18,
-           EDUCD == "7 years of college" ~ 19,
-           EDUCD == "8+ years of college" ~ 20,
-           ),
-         brth_country = case_when(BPL %in% 1:99 ~ "United States",
-                                  BPL == 501 ~ "Japan",
-                                  BPL == 150 ~ "Canada",
-                                  BPL == 200 ~ "Mexico",
-                                  BPL == 300 ~ "South America"),
-         source = "1940 Census",
-         ) |>
-  rename(birthyr="BIRTHYR", sex="SEX") |>
-  select(sex, birthyr, educ, brth_country, source)
-
-#+end_src
-
-#+RESULTS:
-
-#+begin_src R
-int_demo <- read_dta(file="data/all_internees.dta") |>
-  mutate(
-    across(c("camp", "assembly", "race", "sex", "degfield", "fath_occ_us"), as_factor),
-    brth_country = case_when(bpl %in% 1:99 ~ "United States",
-                             bpl == 501 ~ "Japan",
-                             bpl == 150 ~ "Canada",
-                             bpl == 200 ~ "Mexico",
-                             bpl == 300 ~ "South America"),
-    source = "Internees",
-  ) |>
-  select(sex, birthyr, educ, brth_country, source)
-
-tbl_dt <- bind_rows(cen_demo, int_demo)
-
-datasummary_balance(~source, data = tbl_dt,
-                    output = "tables/balance_stats.tex"
-                    )
-#+end_src
-
-#+RESULTS:
-
-#+begin_src R
-datasummary_balance(~brth_country, data = int_demo)
-#+end_src
-
-#+RESULTS:
 
 ** County of Origin to WRA Camp
 
@@ -1251,3 +1158,166 @@ read_csv("data/all_internees.csv") |>
 | MIKIE      | YASUI     |    1917 | Female | Oregon                   |         |   17 | Arts           | Farm operators and managers          |
 | HOMER      | YASUI     |    1924 | Male   | Oregon                   |         |   11 |                | Managerial and official (exept farm) |
 | YUKA       | YASUI     |    1927 | Female | Oregon                   |         |    8 |                | Managerial and official (exept farm) |
+
+* Compare Census vs WRA variables
+:PROPERTIES:
+:HEADER-ARGS:R: :session *R:internment*
+:END:
+
+#+begin_src R
+ddi <- "data/fullcount_census/usa_00128.xml"
+
+# callback function to calculate county summary stats
+jpstat_cb <- function(x, pos) {
+  x |>
+    filter(RACE==5, YEAR==1940) |>
+    mutate(across(c("CITY", "OCC1950"), as_factor),
+           BIRTHYR = ifelse(BIRTHYR %in% 9996:9999 , NA, BIRTHYR)
+           )
+}
+
+jp_demo <- read_ipums_micro_chunked(
+  ddi,
+  vars = c("YEAR", "RACE", "SEX", "BIRTHYR", "BPL", "EDUC", "EDUCD", "OCC1950", "STATEFIP", "COUNTYICP", "CITY", "FBPL", "MBPL", "NATIVITY"),
+  callback = IpumsDataFrameCallback$new(jpstat_cb),
+  chunk_size = 1e5,
+  verbose = TRUE
+) |>
+  bind_rows()
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R
+cen_demo <- jp_demo |>
+  mutate(
+    NHGISST = str_pad(string = STATEFIP*10, width = 3, side = "left", pad = "0"),
+    NHGISCTY = str_pad(COUNTYICP, width = 4, side = "left", pad = "0"),
+    source = "Census1940",
+  ) |>
+  left_join(read_csv("data/nhgis_codes.csv"), by = c("NHGISST", "NHGISCTY")) |> 
+  rename(state="STATENAM", county="NHGISNAM") |> 
+  select(source, SEX, BIRTHYR, BPL, state, county)
+
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R
+int_demo <- read_dta(file="data/all_internees.dta") |>
+  filter(race==5) |> 
+  mutate(
+    source = "Internees",
+  ) |>
+  rename(SEX="sex",BIRTHYR="birthyr",BPL="bpl") |> 
+  select(source, SEX, BIRTHYR, BPL, state, county)
+
+tbl_dt <- bind_rows(cen_demo, int_demo) |>
+  mutate(
+  cohort = case_when(
+    BIRTHYR %in% 1940:1942 ~ "c4042",
+    BIRTHYR %in% 1929:1939 ~ "c2939",
+    BIRTHYR %in% 1924:1928 ~ "c2428",
+    BIRTHYR %in% 1915:1923 ~ "c1523",
+    BIRTHYR %in% 1905:1914 ~ "c0514",
+    BIRTHYR %in% 1895:1904 ~ "c9504",
+    BIRTHYR %in% 1885:1894 ~ "c8594",
+    BIRTHYR %in% 1875:1884 ~ "c7584",
+    BIRTHYR < 1875 ~ "pre75" )
+  ) |> 
+  filter(BIRTHYR %in% 1860:1940)
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R
+datasummary_balance(~source, data = tbl_dt,
+                    ## output = "tables/balance_stats.tex"
+                    )
+## datasummary_balance(~brth_country, data = int_demo)
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :exports results :results graphics file :file figures/compare-age_plot.pdf
+library(paletteer)
+library(haven)
+tbl_dt |>
+  filter(state %in% c("California", "Washington", "Oregon", "Arizona")) |> 
+  ggplot(aes(x=BIRTHYR, group = source, fill = source, position = source)) +
+  geom_histogram(position="dodge", binwidth=1) +
+  ## geom_density(alpha = 0.5) +
+  theme_minimal() +
+  theme(
+    ## legend.title = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    title = "Age Distibution of Internees vs. 1940 population",
+    x = "Year of Birth",
+    fill = "Source",
+    ) +
+  scale_fill_paletteer_d("MetBrewer::Hiroshige")
+#+end_src
+
+#+RESULTS:
+[[file:figures/compare-age_plot.pdf]]
+
+Doesn't seem to be big differences in age distributions
+
+There are several counties which had more internees than the number of Japanese living there in 1940.
+#+begin_src R :colnames yes
+counties <- tbl_dt |>
+  filter(!state %in% c("Alaska", "Hawaii")) |> 
+  count(source, state, county) |>
+  pivot_wider(names_from = source, values_from=n) |>
+  mutate(difference = Internees - Census1940,
+         county_pr_intern = Internees / Census1940)
+
+counties |> 
+  arrange(desc(Internees)) |> 
+  print(n=25)
+#+end_src
+
+#+RESULTS:
+: Could not parse R result
+
+Demographic groups by birth cohort, bpl, state, county, sex
+#+begin_src R :colnames yes
+demo_groups <- tbl_dt |>
+  count(source, state, county, SEX, cohort, BPL) |>
+  pivot_wider(names_from = source, values_from=n) |>
+  mutate(demo_pr_intern = Internees / Census1940) |> 
+  arrange(desc(Internees))
+demo_groups
+#+end_src
+
+#+RESULTS:
+|---|
+
+#+begin_src R :exports results :results graphics file :file figures/pr_intern_plot.pdf
+tbl_dt <- tbl_dt |> 
+  filter(source=="Census1940") |> 
+  left_join(demo_groups, by = c("state", "county", "SEX", "cohort", "BPL") )  |>
+  left_join(counties, by = c("state", "county")) |> 
+  mutate(
+    Sex = as_factor(SEX), Birthplace=as_factor(BPL),
+    ## Internees = replace_na(Internees, 0),
+    county_pr_intern = replace_na(county_pr_intern, 0),
+    demo_pr_intern = replace_na(demo_pr_intern, 0)
+  ) 
+
+ggplot(tbl_dt) +
+  geom_density(aes(x=demo_pr_intern), fill="lightblue", color="darkblue") +
+  geom_density(aes(x=county_pr_intern), fill="lightgreen", color="darkgreen", alpha=0.5) +
+  scale_x_continuous(breaks = c(0,0.5, 1)) +
+  xlim(-0.1,2) +
+  theme_internment() +
+  theme(legend.position = "inside",
+        legend.position.inside = c(0.8,0.9)) +
+  xlab("Internment Probability") +
+  scale_fill_paletteer_d("MetBrewer::Juarez")
+#+end_src
+
+#+RESULTS:
+[[file:figures/pr_intern_plot.pdf]]
