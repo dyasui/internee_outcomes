@@ -1,318 +1,318 @@
-prev_address,state,county,city,NHGISST,NHGISCTY
-11110,Washington,Clallam,NA,530,0090
-11112,Washington,Clallam,Port Angeles,530,0090
-11123,Washington,Grays Harbor,NA,530,0270
-11130,Washington,Jefferson,NA,530,0310
-11131,Washington,Jefferson,Port Townsend,530,0310
-11140,Washington,Pacific,NA,530,0490
-11141,Washington,Pacific,Raymond,530,0490
-11150,Washington,Wahkiakum,Cathlamet,530,0690
-112&0,Washington,Whatcom,NA,530,0730
-112&3,Washington,Whatcom,NA,530,0730
-112&4,Washington,Whatcom,Bellingham,530,0730
-112-0,Washington,Thurston,NA,530,0670
-112-3,Washington,Thurston,Olympia,530,0670
-11200,Washington,Snohomish,NA,530,0610
-11204,Washington,Snohomish,Everett,530,0610
-11210,Washington,Clark,NA,530,0110
-11213,Washington,Clark,Vancouver,530,0110
-11222,Washington,Cowlitz,Kelso,530,0150
-11223,Washington,Cowlitz,Longview,530,0150
-11233,Washington,Island,NA,530,0290
-11240,Washington,Kitsap,NA,530,0350
-11243,Washington,Kitsap,Bremerton,530,0350
-11250,Washington,Lewis,NA,530,0410
-11251,Washington,Lewis,Chehalis,530,0410
-11252,Washington,Lewis,Centralia,530,0410
-11261,Washington,Mason,Shelton,530,0450
-11270,Washington,San Juan,Friday Harbor,530,0550
-11280,Washington,Skagit,NA,530,0570
-11281,Washington,Skagit,NA,530,0570
-11282,Washington,Skagit,Anacortes,530,0570
-11310,Washington,Benton,NA,530,0050
-11314,Washington,Benton,NA,530,0050
-11320,Washington,Chelan,NA,530,0070
-11323,Washington,Chelan,Wenatchee,530,0070
-11350,Washington,Klikatat,NA,530,0390
-11390,Washington,Yakima,NA,530,0770
-11391,Washington,Yakima,Toppenish,530,0770
-11394,Washington,Yakima,Yakima,530,0770
-11401,Washington,Whitman,NA,530,0750
-11421,Washington,Asotin,Clarkston,530,0030
-11451,Washington,Franklin,Pasco,530,0210
-11510,Washington,King,NA,530,0330
-11511,Washington,King,NA,530,0330
-11512,Washington,King,NA,530,0330
-11514,Washington,King,Seattle,530,0330
-11520,Washington,Pierce,NA,530,0530
-11521,Washington,Pierce,NA,530,0530
-11522,Washington,Pierce,Puyallup,530,0530
-11524,Washington,Pierce,Tacoma,530,0530
-11614,Washington,Spokane,Spokane,530,0630
-121&1,Oregon,Yamhill,NA,410,0710
-121-0,Oregon,Washington,NA,410,0670
-121-1,Oregon,Washington,NA,410,0670
-12101,Oregon,Tillamook,NA,410,0570
-12112,Oregon,Benton,NA,410,0030
-12120,Oregon,Clatsop,NA,410,0070
-12123,Oregon,Clatsop,NA,410,0070
-12130,Oregon,Columbia,NA,410,0090
-12140,Oregon,Hood River,NA,410,0270
-12141,Oregon,Hood River,NA,410,0270
-12153,Oregon,Lane,NA,410,0390
-12160,Oregon,Lincoln,NA,410,0410
-12170,Oregon,Linn,NA,410,0430
-12180,Oregon,Marion,NA,410,0470
-12184,Oregon,Marion,NA,410,0470
-12190,Oregon,Polk,NA,410,0530
-12191,Oregon,Polk,NA,410,0530
-12240,Oregon,Jackson,NA,410,0290
-12243,Oregon,Jackson,NA,410,0290
-12320,Oregon,Jefferson,NA,410,0310
-12360,Oregon,Wasco,NA,410,0650
-12362,Oregon,Wasco,NA,410,0650
-12430,Oregon,Deschutes,NA,410,0170
-12510,Oregon,Clackamas,NA,410,0050
-12511,Oregon,Clackamas,NA,410,0050
-12512,Oregon,Clackamas,NA,410,0050
-12514,Oregon,Clackamas,NA,410,0050
-12520,Oregon,Multnomah,NA,410,0510
-12521,Oregon,Multnomah,NA,410,0510
-12523,Oregon,Multnomah,NA,410,0510
-12524,Oregon,Multnomah,NA,410,0510
-13&10,California,San Diego,El Cajon,060,0730
-13&11,California,San Diego,Escondido/La Mesa/Oceanside,060,0730
-13&12,California,San Diego,Chula Vista/Coronado,060,0730
-13&13,California,San Diego,National City,060,0730
-13&14,California,San Diego,San Diego,060,0730
-13-10,California,Santa Clara,NA,060,0850
-13-11,California,Santa Clara,Gilroy/Los Gatos/Mountain View/Sunnyvale,060,0850
-13-12,California,Santa Clara,Santa Clara,060,0850
-13-13,California,Santa Clara,Palo Alto,060,0850
-13-14,California,Santa Clara,San Jose,060,0850
-13010,California,Los Angeles,NA,060,0370
-13017,California,Los Angeles,NA,060,0370
-1301F,California,Los Angeles,NA,060,0370
-13011,California,Los Angeles,Signal Hill/El Segundo/Glendora/Clarmont/La Verne/Sierra Madre/El Monte/Alhambra,060,0370
-13012,California,Los Angeles,Arcadia/Azusa/Gardena/Culver City/Hawthorne/Hermosa Beach/San Fernando/San Marino/Manhattan Beach/Torrance/Montebello/Monterey Park,060,0370
-13013,California,Los Angeles,South Pasadena/Pomona/Redondo Beach/San Gabriel/Compton/Lynwood/Maywood/Monrovia/Whittier,060,0370
-13014,California,Los Angeles,Belvedere Township/Glendale/Beverly Hills/Huntington Park/Pasadena/Inglewood/Burbank/Santa Monica/Long Beach/South Gate,060,0370
-13015,California,Los Angeles,Los Angeles/Bell,060,0370
-13020,California,Orange,NA,060,0590
-13021,California,Orange,Newport Beach/Brea/Huntington Beach/Laguna Beach,060,0590
-13022,California,Orange,Orange,060,0590
-13023,California,Orange,Anaheim/Fullerton,060,0590
-13024,California,Orange,Santa Ana,060,0590
-13110,California,Del Norte,Crescent City,060,0150
-13120,California,Humboldt,NA,060,0230
-13123,California,Humboldt,Eureka,060,0230
-13130,California,Lake,NA,060,0330
-13140,California,Mendocino,NA,060,0450
-13141,California,Mendocino,NA,060,0450
-13143,California,Mendocino,NA,060,0450
-13150,California,Napa,NA,060,0550
-13152,California,Napa,Napa,060,0550
-13160,California,Sonoma,NA,060,0970
-13161,California,Sonoma,Healdsburg,060,0970
-13162,California,Sonoma,Petaluma,060,0970
-13163,California,Sonoma,Santa Rosa,060,0970
-132&0,California,Siskiyou,NA,060,0930
-132-0,California,Shasta,NA,060,0890
-132-2,California,Shasta,Redding,060,0890
-13200,California,Plumas,NA,060,0630
-13210,California,Alpine,NA,060,0030
-13211,California,Alpine,NA,060,0030
-13220,California,Amador,NA,060,0050
-13230,California,Calaveras,NA,060,0090
-13240,California,El Dorado,NA,060,0170
-13241,California,El Dorado,Placerville,060,0170
-13270,California,Modoc,Alturas,060,0490
-13280,California,Nevada,NA,060,0570
-13282,California,Nevada,Grass Valley,060,0570
-13290,California,Placer,NA,060,0610
-13291,California,Placer,Auburn,060,0610
-13292,California,Placer,Roseville,060,0610
-13310,California,Butte,NA,060,0070
-13311,California,Butte,Oroville,060,0070
-13312,California,Butte,Chico,060,0070
-13320,California,Colusa,NA,060,0110
-13330,California,Glenn,NA,060,0210
-13340,California,Sutter,NA,060,1010
-13341,California,Sutter,Yuba City,060,1010
-13350,California,Tehama,NA,060,1030
-13351,California,Tehama,Red Bluff,060,1030
-13360,California,Yolo,Davis/Winters,060,1130
-13362,California,Yolo,Woodland,060,1130
-13370,California,Yuba,Wheatland,060,1150
-13372,California,Yuba,Marysville,060,1150
-13410,California,Monterey,NA,060,0530
-13411,California,Monterey,Carmel-by-the-sea,060,0530
-13412,California,Monterey,Pacific Grove,060,0530
-13413,California,Monterey,Monterey/Salinas,060,0530
-13414,California,Monterey,NA,060,0530
-13415,California,Monterey,NA,060,0530
-13420,California,San Benito,NA,060,0690
-13421,California,San Benito,Hollister,060,0690
-13430,California,San Luis Obispo,NA,060,0790
-13431,California,San Luis Obispo,Paso Robles,060,0790
-13432,California,San Luis Obispo,San Luis Obisbo,060,0790
-13440,California,Santa Cruz,NA,060,0870
-13442,California,Santa Cruz,Watsonville,060,0870
-13443,California,Santa Cruz,Santa Cruz,060,0870
-13510,California,Fresno,NA,060,0190
-13511,California,Fresno,NA,060,0190
-13512,California,Fresno,Coalinga,060,0190
-13513,California,Fresno,NA,060,0190
-13514,California,Fresno,Fresno,060,0190
-13520,California,Kern,NA,060,0290
-13521,California,Kern,Delano,060,0290
-13524,California,Kern,Bakersfield,060,0290
-13530,California,Kings,NA,060,0310
-13532,California,Kings,NA,060,0310
-13533,California,Kings,NA,060,0310
-13540,California,Madera,NA,060,0390
-13542,California,Madera,Madera,060,0390
-13544,California,Madera,NA,060,0390
-13550,California,Merced,NA,060,0470
-13553,California,Merced,Merced,060,0470
-13560,California,San Joaquin,Manteca,060,0770
-13561,California,San Joaquin,Tracy,060,0770
-13563,California,San Joaquin,Lodi,060,0770
-13564,California,San Joaquin,Stockton,060,0770
-13569,California,San Joaquin,NA,060,0770
-13570,California,Stanislaus,NA,060,0990
-13571,California,Stanislaus,NA,060,0990
-13573,California,Stanislaus,Modesto,060,0990
-13580,California,Tulare,NA,060,1070
-13581,California,Tulare,NA,060,1070
-13582,California,Tulare,NA,060,1070
-13584,California,Tulare,NA,060,1070
-13610,California,Santa Barbara,NA,060,0830
-13611,California,Santa Barbara,NA,060,0830
-13612,California,Santa Barbara,Santa Maria,060,0830
-13614,California,Santa Barbara,Santa Barbara,060,0830
-13620,California,Ventura,NA,060,1110
-13621,California,Ventura,Filmore,060,1110
-13622,California,Ventura,NA,060,1110
-13623,California,Ventura,Beuenaventura,060,1110
-13710,California,Imperial,NA,060,0250
-13711,California,Imperial,NA,060,0250
-13712,California,Imperial,Calexico,060,0250
-13713,California,Imperial,NA,060,0250
-13714,California,Imperial,NA,060,0250
-1371B,California,Imperial,NA,060,0250
-13720,California,Riverside,NA,060,0650
-13721,California,Riverside,NA,060,0650
-13722,California,Riverside,Riverside/Corona,060,0650
-13724,California,Riverside,NA,060,0650
-13730,California,San Bernardino,NA,060,0710
-13731,California,San Bernardino,Chino/Needles,060,0710
-13732,California,San Bernardino,Colton/Upland,060,0710
-13733,California,San Bernardino,Ontario/Redlands,060,0710
-13734,California,San Bernardino,San Bernardino,060,0710
-13810,California,Alameda,Pleasanton,060,0010
-13811,California,Alameda,Everyville/Livermore,060,0010
-13812,California,Alameda,Piedmont/Albany/Hayward,060,0010
-13813,California,Alameda,San Leandro,060,0010
-13814,California,Alameda,Alameda/Oakland/Berkeley,060,0010
-13820,California,Contra Costa,NA,060,0130
-13822,California,Contra Costa,Antioch/El Cerrito/Martinez/Pittsburg,060,0130
-13823,California,Contra Costa,NA,060,0130
-13825,California,Contra Costa,NA,060,0130
-13830,California,Marin,NA,060,0410
-13831,California,Marin,Mill Valley/Sausalito,060,0410
-13832,California,Marin,San Anselmo/San Rafael,060,0410
-13841,California,San Francisco,NA,060,0750
-13844,California,San Francisco,San Francisco,060,0750
-13850,California,San Mateo,NA,060,0810
-13851,California,San Mateo,Hillsborough/Menlo Park/San Carlos,060,0810
-13852,California,San Mateo,Daly City/South San Francisco,060,0810
-13853,California,San Mateo,San Mateo/Burlingame/Redwood City,060,0810
-13855,California,San Mateo,NA,060,0810
-13860,California,Solano,NA,060,0950
-13863,California,Solano,Vallejo,060,0950
-13910,California,Sacramento,NA,060,0670
-13911,California,Sacramento,North Sacramento,060,0670
-13912,California,Sacramento,NA,060,0670
-13913,California,Sacramento,NA,060,0670
-13914,California,Sacramento,Sacramento,060,0670
-13915,California,Sacramento,NA,060,0670
-13919,California,Sacramento,NA,060,0670
-1391O,California,Sacramento,NA,060,0670
-21053,New Mexico,Curry,Clovis,350,0090
-21253,New Mexico,Santa Fe,Santa Fe,350,0490
-22451,Colorado,Otero,Rocky Ford,080,0890
-22620,Colorado,Weld,Fort Lupton,080,1230
-22623,Colorado,Weld,Greeley,080,1230
-23033,Idaho,Bannock,Pocatello,160,0050
-23060,Idaho,Bingham,Shelly,160,0110
-23061,Idaho,Bingham,Blackfoot,160,0110
-23103,Idaho,Bonneville,Idaho Falls,160,0190
-24253,Montana,Lewis and Clark,Helena,300,0490
-24324,Montana,Missoula,Missoula,300,0630
-24342,Montana,Park,Livingston,300,0670
-25030,Nevada,Douglas,Glenbrook,320,0050
-25100,Nevada,Lyon,Mason,320,0190
-26130,Arizona,Gila,Winkelman,040,0070
-26160,Arizona,Yavapai,Jerome,040,0250
-26210,Arizona,Cochise,NA,040,0030
-26240,Arizona,Maricopa,NA,040,0130
-26241,Arizona,Maricopa,Glendale/Tempe,040,0130
-26242,Arizona,Maricopa,Mesa,040,0130
-26244,Arizona,Maricopa,Phoenix,040,0130
-26254,Arizona,Pinal,Tucson,040,0210
-26282,Arizona,Yuma,Yuma,040,0270
-27020,Utah,Box Elder,Garland,490,0030
-27040,Utah,Carbon,Royal,490,0070
-27261,Utah,Wasatch,Keetley,490,0510
-31374,Alabama,Jefferson,Birmingham,010,0730
-32604,Arkansas,Pulaski,Little Rock,050,1190
-3800&,Texas,Harris,Webster,480,2010
-4&221,Wisconsin,Grant,Lancaster,550,0430
-41165,Illinois,Cook,Chicago,170,0310
-45134,Michigan,Calhoun,Battle Creek,260,0250
-47422,Missouri,Henry/Rives,Clinton,290,0830
-47953,Missouri,St Louis,Clayton,290,1890
-48284,Nebraska,Douglas,Omaha,310,0550
-49083,North Dakota,Burleigh,Bismarck,380,0150
-5-014,Virginia,Norfolk,Norfolk,510,1290
-5-023,Virginia,Suffolk City,Suffolk,510,8000
-53014,Florida,Pinellas,St. Petersburg,120,1030
-57014,New York,Dutchess,Poughkeepsie,360,0270
-57024,New York,Chemung,Elmira,360,0150
-57025,New York,Chemung,Elmira,360,0150
-57035,New York,New York,New York,360,0610
-5900&,Pennsylvania,Lackawanna,Carbondale,420,0690
-59014,Pennsylvania,York,York,420,1330
-59025,Pennsylvania,Philadelphia,Philadelphia,420,1010
-71--&,Hawaii,Hawaii,NA,155,0015
-71--0,Hawaii,Hawaii,NA,155,0015
-71--1,Hawaii,Hawaii,NA,155,0015
-71--2,Hawaii,Hawaii,NA,155,0015
-71--3,Hawaii,Hawaii,NA,155,0015
-71--4,Hawaii,Hawaii,NA,155,0015
-72--&,Hawaii,Honolulu,NA,155,0035
-72--0,Hawaii,Honolulu,NA,155,0035
-72--1,Hawaii,Honolulu,NA,155,0035
-72--2,Hawaii,Honolulu,NA,155,0035
-72--4,Hawaii,Honolulu,NA,155,0035
-72--5,Hawaii,Honolulu,NA,155,0035
-73&&0,Hawaii,Kauai,NA,155,0075
-73--0,Hawaii,Kauai,NA,155,0075
-73--1,Hawaii,Kauai,NA,155,0075
-73--2,Hawaii,Kauai,NA,155,0075
-73--3,Hawaii,Kauai,NA,155,0075
-73--4,Hawaii,Kauai,NA,155,0075
-74--&,Hawaii,Maui,NA,155,0095
-74--0,Hawaii,Maui,NA,155,0095
-74--1,Hawaii,Maui,NA,155,0095
-74--2,Hawaii,Maui,NA,155,0095
-74--4,Hawaii,Maui,NA,155,0095
-81010,Alaska,First Judicial Dist,NA,025,0015
-81011,Alaska,First Judicial Dist,Ketchikan,025,0015
-81012,Alaska,First Judicial Dist,Juneau,025,0015
 81020,Alaska,Second Judicial Dist,NA,025,0075
 81030,Alaska,Third Judicial Dist,NA,025,0115
 81031,Alaska,Third Judicial Dist,Anchorage,025,0115
 81040,Alaska,Fourth Judicial Dist,NA,025,0035
 81041,Alaska,Fourth Judicial Dist,Fairbanks,025,0035
+prev_address,state,county,city,NHGISST,NHGISCTY,ICPSRFIP,STATEFIP,COUNTYICP
+11110,Washington,Clallam,NA,530,0090,53009,53,90
+11112,Washington,Clallam,Port Angeles,530,0090,53009,53,90
+11123,Washington,Grays Harbor,NA,530,0270,53027,53,270
+11130,Washington,Jefferson,NA,530,0310,53031,53,310
+11131,Washington,Jefferson,Port Townsend,530,0310,53031,53,310
+11140,Washington,Pacific,NA,530,0490,53049,53,490
+11141,Washington,Pacific,Raymond,530,0490,53049,53,490
+11150,Washington,Wahkiakum,Cathlamet,530,0690,53069,53,690
+112&0,Washington,Whatcom,NA,530,0730,53073,53,730
+112&3,Washington,Whatcom,NA,530,0730,53073,53,730
+112&4,Washington,Whatcom,Bellingham,530,0730,53073,53,730
+112-0,Washington,Thurston,NA,530,0670,53067,53,670
+112-3,Washington,Thurston,Olympia,530,0670,53067,53,670
+11200,Washington,Snohomish,NA,530,0610,53061,53,610
+11204,Washington,Snohomish,Everett,530,0610,53061,53,610
+11210,Washington,Clark,NA,530,0110,53011,53,110
+11213,Washington,Clark,Vancouver,530,0110,53011,53,110
+11222,Washington,Cowlitz,Kelso,530,0150,53015,53,150
+11223,Washington,Cowlitz,Longview,530,0150,53015,53,150
+11233,Washington,Island,NA,530,0290,53029,53,290
+11240,Washington,Kitsap,NA,530,0350,53035,53,350
+11243,Washington,Kitsap,Bremerton,530,0350,53035,53,350
+11250,Washington,Lewis,NA,530,0410,53041,53,410
+11251,Washington,Lewis,Chehalis,530,0410,53041,53,410
+11252,Washington,Lewis,Centralia,530,0410,53041,53,410
+11261,Washington,Mason,Shelton,530,0450,53045,53,450
+11270,Washington,San Juan,Friday Harbor,530,0550,53055,53,550
+11280,Washington,Skagit,NA,530,0570,53057,53,570
+11281,Washington,Skagit,NA,530,0570,53057,53,570
+11282,Washington,Skagit,Anacortes,530,0570,53057,53,570
+11310,Washington,Benton,NA,530,0050,53005,53,50
+11314,Washington,Benton,NA,530,0050,53005,53,50
+11320,Washington,Chelan,NA,530,0070,53007,53,70
+11323,Washington,Chelan,Wenatchee,530,0070,53007,53,70
+11350,Washington,Klikatat,NA,530,0390,53039,53,390
+11390,Washington,Yakima,NA,530,0770,53077,53,770
+11391,Washington,Yakima,Toppenish,530,0770,53077,53,770
+11394,Washington,Yakima,Yakima,530,0770,53077,53,770
+11401,Washington,Whitman,NA,530,0750,53075,53,750
+11421,Washington,Asotin,Clarkston,530,0030,53003,53,30
+11451,Washington,Franklin,Pasco,530,0210,53021,53,210
+11510,Washington,King,NA,530,0330,53033,53,330
+11511,Washington,King,NA,530,0330,53033,53,330
+11512,Washington,King,NA,530,0330,53033,53,330
+11514,Washington,King,Seattle,530,0330,53033,53,330
+11520,Washington,Pierce,NA,530,0530,53053,53,530
+11521,Washington,Pierce,NA,530,0530,53053,53,530
+11522,Washington,Pierce,Puyallup,530,0530,53053,53,530
+11524,Washington,Pierce,Tacoma,530,0530,53053,53,530
+11614,Washington,Spokane,Spokane,530,0630,53063,53,630
+121&1,Oregon,Yamhill,NA,410,0710,41071,41,710
+121-0,Oregon,Washington,NA,410,0670,41067,41,670
+121-1,Oregon,Washington,NA,410,0670,41067,41,670
+12101,Oregon,Tillamook,NA,410,0570,41057,41,570
+12112,Oregon,Benton,NA,410,0030,41003,41,30
+12120,Oregon,Clatsop,NA,410,0070,41007,41,70
+12123,Oregon,Clatsop,NA,410,0070,41007,41,70
+12130,Oregon,Columbia,NA,410,0090,41009,41,90
+12140,Oregon,Hood River,NA,410,0270,41027,41,270
+12141,Oregon,Hood River,NA,410,0270,41027,41,270
+12153,Oregon,Lane,NA,410,0390,41039,41,390
+12160,Oregon,Lincoln,NA,410,0410,41041,41,410
+12170,Oregon,Linn,NA,410,0430,41043,41,430
+12180,Oregon,Marion,NA,410,0470,41047,41,470
+12184,Oregon,Marion,NA,410,0470,41047,41,470
+12190,Oregon,Polk,NA,410,0530,41053,41,530
+12191,Oregon,Polk,NA,410,0530,41053,41,530
+12240,Oregon,Jackson,NA,410,0290,41029,41,290
+12243,Oregon,Jackson,NA,410,0290,41029,41,290
+12320,Oregon,Jefferson,NA,410,0310,41031,41,310
+12360,Oregon,Wasco,NA,410,0650,41065,41,650
+12362,Oregon,Wasco,NA,410,0650,41065,41,650
+12430,Oregon,Deschutes,NA,410,0170,41017,41,170
+12510,Oregon,Clackamas,NA,410,0050,41005,41,50
+12511,Oregon,Clackamas,NA,410,0050,41005,41,50
+12512,Oregon,Clackamas,NA,410,0050,41005,41,50
+12514,Oregon,Clackamas,NA,410,0050,41005,41,50
+12520,Oregon,Multnomah,NA,410,0510,41051,41,510
+12521,Oregon,Multnomah,NA,410,0510,41051,41,510
+12523,Oregon,Multnomah,NA,410,0510,41051,41,510
+12524,Oregon,Multnomah,NA,410,0510,41051,41,510
+13&10,California,San Diego,El Cajon,060,0730,6073,6,730
+13&11,California,San Diego,Escondido/La Mesa/Oceanside,060,0730,6073,6,730
+13&12,California,San Diego,Chula Vista/Coronado,060,0730,6073,6,730
+13&13,California,San Diego,National City,060,0730,6073,6,730
+13&14,California,San Diego,San Diego,060,0730,6073,6,730
+13-10,California,Santa Clara,NA,060,0850,6085,6,850
+13-11,California,Santa Clara,Gilroy/Los Gatos/Mountain View/Sunnyvale,060,0850,6085,6,850
+13-12,California,Santa Clara,Santa Clara,060,0850,6085,6,850
+13-13,California,Santa Clara,Palo Alto,060,0850,6085,6,850
+13-14,California,Santa Clara,San Jose,060,0850,6085,6,850
+13010,California,Los Angeles,NA,060,0370,6037,6,370
+13017,California,Los Angeles,NA,060,0370,6037,6,370
+1301F,California,Los Angeles,NA,060,0370,6037,6,370
+13011,California,Los Angeles,Signal Hill/El Segundo/Glendora/Clarmont/La Verne/Sierra Madre/El Monte/Alhambra,060,0370,6037,6,370
+13012,California,Los Angeles,Arcadia/Azusa/Gardena/Culver City/Hawthorne/Hermosa Beach/San Fernando/San Marino/Manhattan Beach/Torrance/Montebello/Monterey Park,060,0370,6037,6,370
+13013,California,Los Angeles,South Pasadena/Pomona/Redondo Beach/San Gabriel/Compton/Lynwood/Maywood/Monrovia/Whittier,060,0370,6037,6,370
+13014,California,Los Angeles,Belvedere Township/Glendale/Beverly Hills/Huntington Park/Pasadena/Inglewood/Burbank/Santa Monica/Long Beach/South Gate,060,0370,6037,6,370
+13015,California,Los Angeles,Los Angeles/Bell,060,0370,6037,6,370
+13020,California,Orange,NA,060,0590,6059,6,590
+13021,California,Orange,Newport Beach/Brea/Huntington Beach/Laguna Beach,060,0590,6059,6,590
+13022,California,Orange,Orange,060,0590,6059,6,590
+13023,California,Orange,Anaheim/Fullerton,060,0590,6059,6,590
+13024,California,Orange,Santa Ana,060,0590,6059,6,590
+13110,California,Del Norte,Crescent City,060,0150,6015,6,150
+13120,California,Humboldt,NA,060,0230,6023,6,230
+13123,California,Humboldt,Eureka,060,0230,6023,6,230
+13130,California,Lake,NA,060,0330,6033,6,330
+13140,California,Mendocino,NA,060,0450,6045,6,450
+13141,California,Mendocino,NA,060,0450,6045,6,450
+13143,California,Mendocino,NA,060,0450,6045,6,450
+13150,California,Napa,NA,060,0550,6055,6,550
+13152,California,Napa,Napa,060,0550,6055,6,550
+13160,California,Sonoma,NA,060,0970,6097,6,970
+13161,California,Sonoma,Healdsburg,060,0970,6097,6,970
+13162,California,Sonoma,Petaluma,060,0970,6097,6,970
+13163,California,Sonoma,Santa Rosa,060,0970,6097,6,970
+132&0,California,Siskiyou,NA,060,0930,6093,6,930
+132-0,California,Shasta,NA,060,0890,6089,6,890
+132-2,California,Shasta,Redding,060,0890,6089,6,890
+13200,California,Plumas,NA,060,0630,6063,6,630
+13210,California,Alpine,NA,060,0030,6003,6,30
+13211,California,Alpine,NA,060,0030,6003,6,30
+13220,California,Amador,NA,060,0050,6005,6,50
+13230,California,Calaveras,NA,060,0090,6009,6,90
+13240,California,El Dorado,NA,060,0170,6017,6,170
+13241,California,El Dorado,Placerville,060,0170,6017,6,170
+13270,California,Modoc,Alturas,060,0490,6049,6,490
+13280,California,Nevada,NA,060,0570,6057,6,570
+13282,California,Nevada,Grass Valley,060,0570,6057,6,570
+13290,California,Placer,NA,060,0610,6061,6,610
+13291,California,Placer,Auburn,060,0610,6061,6,610
+13292,California,Placer,Roseville,060,0610,6061,6,610
+13310,California,Butte,NA,060,0070,6007,6,70
+13311,California,Butte,Oroville,060,0070,6007,6,70
+13312,California,Butte,Chico,060,0070,6007,6,70
+13320,California,Colusa,NA,060,0110,6011,6,110
+13330,California,Glenn,NA,060,0210,6021,6,210
+13340,California,Sutter,NA,060,1010,6101,6,1010
+13341,California,Sutter,Yuba City,060,1010,6101,6,1010
+13350,California,Tehama,NA,060,1030,6103,6,1030
+13351,California,Tehama,Red Bluff,060,1030,6103,6,1030
+13360,California,Yolo,Davis/Winters,060,1130,6113,6,1130
+13362,California,Yolo,Woodland,060,1130,6113,6,1130
+13370,California,Yuba,Wheatland,060,1150,6115,6,1150
+13372,California,Yuba,Marysville,060,1150,6115,6,1150
+13410,California,Monterey,NA,060,0530,6053,6,530
+13411,California,Monterey,Carmel-by-the-sea,060,0530,6053,6,530
+13412,California,Monterey,Pacific Grove,060,0530,6053,6,530
+13413,California,Monterey,Monterey/Salinas,060,0530,6053,6,530
+13414,California,Monterey,NA,060,0530,6053,6,530
+13415,California,Monterey,NA,060,0530,6053,6,530
+13420,California,San Benito,NA,060,0690,6069,6,690
+13421,California,San Benito,Hollister,060,0690,6069,6,690
+13430,California,San Luis Obispo,NA,060,0790,6079,6,790
+13431,California,San Luis Obispo,Paso Robles,060,0790,6079,6,790
+13432,California,San Luis Obispo,San Luis Obisbo,060,0790,6079,6,790
+13440,California,Santa Cruz,NA,060,0870,6087,6,870
+13442,California,Santa Cruz,Watsonville,060,0870,6087,6,870
+13443,California,Santa Cruz,Santa Cruz,060,0870,6087,6,870
+13510,California,Fresno,NA,060,0190,6019,6,190
+13511,California,Fresno,NA,060,0190,6019,6,190
+13512,California,Fresno,Coalinga,060,0190,6019,6,190
+13513,California,Fresno,NA,060,0190,6019,6,190
+13514,California,Fresno,Fresno,060,0190,6019,6,190
+13520,California,Kern,NA,060,0290,6029,6,290
+13521,California,Kern,Delano,060,0290,6029,6,290
+13524,California,Kern,Bakersfield,060,0290,6029,6,290
+13530,California,Kings,NA,060,0310,6031,6,310
+13532,California,Kings,NA,060,0310,6031,6,310
+13533,California,Kings,NA,060,0310,6031,6,310
+13540,California,Madera,NA,060,0390,6039,6,390
+13542,California,Madera,Madera,060,0390,6039,6,390
+13544,California,Madera,NA,060,0390,6039,6,390
+13550,California,Merced,NA,060,0470,6047,6,470
+13553,California,Merced,Merced,060,0470,6047,6,470
+13560,California,San Joaquin,Manteca,060,0770,6077,6,770
+13561,California,San Joaquin,Tracy,060,0770,6077,6,770
+13563,California,San Joaquin,Lodi,060,0770,6077,6,770
+13564,California,San Joaquin,Stockton,060,0770,6077,6,770
+13569,California,San Joaquin,NA,060,0770,6077,6,770
+13570,California,Stanislaus,NA,060,0990,6099,6,990
+13571,California,Stanislaus,NA,060,0990,6099,6,990
+13573,California,Stanislaus,Modesto,060,0990,6099,6,990
+13580,California,Tulare,NA,060,1070,6107,6,1070
+13581,California,Tulare,NA,060,1070,6107,6,1070
+13582,California,Tulare,NA,060,1070,6107,6,1070
+13584,California,Tulare,NA,060,1070,6107,6,1070
+13610,California,Santa Barbara,NA,060,0830,6083,6,830
+13611,California,Santa Barbara,NA,060,0830,6083,6,830
+13612,California,Santa Barbara,Santa Maria,060,0830,6083,6,830
+13614,California,Santa Barbara,Santa Barbara,060,0830,6083,6,830
+13620,California,Ventura,NA,060,1110,6111,6,1110
+13621,California,Ventura,Filmore,060,1110,6111,6,1110
+13622,California,Ventura,NA,060,1110,6111,6,1110
+13623,California,Ventura,Beuenaventura,060,1110,6111,6,1110
+13710,California,Imperial,NA,060,0250,6025,6,250
+13711,California,Imperial,NA,060,0250,6025,6,250
+13712,California,Imperial,Calexico,060,0250,6025,6,250
+13713,California,Imperial,NA,060,0250,6025,6,250
+13714,California,Imperial,NA,060,0250,6025,6,250
+1371B,California,Imperial,NA,060,0250,6025,6,250
+13720,California,Riverside,NA,060,0650,6065,6,650
+13721,California,Riverside,NA,060,0650,6065,6,650
+13722,California,Riverside,Riverside/Corona,060,0650,6065,6,650
+13724,California,Riverside,NA,060,0650,6065,6,650
+13730,California,San Bernardino,NA,060,0710,6071,6,710
+13731,California,San Bernardino,Chino/Needles,060,0710,6071,6,710
+13732,California,San Bernardino,Colton/Upland,060,0710,6071,6,710
+13733,California,San Bernardino,Ontario/Redlands,060,0710,6071,6,710
+13734,California,San Bernardino,San Bernardino,060,0710,6071,6,710
+13810,California,Alameda,Pleasanton,060,0010,6001,6,10
+13811,California,Alameda,Everyville/Livermore,060,0010,6001,6,10
+13812,California,Alameda,Piedmont/Albany/Hayward,060,0010,6001,6,10
+13813,California,Alameda,San Leandro,060,0010,6001,6,10
+13814,California,Alameda,Alameda/Oakland/Berkeley,060,0010,6001,6,10
+13820,California,Contra Costa,NA,060,0130,6013,6,130
+13822,California,Contra Costa,Antioch/El Cerrito/Martinez/Pittsburg,060,0130,6013,6,130
+13823,California,Contra Costa,NA,060,0130,6013,6,130
+13825,California,Contra Costa,NA,060,0130,6013,6,130
+13830,California,Marin,NA,060,0410,6041,6,410
+13831,California,Marin,Mill Valley/Sausalito,060,0410,6041,6,410
+13832,California,Marin,San Anselmo/San Rafael,060,0410,6041,6,410
+13841,California,San Francisco,NA,060,0750,6075,6,750
+13844,California,San Francisco,San Francisco,060,0750,6075,6,750
+13850,California,San Mateo,NA,060,0810,6081,6,810
+13851,California,San Mateo,Hillsborough/Menlo Park/San Carlos,060,0810,6081,6,810
+13852,California,San Mateo,Daly City/South San Francisco,060,0810,6081,6,810
+13853,California,San Mateo,San Mateo/Burlingame/Redwood City,060,0810,6081,6,810
+13855,California,San Mateo,NA,060,0810,6081,6,810
+13860,California,Solano,NA,060,0950,6095,6,950
+13863,California,Solano,Vallejo,060,0950,6095,6,950
+13910,California,Sacramento,NA,060,0670,6067,6,670
+13911,California,Sacramento,North Sacramento,060,0670,6067,6,670
+13912,California,Sacramento,NA,060,0670,6067,6,670
+13913,California,Sacramento,NA,060,0670,6067,6,670
+13914,California,Sacramento,Sacramento,060,0670,6067,6,670
+13915,California,Sacramento,NA,060,0670,6067,6,670
+13919,California,Sacramento,NA,060,0670,6067,6,670
+1391O,California,Sacramento,NA,060,0670,6067,6,670
+21053,New Mexico,Curry,Clovis,350,0090,35009,35,90
+21253,New Mexico,Santa Fe,Santa Fe,350,0490,35049,35,490
+22451,Colorado,Otero,Rocky Ford,080,0890,8089,8,890
+22620,Colorado,Weld,Fort Lupton,080,1230,8123,8,1230
+22623,Colorado,Weld,Greeley,080,1230,8123,8,1230
+23033,Idaho,Bannock,Pocatello,160,0050,16005,16,50
+23060,Idaho,Bingham,Shelly,160,0110,16011,16,110
+23061,Idaho,Bingham,Blackfoot,160,0110,16011,16,110
+23103,Idaho,Bonneville,Idaho Falls,160,0190,16019,16,190
+24253,Montana,Lewis and Clark,Helena,300,0490,30049,30,490
+24324,Montana,Missoula,Missoula,300,0630,30063,30,630
+24342,Montana,Park,Livingston,300,0670,30067,30,670
+25030,Nevada,Douglas,Glenbrook,320,0050,32005,32,50
+25100,Nevada,Lyon,Mason,320,0190,32019,32,190
+26130,Arizona,Gila,Winkelman,040,0070,4007,4,70
+26160,Arizona,Yavapai,Jerome,040,0250,4025,4,250
+26210,Arizona,Cochise,NA,040,0030,4003,4,30
+26240,Arizona,Maricopa,NA,040,0130,4013,4,130
+26241,Arizona,Maricopa,Glendale/Tempe,040,0130,4013,4,130
+26242,Arizona,Maricopa,Mesa,040,0130,4013,4,130
+26244,Arizona,Maricopa,Phoenix,040,0130,4013,4,130
+26254,Arizona,Pinal,Tucson,040,0210,4021,4,210
+26282,Arizona,Yuma,Yuma,040,0270,4027,4,270
+27020,Utah,Box Elder,Garland,490,0030,49003,49,30
+27040,Utah,Carbon,Royal,490,0070,49007,49,70
+27261,Utah,Wasatch,Keetley,490,0510,49051,49,510
+31374,Alabama,Jefferson,Birmingham,010,0730,1073,1,730
+32604,Arkansas,Pulaski,Little Rock,050,1190,5119,5,1190
+3800&,Texas,Harris,Webster,480,2010,48201,48,2010
+4&221,Wisconsin,Grant,Lancaster,550,0430,55043,55,430
+41165,Illinois,Cook,Chicago,170,0310,17031,17,310
+45134,Michigan,Calhoun,Battle Creek,260,0250,26025,26,250
+47422,Missouri,Henry/Rives,Clinton,290,0830,29083,29,830
+47953,Missouri,St Louis,Clayton,290,1890,29189,29,1890
+48284,Nebraska,Douglas,Omaha,310,0550,31055,31,550
+49083,North Dakota,Burleigh,Bismarck,380,0150,38015,38,150
+5-014,Virginia,Norfolk,Norfolk,510,1290,51129,51,1290
+5-023,Virginia,Suffolk City,Suffolk,510,8000,51800,51,8000
+53014,Florida,Pinellas,St. Petersburg,120,1030,12103,12,1030
+57014,New York,Dutchess,Poughkeepsie,360,0270,36027,36,270
+57024,New York,Chemung,Elmira,360,0150,36015,36,150
+57025,New York,Chemung,Elmira,360,0150,36015,36,150
+57035,New York,New York,New York,360,0610,36061,36,610
+5900&,Pennsylvania,Lackawanna,Carbondale,420,0690,42069,42,690
+59014,Pennsylvania,York,York,420,1330,42133,42,1330
+59025,Pennsylvania,Philadelphia,Philadelphia,420,1010,42101,42,1010
+71--&,Hawaii,Hawaii,NA,155,0015,0,15.5,15
+71--0,Hawaii,Hawaii,NA,155,0015,0,15.5,15
+71--1,Hawaii,Hawaii,NA,155,0015,0,15.5,15
+71--2,Hawaii,Hawaii,NA,155,0015,0,15.5,15
+71--3,Hawaii,Hawaii,NA,155,0015,0,15.5,15
+71--4,Hawaii,Hawaii,NA,155,0015,0,15.5,15
+72--&,Hawaii,Honolulu,NA,155,0035,0,15.5,35
+72--0,Hawaii,Honolulu,NA,155,0035,0,15.5,35
+72--1,Hawaii,Honolulu,NA,155,0035,0,15.5,35
+72--2,Hawaii,Honolulu,NA,155,0035,0,15.5,35
+72--4,Hawaii,Honolulu,NA,155,0035,0,15.5,35
+72--5,Hawaii,Honolulu,NA,155,0035,0,15.5,35
+73&&0,Hawaii,Kauai,NA,155,0075,0,15.5,75
+73--0,Hawaii,Kauai,NA,155,0075,0,15.5,75
+73--1,Hawaii,Kauai,NA,155,0075,0,15.5,75
+73--2,Hawaii,Kauai,NA,155,0075,0,15.5,75
+73--3,Hawaii,Kauai,NA,155,0075,0,15.5,75
+73--4,Hawaii,Kauai,NA,155,0075,0,15.5,75
+74--&,Hawaii,Maui,NA,155,0095,0,15.5,95
+74--0,Hawaii,Maui,NA,155,0095,0,15.5,95
+74--1,Hawaii,Maui,NA,155,0095,0,15.5,95
+74--2,Hawaii,Maui,NA,155,0095,0,15.5,95
+74--4,Hawaii,Maui,NA,155,0095,0,15.5,95
+81010,Alaska,First Judicial Dist,NA,025,0015,2900.1,2.5,15
+81011,Alaska,First Judicial Dist,Ketchikan,025,0015,2900.1,2.5,15
+81012,Alaska,First Judicial Dist,Juneau,025,0015,2900.1,2.5,15
