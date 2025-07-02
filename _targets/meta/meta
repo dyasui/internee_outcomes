@@ -6,13 +6,35 @@ nhgis_codes|stem|c5ae0ada8dfbcf1c|7b38f3da7155e86f|2c530c1562a7fbd1|-1570799778|
 form26_raw|stem|11e8aa3100675520|6293d8226f4fd12a|2c530c1562a7fbd1|223250430|data/WRA.FORM26.PU.txt|t16829.9232638889s|s8969488b|8969488|file|local|vector|||0||
 wra_counties|function|5405300fecc2a333
 wract|stem|b5b4a8704ef6a04e|f29657cd94cb284e|96ad59bfb89b9106|-186488897||t20264.993236872s||14328|fst_tbl|local|vector|||0.004||could not find function 'wra_counties'
-wra_addr|stem|bcc262ff0f0eaa3c|c0fff599cfabc119|2c530c1562a7fbd1|-825283821|data/WRA_prev_address.csv|t20264.9999801655s|s13023b|13023|file|local|vector|||0.499||
 get_nhgis_codes|function|00c08f845e1735ce
-clean_ipums|function|0259b66d8190fe93
+wra_addr|stem|d24fe330ab9d4c54|c0fff599cfabc119|2c530c1562a7fbd1|-825283821|data/WRA_prev_address.csv|t20270.7055541824s|s16837b|16837|file|local|vector|||0.56||
+emp_vars|object|2105e5fcec01012a
+dem_vars|object|fa8f531a8a491d29
+edu_vars|object|7fe4c6f960208597
+fcount_vars|object|bc1a964d528bf0cc
+geo_vars|object|e9baa27a2652ea35
+nat_vars|object|f368be0ed10b8de1
+fam_vars|object|32a43e06d4073a6c
+inc_vars|object|070cab707a196f8c
+ipums_samples|object|94f29b29102fd08b
+extract_def|stem|101eebe54031b0cb|96370b2e33adaae4|f3b9a231b1b368f4|1644780375||t20270.9810066734s|s874b|874|rds|local|vector|||0.36||
+wra_data|stem|4ffe9511025f4f71|3642d58430340b91|ae68ee5ddaedc3b0|-1309043206||t20270.9810707648s|s1944797b|1944797|rds|local|vector|||4.97|There were 5 warnings in `mutate()`. The first warning was: ℹ In argument: `across(...)`. Caused by warning: ! Unreplaced values treated as NA as `.x` is not compatible. Please specify replacements exhaustively or supply `.default`. ℹ Run `dplyr::last_dplyr_warnings()` to see the 4 remaining warnings.|
+extract_ready|stem|ad0c9fc1b48021ae|75e35132149a3af7|3ffafea5cfc21467|-456591837||t20271.0736931084s|s89b|89|rds|local|vector|||0.001||
+ipums_extract_number|stem|error|1bc39752d5004cd2|60d4f02c6c865f68|-1110969775||t20271.0736934144s||0|null|local|vector|||0.004||$ operator is invalid for atomic vectors
+data_path|stem|08d5f59e833de599|3a0ff3911d3eeee0|3ca5c0d5bf42d085|585116969||t0s|s0b|0|file|local|vector|||0||
+ipums_extract|stem|c4f16ccfc172450c|9f920095266b8e96|60d4f02c6c865f68|624808098|data/fullcount_census//usa_00128.xml|t20266.1548717025s|s611909b|611909|file|local|vector|||0||
+ddi_path|stem|c4f16ccfc172450c|9f920095266b8e96|60d4f02c6c865f68|600176551|data/fullcount_census//usa_00128.xml|t20266.1548717025s|s611909b|611909|file|local|vector|||0||
+ipums_ddi|stem|27381fb088c7967d|b953a3b0a53f6697|3454b9f0ed08b1c8|-1457892219||t20271.0766243952s|s58527b|58527|rds|local|vector|||0.215||
+fullcount_microdata|stem|a56f0d1e6fbae878|a9799dc5ccbff621|0a1035ca712316e9|-1008837331||t20271.0786812622s|s53992b|53992|rds|local|vector|||0.028||
+cw_csv|stem|4c3040ac61a23580|749e1c128b833eef|2c530c1562a7fbd1|-1002789175|data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv|t20202.8357438182s|s4174469433b|4174469433|file|local|vector|||0.28||
+define_ipums_extract|function|3966825d8524104b
+submit_and_download_extract|function|5c952a8614914c2d
+write_cw_db|function|8073b3006cb84d69
+clean_ipums|function|a5bdcb71097153da
 read_fw_form26|function|e17e38fad0399e86
 form26_label|function|a3ea26f616880e89
 predict_internment|function|8bc68165c8378015
 form26_drop_dup|function|cfbfd672ba2ba13f
 count_internees|function|661cdefab129e947
-compile_WRA|function|951c617b583310c8
-wra_data|stem|03e754623f97ccca|3642d58430340b91|40ce86a5236db107|-1309043206||t20265.9598035988s|s9179629b|9179629|fst_tbl|local|vector|||4.94|There were 5 warnings in `mutate()`. The first warning was: ℹ In argument: `across(...)`. Caused by warning: ! Unreplaced values treated as NA as `.x` is not compatible. Please specify replacements exhaustively or supply `.default`. ℹ Run `dplyr::last_dplyr_warnings()` to see the 4 remaining warnings.|
+compile_WRA|function|e630e08958988789
+cw_db|stem|0642325a253988c6|a2d70f228e09e184|6362e510cc800efc|-678622371||t20271.1128116132s|s73b|73|rds|local|vector|||0.019||

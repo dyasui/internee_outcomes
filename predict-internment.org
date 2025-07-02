@@ -34,6 +34,144 @@ One source of differences between the number of 1940 residents and the number of
 - $Pr(I_i=1)$ : Fraction of internees out of entire 1940 Japanese population
 
 - $Pr(z_i,c_i^{40})$: proportion of Japanese Americans in each demographic group in 1940 census
+** Predicted Interment Status Estimator
+:PROPERTIES:
+:HEADER-ARGS:R: :session *R:internment*
+:END:
+My version of the estimator outlined is a function which takes in internee data and 1940 census data to calculate predicted internment probability.
+I allow for using different demographic variables to create groups to test different specifications.
+
+#+begin_src R :tangle R/predict_internment.R
+predict_internment <- function(census_1940, internees="data/all_internees.dta", vars=c("STATEFIP", "COUNTYICP")) {
+  library(tidyverse)
+  library(dbplyr)
+ 
+  # Ensure internee_data is a tibble; read if character
+  if (is.character(internees)) {
+    internees <- haven::read_dta(internees)
+  }
+  # Cleanup internee data
+  data_int <- internees |>
+    rename_with(toupper) |>
+    mutate(STATEFIP = as.integer(NHGISST)/10,
+           COUNTYICP = as.integer(NHGISCTY),
+           across(RACE:FATH_OCC_ABROAD, as.numeric),
+           cohort = case_when(
+           BIRTHYR %in% 1940:1942 ~ "c40_42",
+           BIRTHYR %in% 1929:1939 ~ "c29_39",
+           BIRTHYR %in% 1924:1928 ~ "c24_28",
+           BIRTHYR %in% 1913:1923 ~ "c13_23",
+           BIRTHYR %in% 1903:1912 ~ "c03_12",
+           BIRTHYR %in% 1893:1902 ~ "c93_02",
+           BIRTHYR %in% 1883:1892 ~ "c83_92",
+           BIRTHYR < 1883 ~ "c42_83",
+         ) ) |>
+    filter(!is.na(STATE),!is.na(COUNTY),RACE==5) 
+    # AK, HI don't have census data, so drop them here
+    ## filter(!STATE %in% c("Alaska", "Hawaii"))
+
+  # Count by group in internee data
+  int_grp <- data_int |>
+    group_by(across(all_of(vars))) |>
+    summarise(n_i = n(), .groups = "drop")
+
+  # add cohort variable to census
+   census_1940 <- census_1940 |>
+    mutate(cohort = case_when(
+           BIRTHYR %in% 1940:1942 ~ "c40_42",
+           BIRTHYR %in% 1929:1939 ~ "c29_39",
+           BIRTHYR %in% 1924:1928 ~ "c24_28",
+           BIRTHYR %in% 1913:1923 ~ "c13_23",
+           BIRTHYR %in% 1903:1912 ~ "c03_12",
+           BIRTHYR %in% 1893:1902 ~ "c93_02",
+           BIRTHYR %in% 1883:1892 ~ "c83_92",
+           BIRTHYR < 1883 ~ "c42_83",
+         ) )
+
+  # Check required columns
+  missing_census <- setdiff(vars, colnames(census_1940))
+  if (length(missing_census) > 0) {
+    stop("Census data is missing required columns: ",
+         paste(missing_census, collapse = ", "))
+  }
+
+  # Join and calculate fraction
+  # Count by group in census
+  pop_grp <- census_1940 |>
+    group_by(across(all_of(vars))) |>
+    summarise(n_j=n(), .groups = "drop")
+
+  combined <- pop_grp |>
+    full_join(int_grp, by = vars) |>
+    mutate(
+      n_i = replace_na(n_i, 0),
+      p_ij = n_i / n_j
+    )
+
+  # Attach back to census data
+  census_augmented <- census_1940 |>
+    left_join(combined, by = vars)
+
+  return(census_augmented)
+}
+#+end_src
+
+#+RESULTS:
+
+** Trying to find the best combination of grouping variables:
+:PROPERTIES:
+:HEADER-ARGS:R: :session *R:internment*
+:END:
+
+#+begin_src R 
+library(tidyverse)
+library(dbplyr)
+library(duckdb)
+# data extract file
+db <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
+tbl = "ipums_microdata"
+
+census_dat <- tbl(db,tbl) |>
+  filter(RACE==5, YEAR==1940) |>
+  select("STATEFIP", "COUNTYICP", "RACE", "SEX", "BIRTHYR", "BPL",
+         "BPL_MOM", "BPL_POP", "NATIVITY") |>
+  collect()
+dbDisconnect(db)
+
+probs_state <- census_dat |>
+  predict_internment(vars=c("STATEFIP")) |>
+  mutate(type="state") |>
+  select(type, p_ij)
+probs_county <- census_dat |>
+  predict_internment(vars=c("STATEFIP","COUNTYICP")) |>
+  mutate(type="county") |>
+  select(type, p_ij)
+probs_arellanobover <- census_dat |>
+  predict_internment(vars=c("STATEFIP","BPL","cohort","SEX")) |>
+  filter(SEX==1) |>
+  mutate(type="arellano-bover") |>
+  select(type, p_ij)
+probs_full <- census_dat |>
+  predict_internment(vars=c("STATEFIP","COUNTYICP","SEX","cohort","BPL")) |>
+  mutate(type="full") |>
+  select(type, p_ij)
+
+probs_types <- bind_rows(probs_state,probs_county,probs_arellanobover,probs_full)
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :results graphics file :file figures/test-p_ij.png
+ggplot(probs_types, aes(x=p_ij, group=type, fill=type)) +
+  geom_density(alpha=0.5) +
+  scale_y_sqrt() +
+  xlim(0,2)
+#+end_src
+
+#+RESULTS:
+[[file:figures/test-p_ij.png]]
+
+
 ** TODO Incorporate Voluntary Migration Rates
 The Final Report from DeWitt records the number of Japanese Americans who chose to voluntarily relocate away from the West Coast prior to the orders to relocate to Assembly Centers.
 
@@ -96,110 +234,3 @@ read_csv("data/WDC-voluntary-migration.csv") |>
 | Washington | Chelan          |     2 |    1 |      1 |
 | California | Yuba            |     1 |      |      1 |
 | Oregon     | Clatsop         |     1 |    1 |        |
-** Predicted Interment Status Estimator
-:PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment*
-:END:
-My version of the estimator outlined is a function which takes in internee data and 1940 census data to calculate predicted internment probability.
-I allow for using different demographic variables to create groups to test different specifications.
-
-#+begin_src R :tangle R/predict_internment.R
-predict_internment <- function(census_1940, internees="data/all_internees.dta", vars=c("STATEFIP", "COUNTYICP", "SEX")) {
-  library(tidyverse)
-  library(dbplyr)
- 
-  # Ensure internee_data is a tibble; read if character
-  if (is.character(internees)) {
-    internees <- haven::read_dta(internees)
-  }
-  # Cleanup internee data
-  data_int <- internees |>
-    rename_with(toupper) |>
-    mutate(STATEFIP = as.integer(NHGISST)/10,
-           COUNTYICP = as.integer(NHGISCTY),
-           across(RACE:FATH_OCC_ABROAD, as.numeric)) |>
-    filter(!is.na(STATE),!is.na(COUNTY),RACE==5) |>
-    # AK, HI don't have census data, so drop them here
-    filter(!STATE %in% c("Alaska", "Hawaii"))
-
-  # Count by group in internee data
-  int_grp <- data_int |>
-    group_by(across(all_of(vars))) |>
-    summarise(n_i = n(), .groups = "drop")
-  
-  # Join and calculate fraction
-  # Check required columns
-  missing_census <- setdiff(vars, colnames(census_1940))
-  if (length(missing_census) > 0) {
-    stop("Census data is missing required columns: ",
-         paste(missing_census, collapse = ", "))
-  }
-
-  # Count by group in census
-  pop_grp <- census_1940 |>
-    group_by(across(all_of(vars))) |>
-    summarise(n_j=n(), .groups = "drop")
-
-  combined <- pop_grp |>
-    full_join(int_grp, by = vars) |>
-    mutate(
-      n_i = replace_na(n_i, 0),
-      p_ij = n_i / n_j
-    )
-
-  # Attach back to census data
-  census_augmented <- census_1940 |>
-    left_join(combined, by = vars)
-
-  return(census_augmented)
-}
-#+end_src
-
-#+RESULTS:
-
-** Trying to find the best combination of grouping variables:
-#+begin_src R 
-library(tidyverse)
-library(dbplyr)
-library(duckdb)
-# data extract file
-db <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
-tbl = "ipums_microdata"
-
-census_dat <- tbl(db,tbl) |>
-  filter(RACE==5, YEAR==1940) |>
-  select("STATEFIP", "COUNTYICP", "SEX", "BIRTHYR", "BPL",
-         "BPL_MOM", "BPL_POP", "NATIVITY") |>
-  collect()
-dbDisconnect(db)
-
-probs_scg <- census_dat |>
-  predict_internment(vars=c("STATEFIP","COUNTYICP","SEX")) |>
-  mutate(trial="county:sex") |>
-  select(trial, p_ij)
-probs_scgb <- census_dat |>
-  predict_internment(vars=c("STATEFIP","COUNTYICP","SEX","BPL")) |>
-  mutate(trial="county:sex:bpl") |>
-  select(trial, p_ij)
-probs_scgyb <- census_dat |>
-  predict_internment(vars=c("STATEFIP","COUNTYICP","SEX","BIRTHYR","BPL")) |>
-  mutate(trial="county:sex:birthyr:bpl") |>
-  select(trial, p_ij)
-probs_sgyb <- census_dat |>
-  predict_internment(vars=c("STATEFIP","SEX","BIRTHYR","BPL")) |>
-  mutate(trial="state:sex:birthyr:bpl") |>
-  select(trial, p_ij)
-probs_trials <- bind_rows(probs_scg,probs_scgb,probs_scgyb,probs_sgyb)
-#+end_src
-
-#+RESULTS:
-
-#+begin_src R :results graphics file :file figures/test-p_ij.png
-ggplot(probs_trials, aes(x=p_ij, group=trial, fill=trial)) +
-  geom_density(alpha=0.5) +
-  xlim(0,2)
-#+end_src
-
-#+RESULTS:
-[[file:figures/test-p_ij.png]]
-
