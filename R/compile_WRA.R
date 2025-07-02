@@ -712,7 +712,7 @@ compile_WRA <- function(wra_file="data/WRA.FORM26.PU.txt",
            bpl_pop, bpl_mom, yrimmig, nativity, generation,
            degfield, high_deg, educ, 
            fath_occ_us, fath_occ_abroad, school_jap,
-           last_name, first_name)
+           last_name, first_name, qual_occ_1, qual_occ_2)
 }
 
 count_internees <- function(data,
