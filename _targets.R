@@ -30,16 +30,15 @@ list(
   ),
   tar_target(ddi_path, extract_ready, format = "file"),
 
-  # Read ipums microdata to memory
-  tar_target(ipums_ddi, read_ipums_ddi(ddi_path)),
-
   # Write MLP crosswalks to local database to save on memory
   tar_target(
     cw_csv,
     "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv",
     format = "file"
   ),
-  tar_target(cw_db, write_cw_db(db_path = "data/ipums_db.duckdb", cw_file = cw_csv, tbl_name = "mlp_crosswalks"))
-  
+  tar_target(cw_db, write_cw_db(db_path = "data/ipums_db.duckdb", cw_file = cw_csv, tbl_name = "mlp_crosswalks")),
+
+  # Link microrecords
+  tar_target(linked_data, link_mlp(ddi_path, cw_db, tbl = "mlp_crosswalks"))
   
 )

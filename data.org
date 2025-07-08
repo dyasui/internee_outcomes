@@ -548,51 +548,50 @@ write_cw_db <- function(db_path = "data/ipums_db.duckdb", cw_file = "data/mlp_19
 ** MLP Linked Microrecords Sample
 
 #+begin_src R
-# open database connection with duckdb
-library(ipumsr)
-library(dplyr)
-library(dbplyr)
-library(duckdb)
-database <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
-tbl <- "ipums_microdata"
-tar_load(ipums_ddi)
-# data extract file
-ddi_path <-  file.path(ipums_ddi$file_path, sub("\\.dat$", ".xml", ipums_ddi$file_name))
+link_mlp <- function(ddi,
+                     cw_db = "data/ipums_db.duckdb", tbl = "mlp_crosswalks",
+                     filter_race = c(4,5)) {
+  # open crosswalk database connection
+  database <- dbConnect(duckdb(), dbdir = cw_db)
+  cw <- tbl(database, "mlp_crosswalks")
 
-ddi <- read_ipums_ddi(ddi_path)
-#+end_src
+  link1940_cb <- function(x, pos) {
+    x |>
+      filter( YEAR=="1940", RACE %in% {{ filter_race }} ) |>
+      left_join( cw , by = c("HISTID" = "histid_1940"), copy = T)
+  }
 
-At this stage, I only need the state and county of each person who is linked across census years.
-For each decade-to-decade comparison (1920 to 1930, and 1930 to 1940),
-I join the state and county location by =HISTID= code for the appropriate year in the crosswalk file.
-Then I count how many linked individuals appear in each county-county migration group
-and drop individuals who do not report a county location in either decade.
+  link40_dt <- read_ipums_micro_chunked(
+    ddi,
+    callback = IpumsDataFrameCallback$new(link1940_cb),
+    chunk_size = 1e5,
+    verbose = T
+  ) |>
+    bind_rows()
 
-#+begin_src R
-link_mlp <- function(ddi, cw_db, filter = RACE %in% c(4,5)) {
-  
+  link1950_cb <- function(x,pos) {
+    x |>
+      filter( YEAR==1950, RACE %in% {{ filter_race }} ) |>
+      left_join( cw, by = c("HISTID" = "histid_1940"), copy = T )
+  }
+
+  link50_dt <- read_ipums_micro_chunked(
+    ddi,
+    callback = IpumsDataFrameCallback$new(link1950_cb),
+    chunk_size = 1e5,
+    verbose = T
+  ) |>
+    bind_rows()
+
+  all_rows <- bind_rows(link40_dt, link50_dt)
+
+  dbDisconnect()
+
+  return(all_rows)
 }
-# bring needed microdata into a tibble for joining
-d1 <- tbl(database, tbl) |>
-  filter(YEAR == 1940) # decade start year
-d2 <- tbl(database, tbl) |>
-  filter(YEAR == 1950) # decade end year
-
-# histid to be used in appropriate cw file
-cw <- tbl(database, "mlp_crosswalks")
-
-# join histids to selected data from year 1
-l1 <- cw |>
-  inner_join(d1, by = c("histid_1940" = "HISTID")) |>
-  collect()
-
-# join histids to selected data from year 2
-l2 <- cw |>
-  inner_join(d2, by = c("histid_1950" = "HISTID")) |>
-  collect()
 #+end_src
 
-#+begin_src R
+#+begin_src R :tangle no
 # join all selected data between years by crosswalked histids
 rows <- bind_rows(l1, l2) |>
   # get rid of leftover linking and technical varibles
@@ -644,11 +643,6 @@ results <- rows_id |>
 
 #+RESULTS:
 
-
-#+name: write-linked-sample
-#+begin_src R :exports results
-readr::write_csv(results, file = "data/mlp_sample.csv")
-#+end_src
 
 This initial procedure leaves 11,079 linked MLP individuals across all MLP records of anyone reported as Japanese or Chinese American between the 1940 and 1950 census.
 

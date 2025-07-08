@@ -13,7 +13,7 @@
 **.toc
 
 **.dat.gz
-data/fullcount_census/mlp_1940_1950_v1_2_csv/
+data/mlp_1940_1950_v1_2_csv/*csv
 ltximg
 data/ipums_db.duckdb
 .Internment-tabspaces-session.el
@@ -29,3 +29,7 @@ data/JARVIS_PublicUse/Data_CodeLists
 data/nhgis0035_shape.zip
 data/mlp_sample.csv
 data/linked_sample.csv
+data/BehindBarbedWire_StoryMap
+data/nhgis0038_shape.zip
+\#manuscript.org#
+WRA-internees.org~
