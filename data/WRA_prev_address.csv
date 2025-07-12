@@ -1,9 +1,9 @@
+prev_address,state,county,city,NHGISST,NHGISCTY,ICPSRFIP,STATEFIP,COUNTYICP
 81020,Alaska,Second Judicial Dist,NA,025,0075
 81030,Alaska,Third Judicial Dist,NA,025,0115
 81031,Alaska,Third Judicial Dist,Anchorage,025,0115
 81040,Alaska,Fourth Judicial Dist,NA,025,0035
 81041,Alaska,Fourth Judicial Dist,Fairbanks,025,0035
-prev_address,state,county,city,NHGISST,NHGISCTY,ICPSRFIP,STATEFIP,COUNTYICP
 11110,Washington,Clallam,NA,530,0090,53009,53,90
 11112,Washington,Clallam,Port Angeles,530,0090,53009,53,90
 11123,Washington,Grays Harbor,NA,530,0270,53027,53,270
