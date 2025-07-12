@@ -1,0 +1,194 @@
+#+TITLE: Variable Codebook
+#+AUTHOR: Dante Yasui
+#+OPTIONS: toc:2
+
+* IPUMS Census Variables Definitions
+[fn::defintions quoted from IPUMS online documentation: https://usa.ipums.org/usa-action/variables/group]
+** Geographic:
+*** =STATEFIP=:
+  "STATE/FIP/ reports the state in which the household was located, using the
+  Federal Information Processing Standards (FIPS) coding scheme, which orders
+  the states alphabetically" [fn:countyfip]
+*** =STATEICP=:
+  "STATE/ICP/ identifies the state in which the housing unit was located, using
+  the coding scheme developed by the Inter-University Consortium for Political
+  and Social Research (ICPSR). The ICPSR scheme orders states first by
+  geographic division and then alphabetically within each division"
+*** =COUNTYICP=: 
+  "In most cases, the first 3 digits match the FIPS county codes commonly used
+  in other datasets. ICPSR adds a digit to accommodate change over time.
+  (Generally, if a county merged with another or was renamed before 1970, it
+  receives a fourth digit of "5".)"
+- For example: Alabama is the first state alphabetically so it gets the FIPS
+  code 01. But in ICPSR, its state code is 41. Autauga is the first county
+  alphabetically in Alabama, so it gets the =COUNTYICP= code =0010=. 
+- For an example of a COUNTYICP code that ends in 5 instead of 0 there are a few
+  historical counties of the Kansas Territory which were merged back into
+  unorganized territory when Kansas was admitted as a state in 1861. So the
+  historical county of Arapahoe, Kansas, shows up as =COUYNTYICP= code =0055=.
+** Demographic:
+*** =SEX=: 
+Indicator equal to =1= if male, =2= if female respondent.
+*** =BIRTHYR=:
+Self reported year of birth for 1900 and 1910 censuses.
+In all other years, birth year is imputed based on age and survey year.
+See [[https://usa.ipums.org/usa****action/variables/BIRTHYR#comparability_section]]
+for notes on using this variable with caution.
+*** =AGE=: 
+Respondents years of age as of their last birthday.
+*** =MARST=:
+| =1= | Married, spouse present |
+| =2= | Married, spouse absent  |
+| =3= | Separated               |
+| =4= | Divorced                |
+| =5= | Widowed                 |
+| =6= | Never married, single   |
+*** =CHBORN=:
+- "reports the number of children ever born to each woman"
+- "Women were to report all live births by all fathers, whether or not the
+  children were still living; they were to exclude stillbirths, adopted
+  children, and stepchildren."
+- =00= is N/A, so to get number of children present, subtract 1 from =CHBORN=
+- =99=: Missin
+
+** Family Interrelationship
+*** =MOMLOC=
+*** =POPLOC=
+*** =SPLOC=
+*** =NCHILD=
+*** =NSIBS=
+*** =NFAMS=
+** Race and Nativity:
+*** =RACE=: Racial Category
+rior to 1960, the census enumerator was responsible for categorizing persons
+d was not specifically instructed to ask the individual his or her race."
+*** =NATIVITY=: National Origin and Parents' Nativity
+ATIVITY indicates whether respondents were native - born or foreign - born; for
+tive-born respondents, it indicates whether their mothers and/or fathers
+re native-born or foreign-born. NATIVITY is constructed from the IPUMS
+riables BPL, MBPL, and FBPL. Those U.S. possessions and territories
+assified as "U.S. outlying areas" in BPL are considered foreign."
+=BPL=
+=FBPL=
+=MBPL= 
+*** =CITIZEN=: Citizenship status
+Label                                | Code |
+-------------------------------------+------|
+N/A (born to american parents in US) |    0 |
+Born abroad of American parents      |    1 |
+Naturalized citizen                  |    2 |
+Not a citizen                        |    3 |
+Not a citizen, received first papers |    4 |
+Foreign born, status not reported    |    5 |
+
+** Education and Literacy:
+=SCHOOL=: School Attendence
+"indicates whether the respondent attended school during a specified period"
+Equal to =1= if not in school, =2= if yes to in school.
+=EDUC=: Educational Attainment
+"indicates respondents' educational attainment, as measured by the highest
+year of school or degree completed"
+Categorical variable with different values for no schooling, middle school,
+how many years of high school or college.
+** Labor Market and Economic
+*** =EMPSTAT=: Employment Status
+iverse includes all persons 14 years or older.
+MPSTAT indicates whether the respondent was a part of the labor force -- working or seeking work -- and, if so, whether the person was currently unemployed."
+*** =LABFORCE=: Labor Force Status
+_Universe_: persons age 14+
+"a dichotomous variable indicating whether a person participated in the labor force"
+"From 1850 to 1930, participation is defined as reporting any gainful
+occupation, as recorded in OCC/OCC1950 (except for institutional inmates, as
+explained below). Due to universe differences during the time period from 1850
+through 1930, the number of those reporting gainful occupations through
+OCC/OCC1950 and those reporting participation in the labor force as documented
+in LABFORCE do not correspond."
+*** =CLASSWKR=: Self-employment Status
+_Universe_: Persons age 14+ in the labor force
+
+Code | Label           |
+-----+-----------------|
+   0 | N/A             |
+   1 | Self-employed   |
+   2 | Works for wages |
+   9 | Unknown         |
+
+tailed codes with cases:
+Code | Label                                                    |  1950 full |  1940 full |
+-----+----------------------------------------------------------+------------+------------|
+  00 | N/A                                                      | 90,638,885 | 77,092,753 |
+  10 | Self-employed                                            | 11,679,540 |          0 |
+  11 | Employer                                                 |          0 |  1,039,322 |
+  12 | Working on own account                                   |          0 |  9,492,954 |
+  13 | Self-employed, not incorporated                          |          0 |          0 |
+  14 | Self-employed, incorporated                              |          0 |          0 |
+  20 | Works for wages or salary                                |          0 |      1,602 |
+  21 | Works on salary (1920)                                   |          0 |          0 |
+  22 | Wage/salary, private                                     | 41,486,899 | 34,247,949 |
+  23 | Wage/salary at non-profit                                |          0 |          0 |
+  24 | Wage/salary, government                                  |  5,638,265 |  6,528,767 |
+  25 | Federal government employee                              |          0 |          0 |
+  26 | Armed forces                                             |          0 |          0 |
+  27 | State government employee (in Puerto Rico, Commonwealth) |          0 |          0 |
+  28 | Local government employee                                |          0 |          0 |
+  29 | Unpaid family worker                                     |  2,422,654 |  3,350,093 |
+  98 | Illegible                                                |          0 |    148,958 |
+  99 | Unknown                                                  |    420,834 |          0 |
+*** =OCC1950=:
+"OCC1950 applies the 1950 Census Bureau occupational classification system to
+occupational data, to enhance comparability across years"
+"In 1850-1880, any laborer with no specified industry in a household with a
+farmer is recoded into farm labor. In 1860-1900, any woman with an
+occupational response of "housekeeper" enters the non-occupational category
+"keeping house" if she is related to the head of household. Cases affected by
+these imputation procedures are identified by an appropriate data quality
+flag. "
+*** =IND1950=:
+"recodes information about industry into the 1950 Census Bureau industrial
+classification system and thus enhances comparability of industry data across
+all years included in the IPUMS. IND1950 was designed the same way as OCC1950
+(Occupation, 1950 basis)"
+** Income and SES
+*** =INCWAGE=: Wages and Salary Income
+otal pre-tax wage and salary income - that is, money received as an employee - for the previous year"
+_Universe_:
+1940: Persons age 14+, not institutional inmates.
+1950: Sample-line persons age 14+; all persons age 14+ in Alaska.
+Reported in contemporary dollars, should adjust for inflation to compare across years
+_Top Codes:_
+1940: $5,001
+1950: $10,000 
+For 1950 full-count census v1:
+begin_quote
+alues for personal income are often erroneous (INCTOT, INCWAGE, INCBUSFM, INCOTHER). Multiple values were written in the allotted space on the census forms, which sometimes confused the data capture process. Values might be expressed in single dollars or hundreds, sometimes producing orders-of-magnitude errors which we tried to correct via targeted truncation. /We estimate the current total and wage income values exactly match the intent of the form roughly 70-75% of the time./ The magnitude of the differences ranges widely. Wages are underestimated twice as frequently as they are overestimated. Researchers should be cautious when using these variables and should screen for outliers. We hope to perform supplemental data capture for these fields in the future."
+end_quote
+*** =OCCSCORE=: 
+"The occupational income score indicates the median total income -- in
+hundreds of dollars -- for persons in each occupation in 1950 with positive
+income. It is calculated using data from a published 1950 census repor"
+"OCCSCORE assigns each occupation in all years a value representing the median
+total income (in hundreds of 1950 dollars) of all persons with that particular
+occupation in 1950. OCCSCORE thus provides a continuous measure of
+occupations, according to the economic returns received by people working at
+them in 1950. "
+based on OCC1950
+"Although OCCSCORE is derived from individual-level data, it is not the same
+as actual personal income. The income scores are simply a tool for
+economically scaling occupations - essentially a way of turning occupation
+into a continuous measure."
+n:countyfip: County-level FIPS codes are only used in the IPUMS data for years 1950-]
+*** =UOCC=: *1940 only*
+"reports the sample-line person's "usual" occupation. The instructions to
+enumerators defined the person's usual occupation as "that occupation at
+which he has worked longest during the past ten years and at which he is
+still physically able to work." Used in conjunction with OCC, which indicates
+the respondent's current occupation, UOCC allows users to identify persons
+currently working at an occupation different from their usual one."
+** Other Variables
+*** Migration (1940 only)
+=MIGRATE5=: Migration status, 5 years
+=MIGPLAC5=: US state (or territory, country) of residence 5 years ago
+=MIGCOUNTYICP5=: ICPSR code for county of residence 5 years ago
+  
+
+* Variables created for this project
