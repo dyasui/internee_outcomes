@@ -36,9 +36,12 @@ list(
     "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv",
     format = "file"
   ),
-  tar_target(cw_db, write_cw_db(db_path = "data/ipums_db.duckdb", cw_file = cw_csv, tbl_name = "mlp_crosswalks")),
+  tar_target(cw_tbl, write_cw_db(db_path = "data/ipums_db.duckdb", cw_file = cw_csv, tbl_name = "mlp_crosswalks")),
 
   # Link microrecords
-  tar_target(linked_data, link_mlp(ddi_path, cw_db, tbl = "mlp_crosswalks"))
-  
+  tar_target(fc_tbl, write_ipums_db(ddi = ddi_path, tbl_name = "fullcount")),
+  tar_target(linked_data,
+             link_mlp(db_path = "data/ipums_db.duckdb",
+                      cw_tbl  = cw_tbl,
+                      fc_tbl = fc_tbl))
 )

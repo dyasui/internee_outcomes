@@ -9,47 +9,82 @@ write_cw_db <- function(db_path = "data/ipums_db.duckdb", cw_file = "data/mlp_19
   # disconnect from database after reading
   dbDisconnect(conn)
   # return path of database for targets workflow
-  db_path
+  tbl_name
 }
 
-link_mlp <- function(ddi,
-                     cw_db = "data/ipums_db.duckdb", tbl = "mlp_crosswalks",
-                     filter_race = c(4,5)) {
+test_dt <- read_ipums_micro_yield(ddi = "data/fullcount_census/usa_00128.xml")$yield(1e7)
+print(object.size(test_dt), units = "auto")
+
+write_ipums_db <- function(ddi, db_path = "data/ipums_db.duckdb", tbl_name) {
+  conn <- dbConnect(duckdb(), dbdir = db_path)
+
+  writedb_cb <- function(x,pos) {
+    if (pos == 1) {
+      dbWriteTable(conn, tbl_name, x, overwrite = TRUE)
+    } else {
+      data_filtered <- x |>
+        filter(RACE %in% c(4,5))
+      dbWriteTable(conn, tbl_name, data_filtered, overwrite = FALSE, append = TRUE)
+    }
+  }
+
+  read_ipums_micro_chunked(
+    ddi,
+    callback = readr::SideEffectChunkCallback$new(writedb_cb),
+    verbose = T,
+    chunk_size = 1e7 # observations to read per chunk
+  )
+
+  dbDisconnect(conn)
+
+  tbl_name
+}
+
+link_mlp <- function(db_path = "data/ipums_db.duckdb", cw_tbl = "mlp_crosswalks",
+                     fc_tbl = "fullcount") {
   # open crosswalk database connection
-  database <- dbConnect(duckdb(), dbdir = cw_db)
-  cw <- tbl(database, "mlp_crosswalks")
+  database <- dbConnect(duckdb(), dbdir = db_path)
 
-  link1940_cb <- function(x, pos) {
-    x |>
-      filter( YEAR=="1940", RACE %in% {{ filter_race }} ) |>
-      left_join( cw , by = c("HISTID" = "histid_1940"), copy = T)
-  }
+  # unnecessary variables
+  drop_vars <- c("step","SAMPLE","HHWT","PERWT","VERSIONHIST")
 
-  link40_dt <- read_ipums_micro_chunked(
-    ddi,
-    callback = IpumsDataFrameCallback$new(link1940_cb),
-    chunk_size = 1e5,
-    verbose = T
-  ) |>
-    bind_rows()
+  # bring needed microdata into a tibble for joining
+  d1 <- tbl(database, fc_tbl) |>
+    select(-any_of(drop_vars)) |>
+    filter(
+      YEAR == 1940, # decade start year
+      RACE %in% c(4,5)
+    ) 
+  d2 <- tbl(database, fc_tbl) |>
+    select(-any_of(drop_vars)) |>
+    filter(
+      YEAR == 1950, # decade end year
+      RACE %in% c(4,5)
+    ) 
 
-  link1950_cb <- function(x,pos) {
-    x |>
-      filter( YEAR==1950, RACE %in% {{ filter_race }} ) |>
-      left_join( cw, by = c("HISTID" = "histid_1940"), copy = T )
-  }
+  # histid to be used in appropriate cw file
+  cw <- tbl(database, cw_tbl)
 
-  link50_dt <- read_ipums_micro_chunked(
-    ddi,
-    callback = IpumsDataFrameCallback$new(link1950_cb),
-    chunk_size = 1e5,
-    verbose = T
-  ) |>
-    bind_rows()
+  # join histids to selected data from year 1
+  l1 <- cw |>
+    inner_join(d1, by = c("histid_1940" = "HISTID")) |>
+    collect()
+  
+  # join histids to selected data from year 2
+  l2 <- cw |>
+    inner_join(d2, by = c("histid_1950" = "HISTID")) |>
+    collect()
 
-  all_rows <- bind_rows(link40_dt, link50_dt)
+  linked_data <- l1 |>
+    inner_join(
+      l2,
+      by = c("histid_1940","histid_1950"),
+      suffix = c("_1940", "_1950")
+    )
 
-  dbDisconnect()
+  # disconnect from duckdb connection
+  dbDisconnect(database)
 
-  return(all_rows)
+  # return all observations linked between 1940 and 1950
+  return(linked_data)
 }
