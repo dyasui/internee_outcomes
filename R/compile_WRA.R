@@ -707,20 +707,11 @@ compile_WRA <- function(wra_file="data/WRA.FORM26.PU.txt",
 
   data_int <- data_labelled |>
     left_join(addr, by = "prev_address") |>
-    select(ind_number, state, county, city, NHGISST, NHGISCTY,
+    select(ind_number, state, county, city,
            camp, assembly, race, sex, birthyr, bpl, birthplace,
            bpl_pop, bpl_mom, yrimmig, nativity, generation,
            degfield, high_deg, educ, 
            fath_occ_us, fath_occ_abroad, school_jap,
+           NHGISST, NHGISCTY, STATEFIP, COUNTYICP,
            last_name, first_name, qual_occ_1, qual_occ_2)
-}
-
-count_internees <- function(data,
-                            vars=c("state", "county")) {
-  library(tidyverse)
-  groups <- data |>
-    filter(!is.na(state)) |>
-    count(across(all_of(vars))) |>
-    mutate(p = n / sum(n))
-  return(groups)
 }

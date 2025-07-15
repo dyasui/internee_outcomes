@@ -51,24 +51,6 @@ flowchart TD
 [[file:data-plan.svg]]
 
 * Helper Functions and Definitions
-** as_nhgis_code
-This function converts between FIPS and ICPSR geography codes to NHGIS codes.
-#+begin_src R
-as_nhgisst <- function(STATEFIP) {
-  NHGISST = str_pad(string = STATEFIP*10, width = 3, side = "left", pad = "0")
-}
-
-as_nhgisct <- function(COUNTYICP) {
-  NHGISCTY = str_pad(COUNTYICP, width = 4, side = "left", pad = "0")
-}
-
-as_ct <- function(st, ct) {
-  nhgisst <- paste0(as_nhgisst(st), as_nhgisct(ct))
-}
-#+end_src
-
-#+RESULTS:
-
 ** Clean IPUMS Variables
 #+begin_src R :tangle R/clean-ipums.R :session *R:internment*
 clean_ipums <- function(data) {
@@ -127,6 +109,78 @@ clean_ipums <- function(data) {
 
 #+RESULTS:
 
+** Previous Address Counties of Internees
+I started the process of going through the =NARA-WRA-Form26_documentation.pdf=
+to look up the count and city codes manually, but it's pretty annoying.
+I have all of the states and counties coded so far, as well as all of the identifiable cities in states except for California and Oregon.
+Identifing cities has been a lot of me doing detective work of which cities fall into a population category where I can narrow it down to a single one.
+There might be a better way to do it, but I'm leaving the city work for the future.
+
+Here is a function which strips the names and NHGIS codes from a shapefile downloaded via =define_extract_nhgis= in the IPUMSR API.
+
+For the list of state and county names in the WIP previous address list,
+I want to give them appropriate NHGIS codes to make the joins with other datasets easier.
+The county names from the WRA records should match the county names from the NHGIS system for counties in 1940.
+#+begin_src R :colnames yes :tangle no :session *R:internment*
+library(tidyverse)
+nhgis_shp <- "data/nhgis0035_shape.zip"
+
+get_nhgis_codes <- function(shp) {
+  library(dplyr)
+  library(ipumsr)
+
+  nhgis_codes <- read_ipums_sf(shp, file_select = matches("us_county_1950")) |>
+    sf::st_drop_geometry() |>
+    mutate(STATENAM = case_when(
+           STATENAM == "Alaska Territory" ~ "Alaska",
+           STATENAM == "Hawaii Territory" ~ "Hawaii",
+           .default = STATENAM
+           )) |>
+    select(STATENAM, NHGISNAM ,NHGISST, NHGISCTY, ICPSRFIP) |>
+    mutate(STATEFIP = floor(as.numeric(NHGISST) /10), # floor deals with historic AK, HI, territories
+           COUNTYICP = as.numeric(NHGISCTY))
+  return(nhgis_codes)
+}
+
+nhgis_codes <- get_nhgis_codes(nhgis_shp)
+
+wra_counties <- function(nhgis, addr) {
+  library(tidyverse)
+  # read nhgiscodes from shapefile
+  wra_counties <- read_csv(addr) |>
+    select(prev_address, state, county, city)
+  join_counties <- inner_join(
+    wra_counties, nhgis,
+    by = c("state" = "STATENAM", "county" = "NHGISNAM")
+  )
+  return(join_counties)
+}
+
+# I'm going to save these wra counties with nhgis codes to a separate file than the original for now, in case I go back later to change the original.
+wra_counties(nhgis_codes, "data/WRA_prev_address.csv") |>
+  write_csv("data/WRA_prev_address.csv")
+#+end_src
+
+** Birth Cohort Definitions
+I define birth cohorts here to use to group both census respondents and internees.
+These are preliminary for now, but mostly correspond to 10-15 year time spans.
+The longer time spans are trying to account for a seeming tendency of older census respondents to round their birht year to the nearest decade or multiple of 5.
+
+#+begin_src R :tangle R/helper_functions.R :session *R:internment*
+as_cohort <- function(birthyr) {
+  cohort = case_when(
+    birthyr %in% 1940:1942 ~ "1940-1942",
+    birthyr %in% 1929:1939 ~ "1930-1939",
+    birthyr %in% 1924:1928 ~ "1920-1929",
+    birthyr %in% 1913:1923 ~ "1910-1919",
+    birthyr %in% 1903:1912 ~ "1893-1909",
+    birthyr %in% 1893:1902 ~ "1877-1992",
+    birthyr < 1877 ~ "pre1876",
+    )
+  return(cohort)
+}
+#+end_src
+
 ** Evacuation Zone Counties
 When the Army's Western Defense Command drew up plans to evacuate the West Coast Japanese,
 they targeted population based on the existing Japanese populations in the 1940 census.
@@ -137,6 +191,15 @@ The WDC's final exclusion area included the western halves of Washington and Ore
 #+name: fig:WDC-evac-area
 [[./figures/external/WDC-evac-areas_map.png]]
 
+#+begin_src R
+# counties in the evacuation zone by ICP codes
+ezAZ <- c(30, 130, 190, 230, 270)
+ezOR <- c( 30,  50,  70,  90, 110, 190, 270, 290, 330, 390, 410, 430, 470, 510,
+         530, 570, 670, 710)
+ezWA <- c( 50,  70,  90, 150, 270, 310, 330, 350, 370, 390, 410, 450, 490, 530,
+         570, 590, 610, 670, 690, 730, 770)
+
+#+end_src
 * WRA Camp Internee Records
 :PROPERTIES:
 :HEADER-ARGS:R: :tangle R/compile_WRA.R :session *R:internment*
@@ -902,88 +965,6 @@ form26_label <- function(raw_data) {
 }
 #+end_src 
 
-** Previous Address Counties of Internees
---------------------------------------------------------------------------------
-*NOTE*: This is now outdated.
-I went ahead and just combined all the relevant codes for the WRA previous
-addresses into one file =WRA_prev_address.csv=.
---------------------------------------------------------------------------------
-
-I started the process of going through the =NARA-WRA-Form26_documentation.pdf=
-to look up the count and city codes manually, but it's pretty annoying.
-I have all of the states and counties coded so far, as well as all of the identifiable cities in states except for California and Oregon.
-Identifing cities has been a lot of me doing detective work of which cities fall into a population category where I can narrow it down to a single one.
-There might be a better way to do it, but I'm leaving the city work for the future.
-
-#+begin_src R :results silent :tangle no
-# previous address codes transcribed from WRA form 26 documentation
-wra_places <- read_csv("data/WRA_prev_address.csv") |>
-  select(prev_address, state, county, city)
-#+end_src
-
-Here is a function which strips the names and NHGIS codes from a shapefile downloaded via =define_extract_nhgis= in the IPUMSR API.
-
-#+begin_src R :results silent :tangle no
-get_nhgis_codes <- function(shp) {
-  library(dplyr)
-  library(ipumsr)
-
-  nhgis_codes <- read_ipums_sf(shp, file_select = matches("us_county_1950")) |>
-    sf::st_drop_geometry() |>
-    mutate(STATENAM = case_when(
-           STATENAM == "Alaska Territory" ~ "Alaska",
-           STATENAM == "Hawaii Territory" ~ "Hawaii",
-           .default = STATENAM
-           )) |>
-    select(STATENAM, NHGISNAM ,NHGISST, NHGISCTY, ICPSRFIP) |>
-    mutate(STATEFIP = as.numeric(NHGISST) /10,
-           COUNTYICP = as.numeric(NHGISCTY))
-  return(nhgis_codes)
-}
-#+end_src
-
-For the list of state and county names in the WIP previous address list,
-I want to give them appropriate NHGIS codes to make the joins with other datasets easier.
-The county names from the WRA records should match the county names from the NHGIS system for counties in 1940.
-#+begin_src R :colnames yes :tangle no
-nhgis_shp <- "data/nhgis0035_shape.zip"
-nhgis_codes <- get_nhgis_codes(nhgis_shp)
-
-full_join(wra_places, nhgis_codes,
-                             by = c("state" = "STATENAM", "county" = "NHGISNAM") ) |>
-  tail()
-#+end_src
-
-#+RESULTS:
-| prev_address | state        | county  | city | NHGISST | NHGISCTY | ICPSRFIP | STATEFIP | COUNTYICP |
-|--------------+--------------+---------+------+---------+----------+----------+----------+-----------|
-|              | Virginia     | York    |      |     510 |     1990 |    51199 |       51 |      1990 |
-|              | Texas        | Young   |      |     480 |     5030 |    48503 |       48 |      5030 |
-|              | Colorado     | Yuma    |      |      80 |     1250 |     8125 |        8 |      1250 |
-|              | Texas        | Zapata  |      |     480 |     5050 |    48505 |       48 |      5050 |
-|              | Texas        | Zavala  |      |     480 |     5070 |    48507 |       48 |      5070 |
-|              | South Dakota | Ziebach |      |     460 |     1370 |    46137 |       46 |      1370 |
-
-Overall, the counties match up pretty well.
-
-
-I'm going to save these wra counties with nhgis codes to a separate file than the original for now, in case I go back later to change the original.
-#+begin_src R :results silent :tangle no
-wra_counties <- function(nhgis, addr) {
-  library(tidyverse)
-  # read nhgiscodes from shapefile
-  wra_counties <- read_csv(addr) |>
-    select(prev_address, state, county, city)
-  join_counties <- inner_join(wra_counties, nhgis,
-                              by = c("state" = "STATENAM", "county" = "NHGISNAM") )
-  return(join_counties)
-}
-
-wra_counties(nhgis_codes, "data/WRA_prev_address.csv") |>
-  write_csv("data/WRA_prev_address.csv")
-#+end_src
-
-#+RESULTS:
 
 ** Individual Internees Data Cleaned
 This function takes the raw form 26 text file and the list of previous address codes and returns a tibble with the cleaned data with the variables on names, previous addresses, camp, assembly center, demographics (which are coded to be joined to IPUMS census variables), and the occupations of each internee.
@@ -1001,11 +982,12 @@ compile_WRA <- function(wra_file="data/WRA.FORM26.PU.txt",
 
   data_int <- data_labelled |>
     left_join(addr, by = "prev_address") |>
-    select(ind_number, state, county, city, NHGISST, NHGISCTY,
+    select(ind_number, state, county, city,
            camp, assembly, race, sex, birthyr, bpl, birthplace,
            bpl_pop, bpl_mom, yrimmig, nativity, generation,
            degfield, high_deg, educ, 
            fath_occ_us, fath_occ_abroad, school_jap,
+           NHGISST, NHGISCTY, STATEFIP, COUNTYICP,
            last_name, first_name, qual_occ_1, qual_occ_2)
 }
 #+end_src
@@ -1256,7 +1238,7 @@ write_cw_db <- function(db_path = "data/ipums_db.duckdb", cw_file = "data/mlp_19
 With all of the variables and individual records downloaded, the full count census data can be up to 11G uncompressed on disk.
 
 To find the optimal chunk size, I can make use of the =read_ipums_micro_yield()= function.
-#+begin_src R
+#+begin_src R :tangle no
 test_dt <- read_ipums_micro_yield(ddi = "data/fullcount_census/usa_00128.xml")$yield(1e7)
 print(object.size(test_dt), units = "auto")
 #+end_src
@@ -1533,6 +1515,69 @@ data |>
 | Non-interned Japanese | FALSE | 112 | 38.6160714285714 | 0.383928571428571 | 0.419642857142857 | 0.607142857142857 | 344.748214285714 | 441.071428571429 | 7.74107142857143 | 9.97321428571428 |
 | Non-interned Japanese | TRUE  |  13 | 30.9230769230769 | 0.384615384615385 | 0.461538461538462 | 0.769230769230769 | 124.961538461538 | 2088.46153846154 | 7.84615384615385 | 13.8461538461538 |
 
+* Predicted Interment Status Estimator
+:PROPERTIES:
+:HEADER-ARGS:R: :session *R:internment*
+:END:
+My version of the estimator outlined is a function which takes in internee data and 1940 census data to calculate predicted internment probability.
+I allow for using different demographic variables to create groups to test different specifications.
+
+#+begin_src R :tangle R/predict_internment.R
+predict_internment <- function(data, census_1940, by = c("STATEFIP", "COUNTYICP")) {
+  library(tidyverse)
+  library(dbplyr)
+
+  # Cleanup internee data
+  data_int <- data |>
+    mutate(
+      STATEFIP = as.integer(NHGISST)/10,
+      COUNTYICP = as.integer(NHGISCTY),
+      across(RACE:FATH_OCC_ABROAD, as.numeric),
+      cohort = as_cohort(BIRTHYR)
+    ) |>
+    filter(!is.na(STATE),!is.na(COUNTY),RACE==5) 
+    # AK, HI don't have census data, so drop them here
+    ## filter(!STATE %in% c("Alaska", "Hawaii"))
+
+  # Count by group in internee data
+  groups_x <- data_int |>
+    group_by(across(all_of(vars))) |>
+    summarise(n_i = n(), .groups = "drop")
+
+  # add cohort variable to census
+   census_1940 <- census_1940 |>
+    rename_with(tolower) |>
+    mutate(cohort = as_cohort(birthyr) )
+
+  # Check required columns
+  missing_census <- setdiff(vars, colnames(census_1940))
+  if (length(missing_census) > 0) {
+    stop("Census data is missing required columns: ",
+         paste(missing_census, collapse = ", "))
+  }
+
+  # Join and calculate fraction
+  # Count by group in census
+  pop_grp <- census_1940 |>
+    group_by(across(all_of(vars))) |>
+    summarise(n_j=n(), .groups = "drop")
+
+  combined <- pop_grp |>
+    full_join(int_grp, by = vars) |>
+    mutate(
+      n_i = replace_na(n_i, 0),
+      p_ij = n_i / n_j
+    )
+
+  # Attach back to census data
+  census_augmented <- census_1940 |>
+    left_join(combined, by = vars)
+
+  return(census_augmented)
+}
+#+end_src
+
+#+RESULTS:
 * County GIS Files
 ** Historical Counties
 :PROPERTIES:

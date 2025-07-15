@@ -12,9 +12,6 @@ write_cw_db <- function(db_path = "data/ipums_db.duckdb", cw_file = "data/mlp_19
   tbl_name
 }
 
-test_dt <- read_ipums_micro_yield(ddi = "data/fullcount_census/usa_00128.xml")$yield(1e7)
-print(object.size(test_dt), units = "auto")
-
 write_ipums_db <- function(ddi, db_path = "data/ipums_db.duckdb", tbl_name) {
   conn <- dbConnect(duckdb(), dbdir = db_path)
 
