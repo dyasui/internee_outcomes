@@ -1,9 +1,4 @@
 prev_address,state,county,city,NHGISST,NHGISCTY,ICPSRFIP,STATEFIP,COUNTYICP
-81020,Alaska,Second Judicial Dist,NA,025,0075
-81030,Alaska,Third Judicial Dist,NA,025,0115
-81031,Alaska,Third Judicial Dist,Anchorage,025,0115
-81040,Alaska,Fourth Judicial Dist,NA,025,0035
-81041,Alaska,Fourth Judicial Dist,Fairbanks,025,0035
 11110,Washington,Clallam,NA,530,0090,53009,53,90
 11112,Washington,Clallam,Port Angeles,530,0090,53009,53,90
 11123,Washington,Grays Harbor,NA,530,0270,53027,53,270
@@ -290,29 +285,29 @@ prev_address,state,county,city,NHGISST,NHGISCTY,ICPSRFIP,STATEFIP,COUNTYICP
 5900&,Pennsylvania,Lackawanna,Carbondale,420,0690,42069,42,690
 59014,Pennsylvania,York,York,420,1330,42133,42,1330
 59025,Pennsylvania,Philadelphia,Philadelphia,420,1010,42101,42,1010
-71--&,Hawaii,Hawaii,NA,155,0015,0,15.5,15
-71--0,Hawaii,Hawaii,NA,155,0015,0,15.5,15
-71--1,Hawaii,Hawaii,NA,155,0015,0,15.5,15
-71--2,Hawaii,Hawaii,NA,155,0015,0,15.5,15
-71--3,Hawaii,Hawaii,NA,155,0015,0,15.5,15
-71--4,Hawaii,Hawaii,NA,155,0015,0,15.5,15
-72--&,Hawaii,Honolulu,NA,155,0035,0,15.5,35
-72--0,Hawaii,Honolulu,NA,155,0035,0,15.5,35
-72--1,Hawaii,Honolulu,NA,155,0035,0,15.5,35
-72--2,Hawaii,Honolulu,NA,155,0035,0,15.5,35
-72--4,Hawaii,Honolulu,NA,155,0035,0,15.5,35
-72--5,Hawaii,Honolulu,NA,155,0035,0,15.5,35
-73&&0,Hawaii,Kauai,NA,155,0075,0,15.5,75
-73--0,Hawaii,Kauai,NA,155,0075,0,15.5,75
-73--1,Hawaii,Kauai,NA,155,0075,0,15.5,75
-73--2,Hawaii,Kauai,NA,155,0075,0,15.5,75
-73--3,Hawaii,Kauai,NA,155,0075,0,15.5,75
-73--4,Hawaii,Kauai,NA,155,0075,0,15.5,75
-74--&,Hawaii,Maui,NA,155,0095,0,15.5,95
-74--0,Hawaii,Maui,NA,155,0095,0,15.5,95
-74--1,Hawaii,Maui,NA,155,0095,0,15.5,95
-74--2,Hawaii,Maui,NA,155,0095,0,15.5,95
-74--4,Hawaii,Maui,NA,155,0095,0,15.5,95
-81010,Alaska,First Judicial Dist,NA,025,0015,2900.1,2.5,15
-81011,Alaska,First Judicial Dist,Ketchikan,025,0015,2900.1,2.5,15
-81012,Alaska,First Judicial Dist,Juneau,025,0015,2900.1,2.5,15
+71--&,Hawaii,Hawaii,NA,155,0015,0,15,15
+71--0,Hawaii,Hawaii,NA,155,0015,0,15,15
+71--1,Hawaii,Hawaii,NA,155,0015,0,15,15
+71--2,Hawaii,Hawaii,NA,155,0015,0,15,15
+71--3,Hawaii,Hawaii,NA,155,0015,0,15,15
+71--4,Hawaii,Hawaii,NA,155,0015,0,15,15
+72--&,Hawaii,Honolulu,NA,155,0035,0,15,35
+72--0,Hawaii,Honolulu,NA,155,0035,0,15,35
+72--1,Hawaii,Honolulu,NA,155,0035,0,15,35
+72--2,Hawaii,Honolulu,NA,155,0035,0,15,35
+72--4,Hawaii,Honolulu,NA,155,0035,0,15,35
+72--5,Hawaii,Honolulu,NA,155,0035,0,15,35
+73&&0,Hawaii,Kauai,NA,155,0075,0,15,75
+73--0,Hawaii,Kauai,NA,155,0075,0,15,75
+73--1,Hawaii,Kauai,NA,155,0075,0,15,75
+73--2,Hawaii,Kauai,NA,155,0075,0,15,75
+73--3,Hawaii,Kauai,NA,155,0075,0,15,75
+73--4,Hawaii,Kauai,NA,155,0075,0,15,75
+74--&,Hawaii,Maui,NA,155,0095,0,15,95
+74--0,Hawaii,Maui,NA,155,0095,0,15,95
+74--1,Hawaii,Maui,NA,155,0095,0,15,95
+74--2,Hawaii,Maui,NA,155,0095,0,15,95
+74--4,Hawaii,Maui,NA,155,0095,0,15,95
+81010,Alaska,First Judicial Dist,NA,025,0015,2900.1,2,15
+81011,Alaska,First Judicial Dist,Ketchikan,025,0015,2900.1,2,15
+81012,Alaska,First Judicial Dist,Juneau,025,0015,2900.1,2,15
