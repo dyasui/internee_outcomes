@@ -30,6 +30,7 @@ cw_tbl|stem|0fdc5f7943e0b3bd|a2d70f228e09e184|cc58e64b056480c9|-1999217419||t202
 fc_tbl|stem|002a8e7bc22f4440|fb82de17add32efe|bff3a3b80f1327f1|-669458178||t20279.8414563414s|s62b|62|rds|local|vector|||555.405||
 test_dt|object|191ccb8469ebc6c9
 .Random.seed|object|6902931a89c4e1ed
+count_internees|function|661cdefab129e947
 linked_data|stem|ba7b2f60b3892ac4|eac8ba7a46bfa817|f29d3ab617f8c84a|-194239873||t20280.9605853541s|s1156097b|1156097|rds|local|vector|||1.7||
 as_cohort|function|aec038c3ace5e6cb
 wra_addr|stem|9768fd74d3b093ec|c0fff599cfabc119|2c530c1562a7fbd1|-825283821|data/WRA_prev_address.csv|t20284.052744611s|s16785b|16785|file|local|vector|||0.318||
@@ -47,14 +48,14 @@ define_ipums_extract|function|3966825d8524104b
 submit_and_download_extract|function|5c952a8614914c2d
 write_cw_db|function|2bf740f8afc88a4d
 clean_ipums|function|a5bdcb71097153da
-test_dt|object|191ccb8469ebc6c9
 read_fw_form26|function|e17e38fad0399e86
 form26_label|function|a3ea26f616880e89
-predict_internment|function|8bc68165c8378015
 link_mlp|function|c5a638ba1984b546
-.Random.seed|object|6902931a89c4e1ed
 write_ipums_db|function|6a79e978021cd068
 form26_drop_dup|function|cfbfd672ba2ba13f
-count_internees|function|661cdefab129e947
-compile_WRA|function|e630e08958988789
-linked_data|stem|ba7b2f60b3892ac4|eac8ba7a46bfa817|f29d3ab617f8c84a|-194239873||t20280.9605853541s|s1156097b|1156097|rds|local|vector|||1.7||
+collect_county_stats|function|4a961872c3776af9
+calc_int_proportion|function|ab0530bc49da32d0
+compile_WRA|function|4f48e73178129c4e
+predict_internment|function|bfdca72cc13e2a74
+county_stats|stem|error|2ac10e0a67692c60|4d22485e4a86cc31|-49828956||t20285.404936153s||0|null|local|vector|||691.766||Must group by variables found in `.data`. ✖ Column `STATEICP` is not found.
+linked_data_full|stem|error|3041e8ab5e8b70dc|5ccb78a8b8bf27da|299338589||t20285.4049372627s||0|null|local|vector|||0.039||`x` and `y` must share the same src. ℹ `x` is a <tbl_df/tbl/data.frame> object. ℹ `y` is `NULL`. ℹ Set `copy = TRUE` if `y` can be copied to the same source as `x` (may be   slow).

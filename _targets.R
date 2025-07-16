@@ -48,4 +48,11 @@ list(
   # join internment statuses to linked data sample
   tar_target(linked_data_prI, predict_internment(linked_data, wra_data = wra_data)),
   tar_target(linked_data_lbl, clean_sample(linked_data_prI, ddi = ddi_path)),
+  # join linked data to county-level statistics
+  tar_target(county_stats, collect_county_stats(ddi_path)),
+  tar_target(linked_data_full,
+             left_join(
+               linked_data_lbl,
+               county_stats, 
+               by = c("YEAR", "STATEFIP", "COUNTYICP") ) )
 )

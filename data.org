@@ -55,6 +55,14 @@ list(
   # join internment statuses to linked data sample
   tar_target(linked_data_prI, predict_internment(linked_data, wra_data = wra_data)),
   tar_target(linked_data_lbl, clean_sample(linked_data_prI, ddi = ddi_path)),
+  # join linked data to county-level statistics
+  tar_target(county_stats, collect_county_stats(ddi_path)),
+  tar_target(linked_data_full,
+             left_join(
+               linked_data_lbl,
+               county_stats, 
+               by = c("YEAR", "STATEFIP", "COUNTYICP") ) )
+)
 #+end_src
 
 #+RESULTS:
@@ -1076,118 +1084,6 @@ wait_for_extract(fullcount_extract) |>
   download_extract("data/fullcount_census")
 #+end_src
 
-** County-Level Wages
-:PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment*
-:END:
-#+begin_src R
-library(tidyverse)
-library(ipumsr)
-# set location of full-count data download files
-ddi <- "data/fullcount_census/usa_00126.xml"
-
-# callback function to calculate county summary stats
-countystat_cb <- function(x, pos) {
-  x |>
-    group_by(STATEFIP, COUNTYICP) |>
-    mutate(
-      NHGISST = str_pad(string = STATEFIP*10, width = 3, side = "left", pad = "0"),
-      NHGISCTY = str_pad(COUNTYICP, width = 4, side = "left", pad = "0"),
-      INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE),
-      # adjust 1940 wages for inflation to 1950 dollars
-      INCWAGE = ifelse(YEAR == 1940, INCWAGE * 1.71, INCWAGE) ) |>
-    group_by(YEAR, STATEFIP, STATEICP, COUNTYICP, NHGISST, NHGISCTY) |>
-    summarise(
-      mean_wage = mean(INCWAGE, na.rm=T),
-      pop       = n(),
-      pop_wh = sum(RACE==1),
-      pop_bl = sum(RACE==2),
-      pop_ch = sum(RACE==4),
-      pop_jp = sum(RACE==5),
-      .groups = "drop"
-    )
-}
-
-county_data <- read_ipums_micro_chunked(
-  ddi,
-  callback = IpumsDataFrameCallback$new(countystat_cb),
-  chunk_size = 1e5,
-  verbose = TRUE
-) |>
-  group_by(YEAR, STATEFIP, STATEICP, COUNTYICP, NHGISST, NHGISCTY) |>
-  summarise(
-    mean_wage = mean(mean_wage, na.rm=T),
-    pop       = sum(pop),
-    pop_wh = sum(pop_wh),
-    pop_bl = sum(pop_bl),
-    pop_ch = sum(pop_ch),
-    pop_jp = sum(pop_jp),
-    .groups = "drop"
-  )
-
-write_csv(county_data, "data/county_stats.csv")
-#+end_src
-
-#+RESULTS:
-** Japanese Summary Statistics
-:PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment*
-:END:
-#+begin_src R
-ddi <- "data/fullcount_census/usa_00126.xml"
-
-# callback function to calculate county summary stats
-jpstat_cb <- function(x, pos) {
-  x |>
-    filter(RACE==5, YEAR==1940) |>
-    mutate(across(c("SEX", "BPL", "EDUC", "EDUCD"), as_factor),
-           BIRTHYR = ifelse(BIRTHYR %in% 9996:9999 , NA, BIRTHYR)
-           )
-}
-
-jp_demo <- read_ipums_micro_chunked(
-  ddi,
-  vars = c("YEAR", "RACE", "SEX", "BIRTHYR", "BPL", "EDUC", "EDUCD"),
-  callback = IpumsDataFrameCallback$new(jpstat_cb),
-  chunk_size = 1e5,
-  verbose = TRUE
-) |>
-  bind_rows()
-#+end_src
-
-#+RESULTS:
-
-#+begin_src R
-dp_demo |>
-  mutate(educ = case_when(
-           EDUCD == "Missin" ~ NA,
-           EDUCD == "No schooling completed" ~ 0,
-           EDUCD == "Kindergarten" ~ 0,
-           EDUCD == "Grade 1" ~ 1,
-           EDUCD == "Grade 2" ~ 2,
-           EDUCD == "Grade 3" ~ 3,
-           EDUCD == "Grade 4" ~ 4,
-           EDUCD == "Grade 5" ~ 5,
-           EDUCD == "Grade 6" ~ 6,
-           EDUCD == "Grade 7" ~ 7,
-           EDUCD == "Grade 8" ~ 8,
-           EDUCD == "Grade 9" ~ 9,
-           EDUCD == "Grade 10" ~ 10,
-           EDUCD == "Grade 11" ~ 11,
-           EDUCD == "Grade 12" ~ 12,
-           EDUCD == "1 year of college" ~ 13,
-           EDUCD == "2 years of college" ~ 14,
-           EDUCD == "3 years of college" ~ 15,
-           EDUCD == "4 years of college" ~ 16,
-           EDUCD == "5 years of college" ~ 17,
-           EDUCD == "6 years of college" ~ 18,
-           EDUCD == "7 years of college" ~ 19,
-           EDUCD == "8+ years of college" ~ 20,
-           )
-         )
-           
-#+end_src
-
 * MLP Linked Census Data
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment* :results silent :tangle R/linking.R
@@ -1200,7 +1096,9 @@ I first read both crosswalks and extract microdata into a local database file
 so that I can use SQL operations via the =duckdb= API in R.
 
 #+begin_src R
-write_cw_db <- function(db_path = "data/ipums_db.duckdb", cw_file = "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv", tbl_name = "mlp_crosswalks") {
+write_cw_db <- function(db_path = "data/ipums_db.duckdb",
+                        cw_file = "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv",
+                        tbl_name = "mlp_crosswalks") {
   # open duckdb connection to local file
   conn <- dbConnect(duckdb(), dbdir = db_path)
   # read crosswalk csv files into database if not already written
@@ -1529,13 +1427,51 @@ clean_sample <- function(wide_df, ddi, inflator = 1.69) {
       )
 #+end_src
 
+** County-Level Wages
+#+begin_src R :tangle R/cleaning_funs.R
+collect_county_stats <- function(ddi, inflator = 1.69) {
+  # callback function to calculate county summary stats
+  countystat_cb <- function(x, pos) {
+    x |>
+      select(YEAR, STATEFIP, COUNTYICP, INCWAGE, RACE) |>
+      group_by(YEAR, STATEFIP, COUNTYICP) |>
+      mutate(
+        INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE),
+        # adjust 1940 wages for inflation to 1950 dollars
+        INCWAGE = ifelse(YEAR == 1940, INCWAGE * inflator, INCWAGE) ) |>
+      group_by(YEAR, STATEFIP, COUNTYICP) |>
+      summarise(
+        county_med.salary   = median(INCWAGE, na.rm=T),
+        county_pop          = n(),
+        county_pop.white    = sum(RACE==1),
+        county_pop.chinese  = sum(RACE==4),
+        county_pop.japanese = sum(RACE==5),
+        .groups = "drop"
+      )
+  }
+  
+  county_data <- read_ipums_micro_chunked(
+    ddi,
+    callback = IpumsDataFrameCallback$new(countystat_cb),
+    chunk_size = 1e5,
+    verbose = TRUE
+  ) |>
+    group_by(YEAR, STATEICP, COUNTYICP) |>
+    summarise(
+      # hopefully mean of sample median is good aprx for median?
+      county_med.salary   = mean(county_med.salary, na.rm=T),
+      county_pop          = sum(county_pop),
+      county_pop.white    = sum(county_pop.white),
+      county_pct.white    = sum(county_pop.white) / n(),
+      county_pop.chinese  = sum(county_pop.chinese),
+      county_pct.chinese  = sum(county_pop.chinese) / n(),
+      county_pop.japanese = sum(county_pop.japanese),
+      county_pct.japanese = sum(county_pop.japanese) / n(),
+      .groups = "drop"
     )
+}
+#+end_src
 
-  # Attach back to census data
-  census_augmented <- census_1940 |>
-    left_join(combined, by = vars)
-
-  return(census_augmented)
 }
 #+end_src
 
