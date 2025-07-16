@@ -1,4 +1,6 @@
-write_cw_db <- function(db_path = "data/ipums_db.duckdb", cw_file = "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv", tbl_name = "mlp_crosswalks") {
+write_cw_db <- function(db_path = "data/ipums_db.duckdb",
+                        cw_file = "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv",
+                        tbl_name = "mlp_crosswalks") {
   # open duckdb connection to local file
   conn <- dbConnect(duckdb(), dbdir = db_path)
   # read crosswalk csv files into database if not already written

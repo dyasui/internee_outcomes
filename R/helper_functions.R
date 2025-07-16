@@ -1,12 +1,34 @@
-as_cohort <- function(birthyr) {
-  cohort = case_when(
-    birthyr %in% 1940:1942 ~ "1940-1942",
-    birthyr %in% 1929:1939 ~ "1930-1939",
-    birthyr %in% 1924:1928 ~ "1920-1929",
-    birthyr %in% 1913:1923 ~ "1910-1919",
-    birthyr %in% 1903:1912 ~ "1893-1909",
-    birthyr %in% 1893:1902 ~ "1877-1992",
-    birthyr < 1877 ~ "pre1876",
+group_birthyr <- function(birthyr, from = 1860, to = 1942, width = 3) {
+  breaks <- seq(from, to, by = width)
+  starts <- breaks
+  ends <- pmin(breaks + width - 1, to)
+  labels <- paste0(starts, "-", ends)
+
+  cut(
+    birthyr,
+    breaks = c(starts, to + 1),
+    labels = labels,
+    right = FALSE,
+    include.lowest = TRUE
+  )
+}
+
+group_bpl <- function(bpl) {
+  grp_num <- case_when(
+    bpl %in% c(4, 6, 41, 53) ~ 1,
+    bpl %in% c(1, 5, 8:13, 16:40, 42:51, 54:56, 99) ~ 2,
+    bpl %in% 501 ~ 3,
+    .default = 4
+  )
+
+  factor(
+    grp_num,
+    levels = 1:4,
+    labels = c(
+      "AZ, CA, OR, WA",
+      "Rest of continental US",
+      "Japan",
+      "Alaska, Hawaii, other"
     )
-  return(cohort)
+  )
 }

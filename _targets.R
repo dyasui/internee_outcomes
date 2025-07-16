@@ -43,5 +43,6 @@ list(
   tar_target(linked_data,
              link_mlp(db_path = "data/ipums_db.duckdb",
                       cw_tbl  = cw_tbl,
-                      fc_tbl = fc_tbl))
+                      fc_tbl = fc_tbl)),
+
 )

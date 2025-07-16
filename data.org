@@ -2,114 +2,63 @@
 #+AUTHOR: Dante Yasui
 #+OPTIONS: toc:2
 
-* Workflow Outline
+* Targets Workflow
 
-#+begin_src mermaid :file data-plan.svg
-flowchart TD
-%% Data sources
-    nara@{ shape: hex, label: "🌐 National Archives"};
-    ipums@{ shape: hex, label: "🌐 IPUMS"};
-    nhgis@{ shape: hex, label: "🌐 NHGIS"};
-    jarvis@{ shape: hex, label: "🌐 JARVIS"};
+#+begin_src R :tangle _targets.R :session *R:internment*
+# Load packages required to define the pipeline:
+library(targets)
+# library(tarchetypes) # Load other packages as needed.
 
-%% raw data files 
-    ipumsdat@{ shape: card, label: "💾 usa_00123.dat.gz"};
-    fullct@{ shape: card, label: "💾 usa_00126.dat.gz"};
-    shp@{ shape: card, label: "💾 US_county_1940.shp"};
-    wra@{ shape: card, label: "💾 WRA.FORM26.PU.txt"};
+suppressPackageStartupMessages(library(dplyr))
 
-%% intermediate data files
-    duckdb@{ shape: cyl, label: "💽 ipums_db.duckdb"};
-    panel@{ shape: card, label: "💾 mlp_panel.csv"};
-    wage@{ shape: card, label: "💾 mlp_wage_panel.csv"};
-    internees@{ shape: card, label: "💾 all_internees.csv"};
-    counties@{ shape: card, label: "💾 county_stats.csv"};
-    icounties@{ shape: card, label: "💾 internee_counties.csv"};
+# Set target options:
+tar_option_set(
+  packages = c("tidyverse", "ipumsr", "haven", "fixest", "duckdb", "dbplyr"), # Packages that your targets need for their tasks.
+  format = "rds", # Optionally set the default storage format. qs is fast.
+  error = "null" # produce a result even if the target errored out.
+)
 
-%% functions
-    pr_int@{ shape: subproc, label: "⇥ predict_internment()"};
+# Run the R scripts in the R/ folder with your custom functions:
+tar_source()
+# tar_source("other_functions.R") # Source other scripts as needed.
 
-%% main analysis datasets
-    m1@{ shape: card, label: "💾 dt_wages.csv"};
-    m2@{ shape: card, label: "💾 dt_all.csv"};
-    c1@{ shape: card, label: "💾 dt_county.csv"};
+# Target list describes workflow
+list(
+  # Process internment camp data
+  tar_target(form26_raw, "data/WRA.FORM26.PU.txt", format = "file"),
+  tar_target(wra_addr, "data/WRA_prev_address.csv", format = "file"),
+  tar_target(wra_data, compile_WRA(form26_raw, wra_addr)),
 
-%% create edges
-    ipums -- download --> ipumsdat & fullct;
-    fullct -- summarize --> counties;
-    ipumsdat --📄 write-db.R--> duckdb -- "mlp linking" --> panel;
-    panel -- "filter have wage" --> wage;
-    nhgis --> shp --> counties;
-    nara --> wra --📄 compile-wra.R--> internees --> pr_int --> panel --> m2;
-    internees --> icounties --> c1;
-    wage --> m1;
-    counties --> m1 & m2;
-    counties --> c1;
+  # download IPUMS data and save extract locations
+  tar_target(extract_def, define_ipums_extract()),
+  tar_target(
+    extract_ready,
+    submit_and_download_extract(extract_def, download_dir = "data/fullcount_census/")
+  ),
+  tar_target(ddi_path, extract_ready, format = "file"),
+
+  # Write MLP crosswalks to local database to save on memory
+  tar_target(
+    cw_csv,
+    "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv",
+    format = "file"
+  ),
+  tar_target(cw_tbl, write_cw_db(db_path = "data/ipums_db.duckdb", cw_file = cw_csv, tbl_name = "mlp_crosswalks")),
+
+  # Link microrecords
+  tar_target(fc_tbl, write_ipums_db(ddi = ddi_path, tbl_name = "fullcount")),
+  tar_target(linked_data,
+             link_mlp(db_path = "data/ipums_db.duckdb",
+                      cw_tbl  = cw_tbl,
+                      fc_tbl = fc_tbl)),
+
 #+end_src
 
 #+RESULTS:
-[[file:data-plan.svg]]
 
+All of the functions above are defined in their own code blocks in the rest of this document.
 * Helper Functions and Definitions
-** Clean IPUMS Variables
-#+begin_src R :tangle R/clean-ipums.R :session *R:internment*
-clean_ipums <- function(data) {
-  library(tidyverse)
-  data |>
-    mutate( # replace missing values with NAs and adjust all dollar amounts to 1950 levels
-      INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE),
-      # adjust 1940 wages for inflation to 1950 dollars
-      INCWAGE = ifelse(YEAR == 1940, INCWAGE * 1.71, INCWAGE),
-      married = ifelse(MARST %in% 1:2, 1, 0),
-      foreign = ifelse(NATIVITY == 5, 1, 0),
-      college = ifelse(EDUC %in% 7:11, 1, 0),
-      employed = ifelse(EMPSTAT == 1, 1, 0),
-      female = ifelse(SEX==2, 1, 0),
-      OCC1950 = ifelse(OCC1950 %in% 979:999, NA, OCC1950),
-      age = YEAR - BIRTHYR,
-      female = ifelse(SEX == 2, 1, 0),
-      wage = ifelse(is.na(INCWAGE), 0, INCWAGE),
-      lnwage = ifelse(INCWAGE!=0, log(INCWAGE), NA),
-      citizen = ifelse(CITIZEN %in% c(0, 1, 2), 1, 0),
-      homestate = ifelse(BPL == STATEFIP, 1, 0),
-      generation = case_when(
-        NATIVITY == 5 ~ "first", # foriegn born
-        NATIVITY %in% 2:4 ~ "second", # both or either parent foriegn born
-        NATIVITY == 1 & (NATIVITY_POP %in% 2:4 | NATIVITY_MOM %in% 2:4) ~ "third"
-        ## .default == NA
-      ),
-      educ = case_when(
-        EDUCD == "Missing" ~ NA,
-        EDUCD == "No schooling completed" ~ 0,
-        EDUCD == "Kindergarten" ~ 0,
-        EDUCD == "Grade 1" ~ 1,
-        EDUCD == "Grade 2" ~ 2,
-        EDUCD == "Grade 3" ~ 3,
-        EDUCD == "Grade 4" ~ 4,
-        EDUCD == "Grade 5" ~ 5,
-        EDUCD == "Grade 6" ~ 6,
-        EDUCD == "Grade 7" ~ 7,
-        EDUCD == "Grade 8" ~ 8,
-        EDUCD == "Grade 9" ~ 9,
-        EDUCD == "Grade 10" ~ 10,
-        EDUCD == "Grade 11" ~ 11,
-        EDUCD == "Grade 12" ~ 12,
-        EDUCD == "1 year of college" ~ 13,
-        EDUCD == "2 years of college" ~ 14,
-        EDUCD == "3 years of college" ~ 15,
-        EDUCD == "4 years of college" ~ 16,
-        EDUCD == "5 years of college" ~ 17,
-        EDUCD == "6 years of college" ~ 18,
-        EDUCD == "7 years of college" ~ 19,
-        EDUCD == "8+ years of college" ~ 20,
-        )
-    )
-}
-#+end_src
-
-#+RESULTS:
-
-** Previous Address Counties of Internees
+** Geographic State and County Codes
 I started the process of going through the =NARA-WRA-Form26_documentation.pdf=
 to look up the count and city codes manually, but it's pretty annoying.
 I have all of the states and counties coded so far, as well as all of the identifiable cities in states except for California and Oregon.
@@ -163,21 +112,45 @@ wra_counties(nhgis_codes, "data/WRA_prev_address.csv") |>
 
 ** Birth Cohort Definitions
 I define birth cohorts here to use to group both census respondents and internees.
-These are preliminary for now, but mostly correspond to 10-15 year time spans.
-The longer time spans are trying to account for a seeming tendency of older census respondents to round their birht year to the nearest decade or multiple of 5.
+Following Arellano-Bover, I use 3-year intervals.
 
-#+begin_src R :tangle R/helper_functions.R :session *R:internment*
-as_cohort <- function(birthyr) {
-  cohort = case_when(
-    birthyr %in% 1940:1942 ~ "1940-1942",
-    birthyr %in% 1929:1939 ~ "1930-1939",
-    birthyr %in% 1924:1928 ~ "1920-1929",
-    birthyr %in% 1913:1923 ~ "1910-1919",
-    birthyr %in% 1903:1912 ~ "1893-1909",
-    birthyr %in% 1893:1902 ~ "1877-1992",
-    birthyr < 1877 ~ "pre1876",
+#+begin_src R :tangle R/helper_functions.R :session *R:internment* :colnames yes
+group_birthyr <- function(birthyr, from = 1860, to = 1942, width = 3) {
+  breaks <- seq(from, to, by = width)
+  starts <- breaks
+  ends <- pmin(breaks + width - 1, to)
+  labels <- paste0(starts, "-", ends)
+
+  cut(
+    birthyr,
+    breaks = c(starts, to + 1),
+    labels = labels,
+    right = FALSE,
+    include.lowest = TRUE
+  )
+}
+#+end_src
+
+Birthplace groups also come from Arellano-Bover:
+#+begin_src R :tangle R/helper_functions.R :session *R:internment* :colnames yes
+group_bpl <- function(bpl) {
+  grp_num <- case_when(
+    bpl %in% c(4, 6, 41, 53) ~ 1,
+    bpl %in% c(1, 5, 8:13, 16:40, 42:51, 54:56, 99) ~ 2,
+    bpl %in% 501 ~ 3,
+    .default = 4
+  )
+
+  factor(
+    grp_num,
+    levels = 1:4,
+    labels = c(
+      "AZ, CA, OR, WA",
+      "Rest of continental US",
+      "Japan",
+      "Alaska, Hawaii, other"
     )
-  return(cohort)
+  )
 }
 #+end_src
 
@@ -975,7 +948,11 @@ compile_WRA <- function(wra_file="data/WRA.FORM26.PU.txt",
   # read, clean and label pipeline for wra microdata
   data_labelled <- read_fw_form26(wra_file) |>
     form26_drop_dup() |>
-    form26_label()
+    form26_label() |>
+    mutate(
+      bpl_grp = group_bpl(bpl),
+      byr_grp = group_birthyr(birthyr)
+    ) 
 
   # geography codes to join to prev_addr codes
   addr <- read_csv(adr_file)
@@ -986,6 +963,7 @@ compile_WRA <- function(wra_file="data/WRA.FORM26.PU.txt",
            camp, assembly, race, sex, birthyr, bpl, birthplace,
            bpl_pop, bpl_mom, yrimmig, nativity, generation,
            degfield, high_deg, educ, 
+           bpl_grp, byr_grp, 
            fath_occ_us, fath_occ_abroad, school_jap,
            NHGISST, NHGISCTY, STATEFIP, COUNTYICP,
            last_name, first_name, qual_occ_1, qual_occ_2)

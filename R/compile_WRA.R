@@ -700,7 +700,11 @@ compile_WRA <- function(wra_file="data/WRA.FORM26.PU.txt",
   # read, clean and label pipeline for wra microdata
   data_labelled <- read_fw_form26(wra_file) |>
     form26_drop_dup() |>
-    form26_label()
+    form26_label() |>
+    mutate(
+      bpl_grp = group_bpl(bpl),
+      byr_grp = group_birthyr(birthyr)
+    ) 
 
   # geography codes to join to prev_addr codes
   addr <- read_csv(adr_file)
