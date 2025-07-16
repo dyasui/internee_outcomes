@@ -52,6 +52,8 @@ list(
                       cw_tbl  = cw_tbl,
                       fc_tbl = fc_tbl)),
 
+  # join internment statuses to linked data sample
+  tar_target(linked_data_prI, predict_internment(linked_data, wra_data = wra_data)),
 #+end_src
 
 #+RESULTS:
@@ -1357,143 +1359,116 @@ results <- rows_id |>
 This initial procedure leaves 11,079 linked MLP individuals across all MLP records of anyone reported as Japanese or Chinese American between the 1940 and 1950 census.
 
 ** Linked Internee Sample
+* Predicted Interment Status Estimator
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment*
 :END:
+My version of the estimator outlined is a function which takes in internee data and 1940 census data to calculate predicted internment probability.
+I allow for using different demographic variables to create groups to test different specifications.
 
-#+begin_src R
-library(tidyverse)
-library(haven)
-mlp_panel <- read_csv("data/mlp_sample.csv") |>
-  pivot_wider(id_cols = id, names_from = YEAR, values_from = STATEFIP:generation)
-#+end_src
+#+begin_src R :tangle R/predict_internment.R
+calc_int_proportion <- function(internees,
+                                db = "data/ipums_db.duckdb",
+                                table = "ipums_microdata",
+                                by = c("STATEFIP", "COUNTYICP")
+                                ) {
+  library(tidyverse)
+  library(dbplyr)
+  library(dbplyr)
+  library(duckdb)
 
-#+RESULTS:
+  # collect groups from 1940 census
+  con <- dbConnect(duckdb(), dbdir = db)
+  linking_vars <- c("STATEFIP", "COUNTYICP", "RACE", "SEX", "BIRTHYR", "BPL")
 
-#+begin_src R
-library(dbplyr)
-library(duckdb)
-# data extract file
-db <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
-tbl = "ipums_microdata"
-linking_vars <- c("STATEFIP", "COUNTYICP", "RACE", "SEX", "BIRTHYR", "BPL")
+  pop_grp <- tbl(con, table) |>
+    filter(YEAR==1940) |>
+    # add cohort variable to census
+    collect() |>
+    mutate(
+      bpl_grp = group_bpl(BPL),
+      byr_grp = group_birthyr(BIRTHYR)
+    ) |> 
+    select(unname(by)) |>
+    group_by(across(all_of(unname(by)))) |>
+    summarise(n_j=n(), .groups = "drop") 
+  dbDisconnect(con)
 
-census_dat <- tbl(db,tbl) |>
-  filter(YEAR==1940) |>
-  select(linking_vars) |>
-  collect()
-dbDisconnect(db)
+  # Count by group in internee data
+  int_grp <- internees |>
+    filter(race==5) |>
+    rename_with(toupper, c("race", "sex", "birthyr", "bpl", "bpl_pop", "bpl_mom", "yrimmig", "nativity", "degfield", "educ")) |>
+    group_by(across(all_of(unname(by)))) |>
+    summarise(n_i = n(), .groups = "drop")
 
-predict_internment_linked <- function(linked_dat, census_dat, vars) {
-  census_groups <- predict_internment(census_dat, vars = vars) |>
-    select(all_of(vars), p_ij)
+  # Join and calculate fraction
+  proportions <- pop_grp |>
+    full_join(int_grp, by = by) |>
+    mutate(
+      n_i = replace_na(n_i, 0),
+      p_ij = n_i / n_j
+    )
 
-  results <- linked_dat |>
-    left_join(census_groups, by = vars)
-
-  return(results)
+  return(proportions)
 }
-
-mlp_panel_linked <- mlp_panel |>
-  left_join(intern_prob, by = c("STATEFIP_1940"="STATEFIP",
-            "COUNTYICP_1940"="COUNTYICP")) |>
-  # only include those who are old enough to work in 1940
-  filter(age_1940>=14) |>
-  # base time-invariant demographics on 1940 response
-  rename(female = "female_1940", BIRTHYR = "BIRTHYR_1940",
-         BPL = "BPL_1940", RACE = "RACE_1940") |>
-  mutate(
-    # create indicator for migration status
-    moved = ifelse(COUNTYICP_1940!=COUNTYICP_1950, 1, 0),
-    ) |>
-  predict_internment_linked(census_dat=census_dat, vars=c("STATEFIP", "COUNTYICP")) |>
-  rename(prInt_county = p_ij) |>
-  predict_internment_linked(census_dat=census_dat, vars=c("STATEFIP", "COUNTYICP", "BPL", "SEX", "cohort")) |>
-  rename(prInt_demo = p_ij) |>
-  predict_internment_linked(census_dat=census_dat, vars=c("STATEFIP", "BPL", "SEX", "cohort")) |>
-  rename(prInt_AB = p_ij) |>
-  pivot_longer(
-    cols = matches("_(1940|1950)$"),
-    names_to = c(".value", "YEAR"),
-    names_pattern = "(.*)_(1940|1950)"
-  ) |>
-  select(id, japanese, female, BIRTHYR, BPL, p_ij,
-         age_1940, age_1950,
-         STATEFIP_1940, STATEFIP_1950, COUNTYICP_1940, COUNTYICP_1950, moved,
-         employed_1940, employed_1950, LABFORCE_1940, LABFORCE_1950,
-         haswage_1940, haswage_1950,
-         INCWAGE_1940, INCWAGE_1950,
-         wage_1940, wage_1950, OCCSCORE_1940, OCCSCORE_1950,
-         OCC1950_1940, OCC1950_1950,
-         EDUC_1940, EDUC_1950, citizen_1940, citizen_1950, homestate_1940, homestate_1950, married_1940, married_1950
-         )
 #+end_src
 
 #+RESULTS:
 
-Save the linked analysis sample to a csv.
-#+begin_src R
-write_csv(mlp_panel_linked, file = "data/linked_sample.csv")
+#+begin_src R :tangle R/predict_internment.R
+predict_internment <- function(df, options = c("full", "county", "Arellano-Bover"), custom_vars = NULL, wra_data) {
+
+  df <- df |>
+    mutate(
+      birthyr = (BIRTHYR_1940 + BIRTHYR_1950) / 2, # average if different 
+      byr_grp = group_birthyr(birthyr),
+      bpl_grp = group_bpl(BPL_1940), # use 1940 birthplace
+    )
+
+  if ("county" %in% options) {
+    probs <- calc_int_proportion(wra_data,
+                                 by = c("STATEFIP", "COUNTYICP")) |>
+      rename(prI_county = p_ij)
+
+    df <- df |>
+      left_join(probs, by = c(
+                         "STATEFIP_1940"="STATEFIP", "COUNTYICP_1940"="COUNTYICP"
+                       ))
+  }
+
+  if ("full" %in% options) {
+    probs <- calc_int_proportion(wra_data,
+                                 by = c("STATEFIP", "COUNTYICP",
+                                        "SEX", "bpl_grp", "byr_grp"
+                                        )) |>
+      rename(prI_full = p_ij)
+
+    df <- df |>
+      left_join(probs,
+                by = c("STATEFIP_1940"="STATEFIP",
+                       "COUNTYICP_1940"="COUNTYICP",
+                       "SEX_1940"="SEX",
+                       "bpl_grp", "byr_grp"))
+  }
+
+  if ("Arellano-Bover" %in% options) {
+    probs <- calc_int_proportion(wra_data,
+                                 by = c("STATEFIP",
+                                        "SEX", "bpl_grp", "byr_grp"
+                                        )) |>
+      rename(prI_AB = p_ij)
+
+    df <- df |>
+      left_join(probs, 
+                by = c("STATEFIP_1940"="STATEFIP",
+                       "SEX_1940"="SEX",
+                       "bpl_grp", "byr_grp"))
+  }
+
+  return(df)
+}
 #+end_src
 
-#+RESULTS:
-
-** Consistent Wage Reporting Panel
-:PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment*  :colnames yes
-:END:
-
-#+begin_src R
-library(tidyverse)
-library(modelsummary)
-data <- read_csv("data/linked_sample.csv")
-data |> count(linked=group)
-#+end_src
-
-#+RESULTS:
-| linked                |    n |
-|-----------------------+------|
-| Chinese               | 4397 |
-| Interned Japanese     | 2784 |
-| Non-interned Japanese |  641 |
-
-#+begin_src R
-data |>
-  filter(!is.na(INCWAGE_1940),!is.na(INCWAGE_1950)) |>
-  count(wage_panel=group)
-#+end_src
-
-#+RESULTS:
-| wage_panel            |    n |
-|-----------------------+------|
-| Chinese               | 1010 |
-| Interned Japanese     |  771 |
-| Non-interned Japanese |  125 |
-
-Many individuals have missing wages in either 1940 or 1950.
-After filtering for only those linked individuals who report wages in both census years, I am left with 1906 people.
-
-#+begin_src R :colnames yes
-data |>
-  filter(!is.na(INCWAGE_1940),!is.na(INCWAGE_1950)) |>
-  group_by(group, moved) |> 
-  summarise(
-    n=n(),
-    across(c("age_1940", "female", "employed_1940", "employed_1950", "INCWAGE_1940", "INCWAGE_1950", "OCCSCORE_1940", "OCCSCORE_1950"),
-     ~ mean(.x, na.rm=T))) 
-#+end_src
-
-#+RESULTS:
-| group                 | moved |   n |         age_1940 |            female |     employed_1940 |     employed_1950 |     INCWAGE_1940 |     INCWAGE_1950 |    OCCSCORE_1940 |    OCCSCORE_1950 |
-|-----------------------+-------+-----+------------------+-------------------+-------------------+-------------------+------------------+------------------+------------------+------------------|
-| Chinese               | FALSE | 912 | 36.1995614035088 |  0.25219298245614 |  0.56140350877193 | 0.657894736842105 |        617.77875 |  1106.3048245614 |  16.015350877193 | 18.1502192982456 |
-| Chinese               | TRUE  |  98 | 32.4387755102041 |  0.26530612244898 | 0.551020408163265 | 0.693877551020408 | 742.628571428571 | 1146.42857142857 | 14.6428571428571 | 20.9183673469388 |
-| Interned Japanese     | FALSE | 644 | 36.7670807453416 | 0.454968944099379 |  0.52639751552795 | 0.624223602484472 | 299.252655279503 | 924.145962732919 | 9.44565217391304 | 11.0574534161491 |
-| Interned Japanese     | TRUE  | 127 | 34.3700787401575 | 0.551181102362205 | 0.401574803149606 | 0.519685039370079 | 285.341102362205 | 1072.44094488189 | 7.65354330708661 | 10.3937007874016 |
-| Non-interned Japanese | FALSE | 112 | 38.6160714285714 | 0.383928571428571 | 0.419642857142857 | 0.607142857142857 | 344.748214285714 | 441.071428571429 | 7.74107142857143 | 9.97321428571428 |
-| Non-interned Japanese | TRUE  |  13 | 30.9230769230769 | 0.384615384615385 | 0.461538461538462 | 0.769230769230769 | 124.961538461538 | 2088.46153846154 | 7.84615384615385 | 13.8461538461538 |
-
-* Predicted Interment Status Estimator
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment*
 :END:

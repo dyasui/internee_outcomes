@@ -45,4 +45,6 @@ list(
                       cw_tbl  = cw_tbl,
                       fc_tbl = fc_tbl)),
 
+  # join internment statuses to linked data sample
+  tar_target(linked_data_prI, predict_internment(linked_data, wra_data = wra_data)),
 )
