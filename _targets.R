@@ -47,4 +47,5 @@ list(
 
   # join internment statuses to linked data sample
   tar_target(linked_data_prI, predict_internment(linked_data, wra_data = wra_data)),
+  tar_target(linked_data_lbl, clean_sample(linked_data_prI, ddi = ddi_path)),
 )

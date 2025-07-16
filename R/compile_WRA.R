@@ -715,6 +715,7 @@ compile_WRA <- function(wra_file="data/WRA.FORM26.PU.txt",
            camp, assembly, race, sex, birthyr, bpl, birthplace,
            bpl_pop, bpl_mom, yrimmig, nativity, generation,
            degfield, high_deg, educ, 
+           bpl_grp, byr_grp, 
            fath_occ_us, fath_occ_abroad, school_jap,
            NHGISST, NHGISCTY, STATEFIP, COUNTYICP,
            last_name, first_name, qual_occ_1, qual_occ_2)

@@ -54,6 +54,7 @@ list(
 
   # join internment statuses to linked data sample
   tar_target(linked_data_prI, predict_internment(linked_data, wra_data = wra_data)),
+  tar_target(linked_data_lbl, clean_sample(linked_data_prI, ddi = ddi_path)),
 #+end_src
 
 #+RESULTS:
@@ -175,6 +176,7 @@ ezWA <- c( 50,  70,  90, 150, 270, 310, 330, 350, 370, 390, 410, 450, 490, 530,
          570, 590, 610, 670, 690, 730, 770)
 
 #+end_src
+
 * WRA Camp Internee Records
 :PROPERTIES:
 :HEADER-ARGS:R: :tangle R/compile_WRA.R :session *R:internment*
@@ -940,7 +942,6 @@ form26_label <- function(raw_data) {
 }
 #+end_src 
 
-
 ** Individual Internees Data Cleaned
 This function takes the raw form 26 text file and the list of previous address codes and returns a tibble with the cleaned data with the variables on names, previous addresses, camp, assembly center, demographics (which are coded to be joined to IPUMS census variables), and the occupations of each internee.
 #+begin_src R
@@ -1250,7 +1251,7 @@ write_ipums_db <- function(ddi, db_path = "data/ipums_db.duckdb", tbl_name) {
 }
 #+end_src
 
-** MLP Linked Microrecords Sample
+** MLP Linked to Census Microdata
 
 #+begin_src R
 link_mlp <- function(db_path = "data/ipums_db.duckdb", cw_tbl = "mlp_crosswalks",
@@ -1303,62 +1304,6 @@ link_mlp <- function(db_path = "data/ipums_db.duckdb", cw_tbl = "mlp_crosswalks"
 }
 #+end_src
 
-#+begin_src R :tangle no
-# join all selected data between years by crosswalked histids
-rows <- bind_rows(l1, l2) |>
-  # get rid of leftover linking and technical varibles
-  select(!c("step", "SAMPLE", "SERIAL", "HHWT", "PERWT",
-            "PERNUM", "GQ", "VERSIONHIST", "CITY", "ENUMDIST"))
-
-# generate new unique ids for each linked person
-histid_pairs <- rows |>
-  count(histid_1940, histid_1950) |>
-  filter(n>1) |> # multiple matches
-  mutate(id = row_number()) |>
-  select(!n)
-
-rows_id <- rows |>
-  left_join(histid_pairs, by = c("histid_1940", "histid_1950")) |>
-  filter(!is.na(id)) |>
-  select(!c("histid_1940", "histid_1950")) |>
-  relocate(id)
-
-# clean up other variables
-results <- rows_id |>
-  mutate(
-    # replace missing values with NAs and adjust all dollar amounts to 1950 levels
-    across(c(INCWAGE, INCTOT, INCBUSFM),
-           ~ case_when(.x %in% c(999999,999998) ~ NA,
-                             YEAR == 1940 ~ .x * 1.71, # deflated dollars to 1940 standards
-                             .default = .x)
-           ),
-    married = ifelse(MARST %in% 1:2, 1, 0),
-    foreign = ifelse(NATIVITY == 5, 1, 0),
-    college = ifelse(EDUC %in% 7:11, 1, 0),
-    employed = ifelse(EMPSTAT == 1, 1, 0),
-    female = ifelse(SEX==2, 1, 0),
-    OCC1950 = ifelse(OCC1950 %in% 979:999, NA, OCC1950),
-    age = YEAR - BIRTHYR,
-    female = ifelse(SEX == 2, 1, 0),
-    wage = ifelse(is.na(INCWAGE), 0, INCWAGE),
-    lnwage = log(INCWAGE),
-    citizen = ifelse(CITIZEN %in% c(0, 1, 2), 1, 0),
-    homestate = ifelse(BPL == STATEFIP, 1, 0),
-    generation = case_when(
-      NATIVITY == 5 ~ "first", # foriegn born
-      NATIVITY %in% 2:4 ~ "second", # both or either parent foriegn born
-      NATIVITY == 1 & (NATIVITY_POP %in% 2:4 | NATIVITY_MOM %in% 2:4) ~ "third",
-      ## .default == NA
-    )
-  )
-#+end_src
-
-#+RESULTS:
-
-
-This initial procedure leaves 11,079 linked MLP individuals across all MLP records of anyone reported as Japanese or Chinese American between the 1940 and 1950 census.
-
-** Linked Internee Sample
 * Predicted Interment Status Estimator
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment*
@@ -1469,57 +1414,121 @@ predict_internment <- function(df, options = c("full", "county", "Arellano-Bover
 }
 #+end_src
 
+* Cleaning and Defining Main Sample for Analysis
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment*
 :END:
-My version of the estimator outlined is a function which takes in internee data and 1940 census data to calculate predicted internment probability.
-I allow for using different demographic variables to create groups to test different specifications.
-
-#+begin_src R :tangle R/predict_internment.R
-predict_internment <- function(data, census_1940, by = c("STATEFIP", "COUNTYICP")) {
-  library(tidyverse)
-  library(dbplyr)
-
-  # Cleanup internee data
-  data_int <- data |>
+#+begin_src R :tangle R/cleaning_funs.R
+clean_sample <- function(wide_df, ddi, inflator = 1.69) {
+  # ten-year inflation rate from bls.gov/data/inflation_calculator.htm
+  wide_df <- wide_df |>
+    # deal with inconsistencies in reported birthyear across censuses by averaging
     mutate(
-      STATEFIP = as.integer(NHGISST)/10,
-      COUNTYICP = as.integer(NHGISCTY),
-      across(RACE:FATH_OCC_ABROAD, as.numeric),
-      cohort = as_cohort(BIRTHYR)
+      birthyr_avg = (BIRTHYR_1950 + BIRTHYR_1940) / 2,
+      age_1940 = 1940 - birthyr_avg,
+      age_1950 = 1950 - birthyr_avg
     ) |>
-    filter(!is.na(STATE),!is.na(COUNTY),RACE==5) 
-    # AK, HI don't have census data, so drop them here
-    ## filter(!STATE %in% c("Alaska", "Hawaii"))
-
-  # Count by group in internee data
-  groups_x <- data_int |>
-    group_by(across(all_of(vars))) |>
-    summarise(n_i = n(), .groups = "drop")
-
-  # add cohort variable to census
-   census_1940 <- census_1940 |>
-    rename_with(tolower) |>
-    mutate(cohort = as_cohort(birthyr) )
-
-  # Check required columns
-  missing_census <- setdiff(vars, colnames(census_1940))
-  if (length(missing_census) > 0) {
-    stop("Census data is missing required columns: ",
-         paste(missing_census, collapse = ", "))
-  }
-
-  # Join and calculate fraction
-  # Count by group in census
-  pop_grp <- census_1940 |>
-    group_by(across(all_of(vars))) |>
-    summarise(n_j=n(), .groups = "drop")
-
-  combined <- pop_grp |>
-    full_join(int_grp, by = vars) |>
+    # base time-invariant demographics on 1940 response
     mutate(
-      n_i = replace_na(n_i, 0),
-      p_ij = n_i / n_j
+      sex = ifelse(SEX_1940==1, "Male", "Female"),
+      race = case_when(RACE_1940==5 ~ "Japanese",
+                       RACE_1940==4 ~ "Chinese")
+    ) |>
+    # adjust dollar amounts for inflation and missing values
+    mutate(
+      # remove NA values and convert 1940 incomes to 1950 dollars
+      salary_1940 = ifelse(INCWAGE_1940 %in% c(999999,999998), NA, INCWAGE_1940 * inflator ),
+      salary_1950 = case_when(INCWAGE_1950 %in% c(999999,999998) ~ NA,
+                              INCWAGE_1950 > (5001 * inflator) ~ 5001 * inflator,
+                              .default = INCWAGE_1950),
+      income_bsfm = case_when(INCBUSFM_1950 %in% c(99999, 99998) ~ NA,
+                                .default = INCBUSFM_1950),
+      income_tot = case_when(INCTOT_1950 %in% c(9999999, 9999998) ~ NA,
+                             .default = INCTOT_1950),
+      income_oth = case_when(INCOTHER_1950 %in% c(99999, 99998) ~ NA,
+                             .default = INCOTHER_1950)
+    ) |>
+    mutate(
+      # create indicator for migration status
+      migrate10 = ifelse(COUNTYICP_1940!=COUNTYICP_1950, 1, 0),
+      # create new individual-level id
+      id = row_number()
+    ) 
+
+  long_df <- wide_df |>
+    select(!starts_with("YEAR")) |> # redundant
+    pivot_longer(
+      cols = matches("_(1940|1950)$") & !contains("histid_"),
+      names_to = c(".value", "YEAR"),
+      names_pattern = "(.*)_(1940|1950)"
+    ) |>
+    set_ipums_var_attributes(ipumsr::read_ipums_ddi(ddi)) |>
+    mutate(
+      married = ifelse(MARST %in% 1:2, 1, 0),
+      foreign = ifelse(NATIVITY == 5, 1, 0),
+      college = ifelse(EDUC %in% 7:11, 1, 0),
+      employed = ifelse(EMPSTAT == 1, 1, 0),
+      generation = case_when(
+        NATIVITY == 5 ~ "first-generation", # foriegn born
+        NATIVITY %in% 2:4 ~ "second-generation", # both or either parent foriegn born
+        NATIVITY == 1 & (FBPL %in% 1:120 | MBPL %in% 1:120) ~ "third-generation",
+        .default = NA
+      ),
+      yearsschool = case_when(
+        as_factor(EDUCD) == "Missing" ~ NA_integer_,
+        as_factor(EDUCD) == "No schooling completed" ~ 0,
+        as_factor(EDUCD) == "Kindergarten" ~ 0.5,
+        as_factor(EDUCD) == "Grade 1" ~ 1,
+        as_factor(EDUCD) == "Grade 2" ~ 2,
+        as_factor(EDUCD) == "Grade 3" ~ 3,
+        as_factor(EDUCD) == "Grade 4" ~ 4,
+        as_factor(EDUCD) == "Grade 5" ~ 5,
+        as_factor(EDUCD) == "Grade 6" ~ 6,
+        as_factor(EDUCD) == "Grade 7" ~ 7,
+        as_factor(EDUCD) == "Grade 8" ~ 8,
+        as_factor(EDUCD) == "Grade 9" ~ 9,
+        as_factor(EDUCD) == "Grade 10" ~ 10,
+        as_factor(EDUCD) == "Grade 11" ~ 11,
+        as_factor(EDUCD) == "Grade 12" ~ 12,
+        as_factor(EDUCD) == "1 year of college" ~ 13,
+        as_factor(EDUCD) == "2 years of college" ~ 14,
+        as_factor(EDUCD) == "3 years of college" ~ 15,
+        as_factor(EDUCD) == "4 years of college" ~ 16,
+        as_factor(EDUCD) == "5 years of college" ~ 17,
+        as_factor(EDUCD) == "6 years of college" ~ 18,
+        as_factor(EDUCD) == "7 years of college" ~ 19,
+        as_factor(EDUCD) == "8+ years of college" ~ 20
+        ),
+      occupation = ifelse(OCC1950 %in% 979:999, NA, as_factor(OCC1950))
+    )
+    
+
+  return(long_df)
+}
+#+end_src
+
+#+RESULTS:
+
+** Clean IPUMS Variables
+#+begin_src R 
+  wide_df_lbld <- long_df |>
+    pivot_wider(
+      id_cols = any_of(c("id", "sex", "race", "birthyr_avg",
+                         "income_bsfm", "income_tot", "income_oth")),
+      names_from = YEAR,
+      values_from = any_of(c("age", "salary",
+        "STATEFIP", "COUNTYICP", "CITY", "URBAN", "GQ", "FARM",
+        "ENUMDIST", "PERNUM", "SLWT", "SEX", "AGE", "MARST",
+        "BIRTHYR", "CHBORN", "RACE", "RACED", "BPL", "BPLD", "MBPL",
+        "MBPLD", "FBPL", "FBPLD", "NATIVITY", "CITIZEN", "SCHOOL",
+        "HIGRADE", "HIGRADED", "EDUC", "EDUCD", "EMPSTAT", "EMPSTATD",
+        "LABFORCE", "CLASSWKR", "CLASSWKRD", "OCC", "OCC1950", "IND",
+        "IND1950", "WKSWORK1", "HRSWORK1", "DURUNEMP", "INCTOT",
+        "INCWAGE", "INCBUSFM", "INCOTHER", "OCCSCORE", "MIGRATE5",
+        "MIGRATE5D", "MIGPLAC5", "MIGCOUNTYICP5"))
+      )
+#+end_src
+
     )
 
   # Attach back to census data
@@ -1531,6 +1540,7 @@ predict_internment <- function(data, census_1940, by = c("STATEFIP", "COUNTYICP"
 #+end_src
 
 #+RESULTS:
+
 * County GIS Files
 ** Historical Counties
 :PROPERTIES:
@@ -1670,7 +1680,7 @@ contacts <- read_jarvis_raw(contacts_file)
 
 #+end_src
 
-* Japanese American Research Project (JARP)
+* TODO Japanese American Research Project (JARP)
 Download the Issei, Nisei, and Sansei files from Gene Levine's [[https://www.icpsr.umich.edu/web/NACDA/studies/8450/datadocumentation][online repository.]]
 #+begin_src R
 
