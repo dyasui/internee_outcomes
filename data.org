@@ -45,20 +45,10 @@ list(
   ),
   tar_target(ddi_path, extract_ready, format = "file"),
 
-  # Write MLP crosswalks to local database to save on memory
-  tar_target(
-    cw_csv,
-    "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv",
-    format = "file"
-  ),
-  tar_target(cw_tbl, write_cw_db(db_path = "data/ipums_db.duckdb", cw_file = cw_csv, tbl_name = "mlp_crosswalks")),
+  # TODO script extract def and download for MLP v2 data
 
-  # Link microrecords
-  tar_target(fc_tbl, write_ipums_db(ddi = ddi_path, tbl_name = "fullcount")),
-  tar_target(linked_data,
-             link_mlp(db_path = "data/ipums_db.duckdb",
-                      cw_tbl  = cw_tbl,
-                      fc_tbl = fc_tbl)),
+  # calculate internment proportions
+  tar_target(internpr_county, calc_int_proportion(wra_data, ddi = ddi_path, by = c("STATEFIP", "COUNTYICP"))),
 
   # join internment statuses to linked data sample
   tar_target(linked_data_prI, predict_internment(linked_data, wra_data = wra_data)),
@@ -1094,36 +1084,85 @@ wait_for_extract(fullcount_extract) |>
   download_extract("data/fullcount_census")
 #+end_src
 
-* MLP Linked Census Data
-:PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment* :results silent :tangle R/linking.R
-:END:
-To use the latest versions of the MLP linkages from IPUMS, I download the crosswalk files as csv's from https://usa.ipums.org/usa/mlp/mlp_census_crosswalks.shtml.
-** DuckDB Storage of Linking IDs
-The original micro data files from IPUMS are too large to fit in memory,
-and the MLP v1.2 linkages are provided as crosswalks which have to be joined to the data.
-I first read both crosswalks and extract microdata into a local database file
-so that I can use SQL operations via the =duckdb= API in R.
+** Reading IPUMS data into database
+With all of the variables and individual records downloaded, the full count census data can be up to 11G uncompressed on disk.
+
+To find the optimal chunk size, I can make use of the =read_ipums_micro_yield()= function.
+#+begin_src R :tangle no
+test_dt <- read_ipums_micro_yield(ddi = "data/fullcount_census/usa_00128.xml")$yield(1e7)
+print(object.size(test_dt), units = "auto")
+#+end_src
 
 #+begin_src R
-write_cw_db <- function(db_path = "data/ipums_db.duckdb",
-                        cw_file = "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv",
-                        tbl_name = "mlp_crosswalks") {
-  # open duckdb connection to local file
+write_ipums_db <- function(ddi, db_path = "data/ipums_db.duckdb", tbl_name) {
   conn <- dbConnect(duckdb(), dbdir = db_path)
-  # read crosswalk csv files into database if not already written
-  if (!dbExistsTable(conn, tbl_name)) {
-    duckdb_read_csv(conn, tbl_name, cw_file)
-    dbDisconnect(conn)
+
+  writedb_cb <- function(x,pos) {
+    if (pos == 1) {
+      dbWriteTable(conn, tbl_name, x, overwrite = TRUE)
+    } else {
+      data_filtered <- x |>
+        filter(RACE %in% c(4,5))
+      dbWriteTable(conn, tbl_name, data_filtered, overwrite = FALSE, append = TRUE)
+    }
   }
-  # disconnect from database after reading
+
+  read_ipums_micro_chunked(
+    ddi,
+    callback = readr::SideEffectChunkCallback$new(writedb_cb),
+    verbose = T,
+    chunk_size = 1e7 # observations to read per chunk
+  )
+
   dbDisconnect(conn)
-  # return path of database for targets workflow
+
   tbl_name
 }
 #+end_src
 
-** Selecting HISTID's for my sample
+* MLP Linked Census Data
+:PROPERTIES:
+:HEADER-ARGS:R: :session *R:internment* :colnames yes :tangle R/linking.R
+:END:
+Reading all linked data from IPUMS MLP version 2
+#+begin_src R :results output
+mlp_ddi <- "data/mlp_v2_0/usa_00131.xml"
+yield <- read_ipums_micro_yield(mlp_ddi)
+yield$yield(0) |> colnames() 
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Use of data from IPUMS USA is subject to conditions including that users should cite the data appropriately. Use command `ipums_conditions()` for more details.
+ [1] "YEAR"          "SERIAL"        "STATEFIP"      "COUNTYICP"     "CITY"         
+ [6] "URBAN"         "GQ"            "FARM"          "ACRENONF"      "PERNUM"       
+[11] "SLREC"         "MOMLOC"        "POPLOC"        "SEX"           "AGE"          
+[16] "MARST"         "BIRTHYR"       "RACE"          "RACED"         "BPL"          
+[21] "BPLD"          "MBPL"          "MBPLD"         "FBPL"          "FBPLD"        
+[26] "NATIVITY"      "CITIZEN"       "HIGRADE"       "HIGRADED"      "EDUC"         
+[31] "EDUCD"         "EMPSTAT"       "EMPSTATD"      "LABFORCE"      "CLASSWKR"     
+[36] "CLASSWKRD"     "OCC"           "OCC1950"       "IND"           "IND1950"      
+[41] "WKSWORK1"      "HRSWORK1"      "DURUNEMP"      "INCTOT"        "INCWAGE"      
+[46] "INCBUSFM"      "INCNONWG"      "INCOTHER"      "OCCSCORE"      "MIGRATE5"     
+[51] "MIGRATE5D"     "MIGPLAC5"      "MIGCOUNTYICP5" "VERSIONHIST"   "VETSTAT"      
+[56] "VETSTATD"      "VETWWII"       "HISTID"        "HIK"           "LINK1940"     
+[61] "LINK1950"      "VERSIONHIK"    "NATIVITY_MOM"  "NATIVITY_POP"  "NATIVITY_SP"  
+[66] "NATIVITY_MOM2" "NATIVITY_POP2" "HIGRADED_MOM"  "HIGRADED_POP"  "HIGRADED_MOM2"
+[71] "HIGRADED_POP2" "EDUC_MOM"      "EDUC_POP"      "EDUC_MOM2"     "EDUC_POP2"    
+[76] "EMPSTAT_MOM"   "EMPSTAT_POP"   "EMPSTAT_MOM2"  "EMPSTAT_POP2"  "OCC1950_MOM"  
+[81] "OCC1950_POP"   "OCC1950_MOM2"  "OCC1950_POP2"  "INCWAGE_MOM"   "INCWAGE_POP"  
+[86] "INCWAGE_MOM2"  "INCWAGE_POP2"  "OCCSCORE_MOM"  "OCCSCORE_POP"  "OCCSCORE_MOM2"
+[91] "OCCSCORE_POP2" "VETWWII_MOM"   "VETWWII_POP"   "VETWWII_SP"    "VETWWII_MOM2" 
+[96] "VETWWII_POP2"
+#+end_example
+
+| Source:  | Year | Total   | Japanese | Chinese | Japanese + Chinese |
+|----------+------+---------+----------+---------+--------------------|
+| Census   | 1940 | 132.9 m |   126701 |   78205 |             204906 |
+|          | 1950 | 152.3 m |   278603 |  119522 |             398125 |
+|----------+------+---------+----------+---------+--------------------|
+| MLP v2.0 | both | 73.7 m  |          |         |              20341 |
+** Linked Sample Size
 I only need the histid crosswalks rows for people who would match my sample of Japanese and Chinese Americans.
 #+begin_src R
 callback <- function(x, pos) {
@@ -1165,12 +1204,6 @@ cw_list <- tbl(conn, "mlp_crosswalks") |>
 
 Based on this, there are 19,278 individuals who are either Japanese or Chinese and linked between the 1940 and 1950 censuses for the current version of MLP.
 
-| Source:  | Year | Total   | Japanese | Chinese | Japanese + Chinese |
-|----------+------+---------+----------+---------+--------------------|
-| Census   | 1940 | 132.9 m |   126701 |   78205 |             204906 |
-|          | 1950 | 152.3 m |   278603 |  119522 |             398125 |
-|----------+------+---------+----------+---------+--------------------|
-| MLP v2.0 | both | 73.7 m  |          |         |              20341 |
 
 The match rate for this population is less than the ~40% match rate in the MLP linkages overall.
 Based on the numbers in the table above, the match rate for Japanese/Chinese respondents is 20341 / 204906 ≈ 10%.
@@ -1180,83 +1213,6 @@ I will save a list of these histid crosswalks to a csv file in my repository.
 #+begin_src R
 write_csv(cw_list, file = "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2-JConly.csv")
 #+end_src
-** Reading IPUMS data into database
-With all of the variables and individual records downloaded, the full count census data can be up to 11G uncompressed on disk.
-
-To find the optimal chunk size, I can make use of the =read_ipums_micro_yield()= function.
-#+begin_src R :tangle no
-test_dt <- read_ipums_micro_yield(ddi = "data/fullcount_census/usa_00128.xml")$yield(1e7)
-print(object.size(test_dt), units = "auto")
-#+end_src
-
-#+begin_src R
-write_ipums_db <- function(ddi, db_path = "data/ipums_db.duckdb", tbl_name) {
-  conn <- dbConnect(duckdb(), dbdir = db_path)
-
-  writedb_cb <- function(x,pos) {
-    if (pos == 1) {
-      dbWriteTable(conn, tbl_name, x, overwrite = TRUE)
-    } else {
-      data_filtered <- x |>
-        filter(RACE %in% c(4,5))
-      dbWriteTable(conn, tbl_name, data_filtered, overwrite = FALSE, append = TRUE)
-    }
-  }
-
-  read_ipums_micro_chunked(
-    ddi,
-    callback = readr::SideEffectChunkCallback$new(writedb_cb),
-    verbose = T,
-    chunk_size = 1e7 # observations to read per chunk
-  )
-
-  dbDisconnect(conn)
-
-  tbl_name
-}
-#+end_src
-
-** MLP Linked to Census Microdata
-This function is used to combine IPUMS full-count census data from two different census years together with the MLP linking crosswalks provided in version 2.0.
-It takes in a tibble of data in 'long' form meaning that the data object should include all microdata from both census years.
-#+begin_src R
-link_mlp <- function(data, cw, years = c(1940,1950)) {
-  # unnecessary variables
-  drop_vars <- c("step","SAMPLE","HHWT","PERWT","VERSIONHIST")
-
-  # bring needed microdata into a tibble for joining
-  d1 <- data |>
-    select(-any_of(drop_vars)) |>
-    filter(
-      YEAR == years[1], # decade start year
-    ) 
-  d2 <- data |>
-    select(-any_of(drop_vars)) |>
-    filter(
-      YEAR == years[2] # decade end year
-    ) 
-
-  # join histids to selected data from year 1
-  l1 <- cw |>
-    select(-step) |>
-    left_join(d1, by = c("histid_1940" = "HISTID")) 
-  # join histids to selected data from year 2
-  l2 <- cw |>
-    select(-step) |>
-    left_join(d2, by = c("histid_1950" = "HISTID")) 
-
-  linked_data <- l1 |>
-    inner_join(
-      l2,
-      by = c("histid_1940","histid_1950"),
-      suffix = c("_1940", "_1950")
-    )
-
-  # return all observations linked between 1940 and 1950
-  return(linked_data)
-}
-#+end_src
-
 * Predicted Interment Status Estimator
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment*
@@ -1265,47 +1221,68 @@ My version of the estimator outlined is a function which takes in internee data 
 I allow for using different demographic variables to create groups to test different specifications.
 
 #+begin_src R :tangle R/predict_internment.R
-calc_int_proportion <- function(internees,
-                                db = "data/ipums_db.duckdb",
-                                table = "ipums_microdata",
-                                by = c("STATEFIP", "COUNTYICP")
-                                ) {
+calc_int_proportion <- function(wra_data, ddi,
+                                by = c("STATEFIP", "COUNTYICP", "RACE"),
+                                chunk_size = 1e6,
+                                label = "intern_p") {
   library(tidyverse)
   library(dbplyr)
   library(dbplyr)
   library(duckdb)
 
-  # collect groups from 1940 census
-  con <- dbConnect(duckdb(), dbdir = db)
-  linking_vars <- c("STATEFIP", "COUNTYICP", "RACE", "SEX", "BIRTHYR", "BPL")
+  by <- c("STATEFIP", "COUNTYICP", "RACE", "SEX", "BIRTHYR", "BPL")
+  mutate_vars <- list() # variables to be mutated if present
+  groups <- by
+  
+  if ("BPL" %in% by) {
+    mutate_vars <- append(mutate_vars, list(bpl_grp = expr(group_bpl(BPL))))
+    groups <- setdiff(groups, "BPL")
+  }
+  
+  if ("BIRTHYR" %in% by) {
+    mutate_vars <- append(mutate_vars, list(byr_grp = expr(group_birthyr(BIRTHYR))))
+    groups <- setdiff(groups, "BIRTHYR")
+  }
+  
+  groups <- c(groups, names(mutate_vars))
+  
+  callback <- function(x, pos) {
+    if (length(mutate_vars) > 0) {
+      x <- x |> mutate(!!!mutate_vars)
+    }
+    result <- x |> count(across(all_of(c(groups, "YEAR"))))
+    print(result) # for debuging
+    return(result)
+  }
 
-  pop_grp <- tbl(con, table) |>
-    filter(YEAR==1940) |>
-    # add cohort variable to census
-    collect() |>
-    mutate(
-      bpl_grp = group_bpl(BPL),
-      byr_grp = group_birthyr(BIRTHYR)
-    ) |> 
-    select(unname(by)) |>
-    group_by(across(all_of(unname(by)))) |>
-    summarise(n_j=n(), .groups = "drop") 
-  dbDisconnect(con)
+  chunks <- read_ipums_micro_chunked(
+    ddi = ddi,
+    callback = IpumsDataFrameCallback$new(callback),
+    chunk_size = chunk_size,
+    vars = c(by, "YEAR")
+  )
+
+  pop_grp <- chunks |>
+    filter(YEAR==1940) |> 
+    group_by(across(all_of(groups))) |>
+    summarise(n_census = sum(n), .groups = "drop") 
 
   # Count by group in internee data
-  int_grp <- internees |>
-    filter(race==5) |>
+  int_grp <- wra_data |>
     rename_with(toupper, c("race", "sex", "birthyr", "bpl", "bpl_pop", "bpl_mom", "yrimmig", "nativity", "degfield", "educ")) |>
-    group_by(across(all_of(unname(by)))) |>
-    summarise(n_i = n(), .groups = "drop")
+    mutate(!!!mutate_vars) |> 
+    ## filter(RACE==5) |>
+    group_by(across(all_of(unname(groups)))) |>
+    summarise(n_interned = n(), .groups = "drop")
 
   # Join and calculate fraction
   proportions <- pop_grp |>
-    full_join(int_grp, by = by) |>
+    full_join(int_grp, by = groups) |>
     mutate(
-      n_i = replace_na(n_i, 0),
-      p_ij = n_i / n_j
-    )
+      n_interned = replace_na(n_interned, 0),
+      pr_interned = n_interned / n_census
+    ) |>
+    rename(!!label := pr_interned)
 
   return(proportions)
 }
@@ -1314,7 +1291,7 @@ calc_int_proportion <- function(internees,
 #+RESULTS:
 
 #+begin_src R :tangle R/predict_internment.R
-predict_internment <- function(df, options = c("full", "county", "Arellano-Bover"), custom_vars = NULL, wra_data) {
+predict_internment <- function(df, options = c("full", "county", "Arellano-Bover"),  wra_data) {
 
   df <- df |>
     mutate(
