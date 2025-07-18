@@ -1,6 +1,6 @@
 * Data Visualizations
 :PROPERTIES:
-:HEADER-ARGS:R: :tangle R/figures.R :session *R:internment*
+:HEADER-ARGS:R: :tangle R/figures.R :session *R:figures*
 :END:
 
 #+begin_src R :results silent
@@ -8,6 +8,9 @@ library(tidyverse)
 library(paletteer)
 library(haven)
 library(ggridges)
+
+library(targets)
+tar_load(c(linked_data_full))
 #+end_src
 
 #+begin_src R
@@ -58,30 +61,65 @@ theme_internment <- function(){
 
 #+RESULTS:
 
-** Wage Distribution: MLP Treatment vs Control
-#+begin_src R :exports results :results graphics file :file figures/mlp-wage-distribution_plot.pdf
-plt_data <- read_csv("data/linked_sample.csv") |>
-  pivot_longer(cols = matches("_(1940|1950)$"),
-               names_to = c(".value", "Year"),
-               names_sep = "_")
+** Wages Diff-in-Diff
+#+begin_src R :exports results :results graphics file :file figures/did_plot.pdf :width 7 :height 5 
+callback <- function(x, pos) {
+  x |>
+    group_by(YEAR, RACE) |>
+    mutate(
+      salary = case_when(
+        INCWAGE %in% c(999999, 999998) ~ NA,
+        YEAR == 1940 ~ INCWAGE * 1.69,
+        YEAR == 1950 ~ INCWAGE
+      )
+    ) |>
+    summarise(
+      k = n(),
+      mean = mean(salary, na.rm = T),
+      var = var(salary, na.rm = T)
+      )
+}
 
-ggplot(aes(x=INCWAGE, y=group, fill=group), data = plt_data) +
-  ## geom_density(alpha=0.5) +
-  ## geom_histogram(position="dodge", binwidth=1000) +
-  geom_density_ridges() +
-  facet_wrap(~ Year) +
+group_salaries <- ipumsr::read_ipums_micro_chunked(ddi_path,
+                         callback = ipumsr::IpumsDataFrameCallback$new(callback),
+                         chunk_size = 1e7,
+                         vars = c("YEAR", "RACE", "INCWAGE")) |>
+  group_by(YEAR, RACE)
+#+end_src
+
+#+begin_src R
+plt_data <- group_salaries |>
+  group_by(YEAR, RACE)
+  summarise(
+    n = sum(k),
+    mean = sum(mean, na.rm=T) / sum(k),
+    variance = 1/(sum(k)-1)*(sum((k-1)*var) + sum(k*(mean-weighted.mean(mean,k))^2)),
+    sd = sqrt(variance)
+  )
+
+ggplot() +
+  geom_line(
+    aes(x=YEAR, y = mean, group = RACE, color = RACE),
+    data = plt_data,
+    size=1
+  ) +
+  geom_errorbar(
+    aes(x = YEAR, ymin = mean-sd, ymax = mean+sd),
+    data = plt_data
+  ) +
+  facet_wrap(~RACE) +
+## scale_color_manual(values=c("#003049", "#D62828", "#F77F00", "#FCBF49")) +
   theme_internment() +
-  theme(axis.title.y = element_blank()) +
-  guides(fill="none") +
-  xlab("Wage and Salary Income (1950 dollars)") +
-  labs(title = "Changing Patterns in Wages of Linked Census Respondents",
-       capion = "The distributions include all individual respondents who linked between the 1940 and 1950 full count censuses in version 1.2 of the IPUMS Multigenerational Longitudinal Panel and who report a wage in either year.") +
-  scale_fill_paletteer_d("MetBrewer::Juarez")
+  labs(title="Interned Japanese Experienced Higher Wage Growth",
+       x="Year",
+       y="Average Income (1950 dollars, wage and salary income only)",
+       caption="") +
+  theme(legend.title = element_blank(),
+        legend.position = "bottom") +
+  scale_color_paletteer_d("MetBrewer::Juarez")
 #+end_src
 
 #+RESULTS:
-[[file:figures/mlp-wage-distribution_plot.pdf]]
-
 ** OCCSCORE Distribution: MLP Treatment vs Control
 #+begin_src R :exports results :results graphics file :file figures/mlp-occscore-distribution_plot.pdf :width 6 :height 4
 plt_data <- read_csv("data/linked_sample.csv") |>
@@ -254,32 +292,3 @@ read_dta(file="data/all_internees.dta") |>
 #+RESULTS:
 [[file:figures/internee-age_plot.pdf]]
 
-** Wages Diff-in-Diff
-#+begin_src R :exports results :results graphics file :file figures/did_plot.pdf :width 7 :height 5 
-plt_data <- read_csv("data/linked_sample.csv") |>
-  pivot_longer(cols = matches("_(1940|1950)$"),
-               names_to = c(".value", "Year"),
-               names_sep = "_") |>
-  mutate(Year = as.numeric(Year))
-
-grp_data <- plt_data |>
-  group_by(group, Year) |>
-  summarise(INCWAGE = mean(INCWAGE, na.rm=T))
-  
-ggplot() +
-  geom_line(data = plt_data, aes(x=Year, y=INCWAGE, group=id, color=group), alpha =0.5, linetype ="dashed", size=0.5) +
-  geom_line(data = grp_data, aes(x=Year, y = INCWAGE, group = group, color = group), size=1) +
-  facet_wrap(~group) +
-## scale_color_manual(values=c("#003049", "#D62828", "#F77F00", "#FCBF49")) +
-  theme_internment() +
-  labs(title="Interned Japanese Experienced Higher Wage Growth",
-       x="Year",
-       y="Mean Wages (1950 dollars)",
-       caption="") +
-  theme(legend.title = element_blank(),
-        legend.position = "bottom") +
-  scale_color_paletteer_d("MetBrewer::Juarez")
-#+end_src
-
-#+RESULTS:
-[[file:figures/did_plot.pdf]]

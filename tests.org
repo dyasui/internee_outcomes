@@ -1,0 +1,445 @@
+#+TITLE: Misc Code to test data workflows
+#+OPTION: header-args:R: :exports both
+
+* Linking
+:PROPERTIES:
+:header-args:R: :session *R:internment* :colnames yes :exports both
+:END:
+It seems like the linking rate is ~1-2% for my sample when it should be closer to 40%.
+I need to check whether my linking method is working.
+#+begin_src R :results silent
+library(tidyverse)
+library(ipumsr)
+library(duckdb)
+library(targets)
+
+tar_load(c(ddi_path))
+#+end_src
+** Database issue
+:PROPERTIES:
+:header-args:R: :export both :eval never
+:END:
+
+Let me take a look at my download to make sure that everyone is in there who should be:
+#+begin_src R :eval no
+conn <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
+fullcount_tbl <- tbl(conn, "fullcount")
+fullcount_tbl |> count(YEAR)
+dbDisconnect()
+#+end_src
+
+#+RESULTS:
+| 1940 | 10105437 |
+| 1950 |   398125 |
+
+There are way too few people in the fullcount database for 1950.
+It also seems like too few people for 1940?
+
+Is this a problem with my database writing or with my actual data download?
+
+#+begin_src R
+callback <- function(x, pos) {
+  x |>
+    group_by(YEAR, RACE) |>
+    summarise(n = n())
+}
+
+totals <- read_ipums_micro_chunked(ddi_path,
+                         callback = IpumsDataFrameCallback$new(callback),
+                         chunk_size = 1e6,
+                         vars = c("YEAR", "RACE")) |>
+  group_by(YEAR, RACE) |>
+  summarise(n=sum(n))
+totals
+#+end_src
+
+#+RESULTS:
+| 1940 | 204906 |
+| 1950 | 398125 |
+
+These totals match the case counts on the IPUMS website.
+So some rows must have gotten dropped when I wrote to the database.
+
+Here is my =write_ipums_db= function:
+#+begin_src R
+write_ipums_db <- function(ddi, db_path = "data/ipums_db.duckdb", tbl_name) {
+  conn <- dbConnect(duckdb(), dbdir = db_path)
+
+  writedb_cb <- function(x,pos) {
+    if (pos == 1) {
+      dbWriteTable(conn, tbl_name, x, overwrite = TRUE)
+    } else {
+      data_filtered <- x |>
+        filter(RACE %in% c(4,5))
+      dbWriteTable(conn, tbl_name, data_filtered, overwrite = FALSE, append = TRUE)
+    }
+  }
+
+  read_ipums_micro_chunked(
+    ddi,
+    callback = readr::SideEffectChunkCallback$new(writedb_cb),
+    verbose = T,
+    chunk_size = 1e7 # observations to read per chunk
+  )
+
+  dbDisconnect(conn)
+
+  tbl_name
+}
+#+end_src
+
+I'm not really sure about the whole =writedb_db= part of this, so let me try to test a smaller subset of the data in an in-memory duckdb connection.
+#+begin_src R
+conn <- dbConnect(duckdb())
+
+# callback similar to what I was doing above
+callback <- function(x,pos) {
+  if (pos == 1) {
+    dbWriteTable(conn, "test_tbl", x, overwrite = TRUE)
+  } else {
+    data_filtered <- x |>
+      filter(RACE %in% c(4,5))
+    dbWriteTable(conn, "test_tbl", data_filtered, overwrite = FALSE, append = TRUE)
+  }
+}
+# write data in chunks
+read_ipums_micro_chunked(
+  ddi = "~/Downloads/usa_00129.xml",
+  callback =
+    ipumsr::IpumsSideEffectCallback$new(callback),
+  chunk_size = 5
+  )
+
+tbl(conn, "test_tbl") |> collect() |> nrow()
+#+end_src
+
+#+RESULTS:
+: 577
+
+#+begin_src R
+read_ipums_micro("~/Downloads/usa_00129.xml")
+#+end_src
+
+#+RESULTS:
+
+From looking at the results of setting =overwrite = TRUE= inside the dbWriteTable, it seems like only the last chunk is saved.
+
+** Subsetting the crosswalk
+I decided that instead of trying to do the full linking procedure in the database,
+I could just pull out the crosswalk links I actually need for just the Japanese and Chinese population.
+
+I only need the histid crosswalks rows for people who would match my sample of Japanese and Chinese Americans.
+#+begin_src R
+callback <- function(x, pos) {
+  x |>
+    filter(RACE %in% c(4,5))
+}
+
+hids_list <- read_ipums_micro_chunked(
+  ddi_path,
+  callback = IpumsDataFrameCallback$new(callback),
+  chunk_size = 1e6,
+  vars = c("YEAR", "RACE", "HISTID")
+)
+#+end_src
+
+#+begin_src R :colnames yes :exporth both
+hids_list |>
+  count(YEAR, RACE) |>
+  mutate(RACE = as_factor(RACE)) |>
+  pivot_wider(names_from = RACE, values_from = n)
+#+end_src
+
+#+RESULTS:
+| YEAR | Chinese | Japanese |
+|------+---------+----------|
+| 1940 |   78205 |   126701 |
+| 1950 |  119522 |   278603 |
+
+After filtering for all of the rows for these individuals in my full-count census data download,
+I can pull out a list of all of the histid values that occur for them in both 1940 and 1950.
+#+begin_src R :export both
+hids_1940 <- hids_list |>
+  filter(YEAR==1940) |>
+  select(HISTID) |>
+  pull()
+
+hids_1950 <- hids_list |>
+  filter(YEAR==1950) |>
+  select(HISTID) |>
+  pull()
+
+nhids_1940 <- length(hids_1940)
+nhids_1950 <- length(hids_1950)
+
+print(paste(nhids_1940, "HISTID's in 1940;", nhids_1950, "HISTID's in 1950"))
+#+end_src
+
+#+RESULTS:
+: 204906 HISTID's in 1940; 398125 HISTID's in 1950
+
+Now that I have a subset of only the histids that I actually need linked,
+I can pull them out of the full list of histid crosswalks that I have saved in my database.
+#+begin_src R :export both
+conn <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
+
+cw_list <- tbl(conn, "mlp_crosswalks") |>
+  filter(histid_1940 %in% hids_1940 | histid_1950 %in% hids_1950) |>
+  collect()
+
+nlinks <- nrow(cw_list)
+#+end_src
+
+#+RESULTS:
+: 20341
+
+Here's what the =cw_list= looks like:
+#+begin_src R :colnames yes :export both
+head(cw_list)
+#+end_src
+
+#+RESULTS:
+| histid_1940                          | histid_1950                          | step |
+|--------------------------------------+--------------------------------------+------|
+| 994533A3-D88B-4A6B-B033-9B9DA87BDD6E | 7C2222C1-34EC-4CDD-BAA7-A07D85E7D7D0 |    2 |
+| 4D7D0FB1-77F2-4D7E-83FB-9DD8281BB9A5 | 7C86FAC5-E474-46BC-AAE8-CF064CFC2FDA |    2 |
+| B3728CE8-28E8-4259-BF68-FAB43E1555CB | 7DD85B53-2732-4F6D-80F0-B54703525320 |    2 |
+| 951F43C2-23D6-4DDF-A599-1554E339D85B | 7EC9BE7C-7AAB-4FF5-9DB4-8E6083C0A13E |    2 |
+| 30CD7C83-0143-4AEE-B76F-3D5F2D55EF87 | 805E8A43-6880-402D-80D9-CBEBC5072C17 |    2 |
+| 6FB24176-738D-4F0E-95DF-2C2DEB879209 | 82B72BDC-4454-4055-8E97-8EFFA73AD5AC |    2 |
+
+Each one of the values of either =histid_1940= or =histid_1950= should be found somewhere in the full-count dataset, a subset of which I have for Japanese and Chinese people here:
+
+To do the linking of my census data, I've been breaking it up by year so that I can join each different histid at a time:
+#+begin_src R :colnames yes :export both
+d1 <- hids_list |>
+  filter(
+    YEAR == years[1], # decade start year
+  ) 
+head(d1)
+#+end_src
+
+#+RESULTS:
+| YEAR | RACE | HISTID                               |
+|------+------+--------------------------------------|
+| 1940 |    4 | 1B8D6EB9-AA35-4F90-9D61-20ACEB0ED54D |
+| 1940 |    4 | C33A593B-CD4F-4DC4-95C3-B7934D3E1F83 |
+| 1940 |    4 | 1EE8E732-0B30-42B3-AC3C-2969A921381D |
+| 1940 |    4 | F7ED83AA-7CAF-4DF4-B475-30A393DD4636 |
+| 1940 |    4 | 96CB6291-051C-4462-AC3F-A48E108FD51E |
+| 1940 |    4 | F1A89642-D569-42CF-AD30-6ECC52BC2D94 |
+
+#+begin_src R :colnames yes :export both
+d2 <- hids_list |>
+  filter(
+    YEAR == years[2] # decade end year
+  ) 
+head(d2)
+#+end_src
+
+#+RESULTS:
+| YEAR | RACE | HISTID                               |
+|------+------+--------------------------------------|
+| 1950 |    4 | EF3555A5-2F05-4BBB-97FC-A8C9628F57B6 |
+| 1950 |    4 | F5AC7133-6E2D-4D94-A8F0-314B879ADED6 |
+| 1950 |    4 | 70799B07-DE3E-4104-9BB5-5A0CCA853AEE |
+| 1950 |    4 | 06ABECD3-80EB-4747-939D-79E6F76A21FD |
+| 1950 |    4 | F3F3E448-5CFE-4A50-85C4-E44E1DC2BBF0 |
+| 1950 |    4 | C94AEEB6-9007-45E5-9709-19EE66437FF9 |
+
+So when I join all of the observations in 1940 to the =histid_1940= code in the crosswalk,
+this is what I get:
+#+begin_src R 
+# join histids to selected data from year 1
+l1 <- cw_list |>
+  select(-step) |>
+  left_join(d1, by = c("histid_1940" = "HISTID")) 
+nrow(l1)
+#+end_src
+
+#+RESULTS:
+: 20341
+
+#+begin_src R
+# join histids to selected data from year 2
+l2 <- cw_list |>
+  select(-step) |>
+  left_join(d2, by = c("histid_1950" = "HISTID")) 
+nrow(l2)
+#+end_src
+
+#+RESULTS:
+: 20341
+
+There are some rows in the census data in =hids_list= that don't have any =HISTID= matches in the crosswalks file.
+Here are the number of missing crosswalks for 1940:
+#+begin_src R
+l1 |> filter(is.na(YEAR) | is.na(RACE)) |> nrow()
+#+end_src
+
+#+RESULTS:
+: 1063
+
+And for 1950:
+#+begin_src R
+l2 |> filter(is.na(YEAR) | is.na(RACE)) |> nrow()
+#+end_src
+
+#+RESULTS:
+: 8199
+
+So when I try to join together the =hids_list data by the crosswalk,
+#+begin_src R
+linked_data <- inner_join(
+  l1, l2,
+  by = c("histid_1940", "histid_1950"), suffix = c("_1940", "_1950")
+)
+
+linked_data |>
+  filter(!is.na(YEAR_1940), !is.na(YEAR_1950)) |>
+  nrow()
+#+end_src
+
+#+RESULTS:
+: 11079
+
+I only get 11 thousand out of the 20 thousand links that I think I should be getting.
+
+** Suggesions from ChatCPT
+
+*** Check 1: Are there missing or malformed HISTIDs?
+
+Check whether any HISTID values are missing or contain whitespace artifacts in the original dataset before filtering by race.
+
+#+begin_src R :exports both :colnames yes
+# Check for NAs and whitespace artifacts
+raw_histids_summary <- hids_list |>
+  summarise(
+    total = n(),
+    na_histid = sum(is.na(HISTID)),
+    leading_trailing_space = sum(HISTID != str_trim(HISTID), na.rm = TRUE),
+    empty = sum(HISTID == "", na.rm = TRUE)
+  )
+
+raw_histids_summary
+#+end_src
+
+#+RESULTS:
+|  total | na_histid | leading_trailing_space | empty |
+|--------+-----------+------------------------+-------|
+| 603031 |         0 |                      0 |     0 |
+
+There don't seem to be any whitespace issues here.
+
+*** Check 2: Are all HISTIDs in the crosswalk found in the census data?
+
+Compare the MLP crosswalk HISTIDs to the actual HISTIDs in the census population after race filtering.
+
+#+begin_src R :colnames yes :exports both
+# Assume hids_1940 and hids_1950 are already defined
+# And cw_list is already loaded from the database
+
+share_1940_not_found <- mean(!(cw_list$histid_1940 %in% hids_1940))
+share_1950_not_found <- mean(!(cw_list$histid_1950 %in% hids_1950))
+
+share_1940_missing <- mean(!(hids_1940 %in% cw_list$histid_1940))
+share_1950_missing <- mean(!(hids_1950 %in% cw_list$histid_1950))
+
+tibble(
+  "Crosswalk 1940 not in census" = share_1940_not_found,
+  "Crosswalk 1950 not in census" = share_1950_not_found,
+  "Census 1940 not in crosswalk" = share_1940_missing,
+  "Census 1950 not in crosswalk" = share_1950_missing
+)
+#+end_src
+
+#+RESULTS:
+| Crosswalk 1940 not in census | Crosswalk 1950 not in census | Census 1940 not in crosswalk | Census 1950 not in crosswalk |
+|------------------------------+------------------------------+------------------------------+------------------------------|
+|           0.0522589843173885 |            0.403077528145126 |              0.9059178354953 |            0.969502040816327 |
+These numbers provide a **quantitative picture of mismatch** between your census microdata (`hids_1940`, `hids_1950`) and the MLP crosswalk (`cw_list`). Let’s walk through what each row is telling you and interpret the implications:
+
+---
+
+### 🔎 Summary Table
+
+| Metric                       | Value     | Interpretation                                                                                                                        |
+| ---------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Crosswalk 1940 not in census | 5.2%      | \~5% of the `histid_1940` values in the MLP crosswalk cannot be found in your 1940 microdata subset (filtered to Chinese & Japanese). |
+| Crosswalk 1950 not in census | **40.3%** | \~40% of the `histid_1950` values in the MLP crosswalk are missing from your 1950 subset.                                             |
+| Census 1940 not in crosswalk | **90.6%** | Over 90% of the HISTIDs you have for Chinese & Japanese Americans in 1940 aren't present in the crosswalk at all.                     |
+| Census 1950 not in crosswalk | **97%**   | Almost all (97%) of the 1950 Chinese & Japanese HISTIDs in your data do not appear in the MLP crosswalk.                              |
+
+---
+
+#+begin_example
+### 📊 Interpretation
+
+#### 1. **MLP links only a tiny fraction of the target population**
+
+- Only \~9% of 1940 HISTIDs, and \~3% of 1950 HISTIDs in your census data actually appear in the MLP crosswalk.
+- This suggests that **linkage coverage is extremely sparse** for Asian American subpopulations — which is unfortunately expected.
+
+> The MLP project links \~50 million records out of hundreds of millions total, and match rates are lower for small and mobile populations like Chinese and Japanese Americans.
+
+#### 2. **Some HISTIDs in the crosswalk don’t exist in your subset**
+
+ This is likely due to how you're filtering the census data.
+
+  * You're pulling only Chinese & Japanese Americans (`RACE %in% c(4, 5)`).
+  * But some of the `histid_1940` / `histid_1950` values in the crosswalk are probably linked to *non-Asian* individuals who were connected to Asian individuals via MLP linkage.
+  * These get included in the crosswalk filtering step (because you're filtering if *either* side matches).
+
+#### 3. **The 40% unmatched on 1950 side is especially notable**
+
+  *  The high `Crosswalk 1950 not in census` share suggests that a lot of HISTIDs that the MLP crosswalk links *to* are not showing up in your 1950 census subset.
+  *  Possible reasons:
+
+  * You're only filtering on race *after* writing to the DB (and some chunks may have been dropped — see the overwrite bug discussed earlier).
+  * Some of these HISTIDs might belong to people misclassified or not listed as `RACE == 4` or `5`.
+  * HISTIDs might exist in the raw data, but got excluded due to write-to-DB logic or data loss.
+
+---
+
+### ✅ Recommendations
+
+1. **Audit the MLP crosswalk for who is being linked**
+
+   * Count how many unique `histid_1940` / `histid_1950` in `cw_list` correspond to `RACE == 4 or 5`.
+
+2. **Use full-count census (no race filter) just to check HISTID presence**
+
+   * Temporarily extract HISTIDs without filtering for race, just to assess whether your DB is missing observations that are actually in the source data.
+
+3. **Trim or standardize HISTID values**
+
+   * You may also want to ensure no whitespace or case mismatch is causing lookup failures.
+#+end_example
+** Linking on the Unfiltered Full-count data
+Maybe I am missing out on some links of people who are Japanese or Chinese, but report a differnt race in one year or the other.
+#+begin_src R
+callback <- function(x, pos) {
+  return(x) 
+}
+
+all_histids <- read_ipums_micro_chunked(
+  ddi_path,
+  callback = IpumsDataFrameCallback$new(callback),
+  chunk_size = 1e6,
+  vars = c("YEAR", "RACE", "HISTID")
+)
+#+end_src
+
+* Side Questions
+** How to get the population standard deviation in chunks
+As I am using the =read_ipums_micro_chunked= function to calculate statistics,
+I am coming to the problem of how I can calculate the standard deviation of a group when I can only read in a subset of observations at a time.
+Although I could take the standard deviation of each subgroup and then take the average of all subgroup sd,
+that would not be the same as the standard deviation of the whole group and would be more biased the smaller the subgroups are
+(consider what  would happen in the size of each subgroup was 1).
+
+I found [[https://stats.stackexchange.com/questions/10441/how-to-calculate-the-variance-of-a-partition-of-variables/10445#10445][this StackExchange]] thread about this issue and they recommend the following formula:
+\(
+Var(X_1,\ldots,X_{n}) = \frac{1}{n-1}\left(\sum_{j=1}^g (k_j-1) V_j + \sum_{j=1}^g k_j (\bar{X}_j - \bar{X})^2\right)
+\)
+for the variance of a random variable $X$ broken into $g$ subsamples each of size $k_{j}$.

@@ -43,6 +43,7 @@ clean_sample <- function(wide_df, ddi, inflator = 1.69) {
     ) |>
     set_ipums_var_attributes(ipumsr::read_ipums_ddi(ddi)) |>
     mutate(
+      YEAR = as.integer(YEAR),
       married = ifelse(MARST %in% 1:2, 1, 0),
       foreign = ifelse(NATIVITY == 5, 1, 0),
       college = ifelse(EDUC %in% 7:11, 1, 0),
@@ -78,7 +79,8 @@ clean_sample <- function(wide_df, ddi, inflator = 1.69) {
         as_factor(EDUCD) == "7 years of college" ~ 19,
         as_factor(EDUCD) == "8+ years of college" ~ 20
         ),
-      occupation = ifelse(OCC1950 %in% 979:999, NA, as_factor(OCC1950))
+      occupation = ifelse(OCC1950 %in% 979:999, NA, as_factor(OCC1950)),
+      county_ez = is_evac_county(STATEFIP, COUNTYICP)
     )
     
 
@@ -89,13 +91,11 @@ collect_county_stats <- function(ddi, inflator = 1.69) {
   # callback function to calculate county summary stats
   countystat_cb <- function(x, pos) {
     x |>
-      select(YEAR, STATEFIP, COUNTYICP, INCWAGE, RACE) |>
-      group_by(YEAR, STATEFIP, COUNTYICP) |>
+      filter(YEAR == 1940) |>
       mutate(
-        INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE),
-        # adjust 1940 wages for inflation to 1950 dollars
-        INCWAGE = ifelse(YEAR == 1940, INCWAGE * inflator, INCWAGE) ) |>
-      group_by(YEAR, STATEFIP, COUNTYICP) |>
+        INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE * inflator)
+      ) |>
+      group_by(STATEFIP, COUNTYICP) |>
       summarise(
         county_med.salary   = median(INCWAGE, na.rm=T),
         county_pop          = n(),
@@ -109,10 +109,11 @@ collect_county_stats <- function(ddi, inflator = 1.69) {
   county_data <- read_ipums_micro_chunked(
     ddi,
     callback = IpumsDataFrameCallback$new(countystat_cb),
-    chunk_size = 1e5,
+    chunk_size = 1e6,
+    vars = c("YEAR", "STATEFIP", "COUNTYICP", "INCWAGE", "RACE"),
     verbose = TRUE
   ) |>
-    group_by(YEAR, STATEICP, COUNTYICP) |>
+    group_by(STATEFIP, COUNTYICP) |>
     summarise(
       # hopefully mean of sample median is good aprx for median?
       county_med.salary   = mean(county_med.salary, na.rm=T),

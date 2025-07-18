@@ -32,3 +32,13 @@ group_bpl <- function(bpl) {
     )
   )
 }
+
+is_evac_county <- function(STATEFIP, COUNTYICP) {
+  case_when(
+    STATEFIP==6 ~ 1, # all of california evacuation zone
+    (STATEFIP==4 & COUNTYICP %in% c(30, 130, 190, 230, 270)) ~ 1, # Arizona evacuation zones
+    (STATEFIP==41 & COUNTYICP %in% c(30, 50, 70, 90, 110, 190, 270, 290, 330, 390, 410, 430, 470, 510, 530, 570, 670, 690, 730, 770)) ~ 1, # Oregon evacuation zones
+    (STATEFIP==53 & COUNTYICP %in% c(50, 70, 90, 150, 270, 310, 330, 350, 370, 390, 410, 430, 470, 510, 530, 570, 590, 610, 690, 730, 770)) ~ 1, # Washington evacuation zones
+    .default = 0
+  )
+}

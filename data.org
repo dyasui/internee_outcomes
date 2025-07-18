@@ -2,6 +2,14 @@
 #+AUTHOR: Dante Yasui
 #+OPTIONS: toc:2
 
+R Setup:
+#+begin_src R :session *R:internment* :results silent
+library(tidyverse)
+library(targets)
+library(ipumsr)
+library(duckdb)
+#+end_src
+
 * Targets Workflow
 
 #+begin_src R :tangle _targets.R :session *R:internment*
@@ -61,7 +69,7 @@ list(
              left_join(
                linked_data_lbl,
                county_stats, 
-               by = c("YEAR", "STATEFIP", "COUNTYICP") ) )
+               by = c("STATEFIP", "COUNTYICP") ) )
 )
 #+end_src
 
@@ -175,14 +183,16 @@ The WDC's final exclusion area included the western halves of Washington and Ore
 #+name: fig:WDC-evac-area
 [[./figures/external/WDC-evac-areas_map.png]]
 
-#+begin_src R
-# counties in the evacuation zone by ICP codes
-ezAZ <- c(30, 130, 190, 230, 270)
-ezOR <- c( 30,  50,  70,  90, 110, 190, 270, 290, 330, 390, 410, 430, 470, 510,
-         530, 570, 670, 710)
-ezWA <- c( 50,  70,  90, 150, 270, 310, 330, 350, 370, 390, 410, 450, 490, 530,
-         570, 590, 610, 670, 690, 730, 770)
-
+#+begin_src R :tangle R/helper_functions.R
+is_evac_county <- function(STATEFIP, COUNTYICP) {
+  case_when(
+    STATEFIP==6 ~ 1, # all of california evacuation zone
+    (STATEFIP==4 & COUNTYICP %in% c(30, 130, 190, 230, 270)) ~ 1, # Arizona evacuation zones
+    (STATEFIP==41 & COUNTYICP %in% c(30, 50, 70, 90, 110, 190, 270, 290, 330, 390, 410, 430, 470, 510, 530, 570, 670, 690, 730, 770)) ~ 1, # Oregon evacuation zones
+    (STATEFIP==53 & COUNTYICP %in% c(50, 70, 90, 150, 270, 310, 330, 350, 370, 390, 410, 430, 470, 510, 530, 570, 590, 610, 690, 730, 770)) ~ 1, # Washington evacuation zones
+    .default = 0
+  )
+}
 #+end_src
 
 * WRA Camp Internee Records
@@ -1113,6 +1123,63 @@ write_cw_db <- function(db_path = "data/ipums_db.duckdb",
 }
 #+end_src
 
+** Selecting HISTID's for my sample
+I only need the histid crosswalks rows for people who would match my sample of Japanese and Chinese Americans.
+#+begin_src R
+callback <- function(x, pos) {
+  x |>
+    filter(RACE %in% c(4,5))
+}
+
+hids_list <- read_ipums_micro_chunked(
+  ddi_path,
+  callback = IpumsDataFrameCallback$new(callback),
+  chunk_size = 1e6,
+  vars = c("YEAR", "RACE", "HISTID")
+)
+#+end_src
+
+After filtering for all of the rows for these individuals in my full-count census data download,
+I can pull out a list of all of the histid values that occur for them in both 1940 and 1950.
+#+begin_src R
+hids_1940 <- hids_list |>
+  filter(YEAR==1940) |>
+  select(HISTID) |>
+  pull()
+
+hids_1950 <- hids_list |>
+  filter(YEAR==1950) |>
+  select(HISTID) |>
+  pull()
+#+end_src
+
+Now that I have a subset of only the histids that I actually need linked,
+I can pull them out of the full list of histid crosswalks that I have saved in my database.
+#+begin_src R
+conn <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
+
+cw_list <- tbl(conn, "mlp_crosswalks") |>
+  filter(histid_1940 %in% hids_1940 | histid_1950 %in% hids_1950) |>
+  collect()
+#+end_src
+
+Based on this, there are 19,278 individuals who are either Japanese or Chinese and linked between the 1940 and 1950 censuses for the current version of MLP.
+
+| Source:  | Year | Total   | Japanese | Chinese | Japanese + Chinese |
+|----------+------+---------+----------+---------+--------------------|
+| Census   | 1940 | 132.9 m |   126701 |   78205 |             204906 |
+|          | 1950 | 152.3 m |   278603 |  119522 |             398125 |
+|----------+------+---------+----------+---------+--------------------|
+| MLP v2.0 | both | 73.7 m  |          |         |              20341 |
+
+The match rate for this population is less than the ~40% match rate in the MLP linkages overall.
+Based on the numbers in the table above, the match rate for Japanese/Chinese respondents is 20341 / 204906 ≈ 10%.
+
+To help save myself (and others) from having to read through the entire set of linking crosswalks in the future,
+I will save a list of these histid crosswalks to a csv file in my repository.
+#+begin_src R
+write_csv(cw_list, file = "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2-JConly.csv")
+#+end_src
 ** Reading IPUMS data into database
 With all of the variables and individual records downloaded, the full count census data can be up to 11G uncompressed on disk.
 
@@ -1150,42 +1217,33 @@ write_ipums_db <- function(ddi, db_path = "data/ipums_db.duckdb", tbl_name) {
 #+end_src
 
 ** MLP Linked to Census Microdata
-
+This function is used to combine IPUMS full-count census data from two different census years together with the MLP linking crosswalks provided in version 2.0.
+It takes in a tibble of data in 'long' form meaning that the data object should include all microdata from both census years.
 #+begin_src R
-link_mlp <- function(db_path = "data/ipums_db.duckdb", cw_tbl = "mlp_crosswalks",
-                     fc_tbl = "fullcount") {
-  # open crosswalk database connection
-  database <- dbConnect(duckdb(), dbdir = db_path)
-
+link_mlp <- function(data, cw, years = c(1940,1950)) {
   # unnecessary variables
   drop_vars <- c("step","SAMPLE","HHWT","PERWT","VERSIONHIST")
 
   # bring needed microdata into a tibble for joining
-  d1 <- tbl(database, fc_tbl) |>
+  d1 <- data |>
     select(-any_of(drop_vars)) |>
     filter(
-      YEAR == 1940, # decade start year
-      RACE %in% c(4,5)
+      YEAR == years[1], # decade start year
     ) 
-  d2 <- tbl(database, fc_tbl) |>
+  d2 <- data |>
     select(-any_of(drop_vars)) |>
     filter(
-      YEAR == 1950, # decade end year
-      RACE %in% c(4,5)
+      YEAR == years[2] # decade end year
     ) 
-
-  # histid to be used in appropriate cw file
-  cw <- tbl(database, cw_tbl)
 
   # join histids to selected data from year 1
   l1 <- cw |>
-    inner_join(d1, by = c("histid_1940" = "HISTID")) |>
-    collect()
-  
+    select(-step) |>
+    left_join(d1, by = c("histid_1940" = "HISTID")) 
   # join histids to selected data from year 2
   l2 <- cw |>
-    inner_join(d2, by = c("histid_1950" = "HISTID")) |>
-    collect()
+    select(-step) |>
+    left_join(d2, by = c("histid_1950" = "HISTID")) 
 
   linked_data <- l1 |>
     inner_join(
@@ -1193,9 +1251,6 @@ link_mlp <- function(db_path = "data/ipums_db.duckdb", cw_tbl = "mlp_crosswalks"
       by = c("histid_1940","histid_1950"),
       suffix = c("_1940", "_1950")
     )
-
-  # disconnect from duckdb connection
-  dbDisconnect(database)
 
   # return all observations linked between 1940 and 1950
   return(linked_data)
@@ -1316,6 +1371,7 @@ predict_internment <- function(df, options = c("full", "county", "Arellano-Bover
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment*
 :END:
+** Clean IPUMS Variables
 #+begin_src R :tangle R/cleaning_funs.R
 clean_sample <- function(wide_df, ddi, inflator = 1.69) {
   # ten-year inflation rate from bls.gov/data/inflation_calculator.htm
@@ -1362,6 +1418,7 @@ clean_sample <- function(wide_df, ddi, inflator = 1.69) {
     ) |>
     set_ipums_var_attributes(ipumsr::read_ipums_ddi(ddi)) |>
     mutate(
+      YEAR = as.integer(YEAR),
       married = ifelse(MARST %in% 1:2, 1, 0),
       foreign = ifelse(NATIVITY == 5, 1, 0),
       college = ifelse(EDUC %in% 7:11, 1, 0),
@@ -1397,34 +1454,13 @@ clean_sample <- function(wide_df, ddi, inflator = 1.69) {
         as_factor(EDUCD) == "7 years of college" ~ 19,
         as_factor(EDUCD) == "8+ years of college" ~ 20
         ),
-      occupation = ifelse(OCC1950 %in% 979:999, NA, as_factor(OCC1950))
+      occupation = ifelse(OCC1950 %in% 979:999, NA, as_factor(OCC1950)),
+      county_ez = is_evac_county(STATEFIP, COUNTYICP)
     )
     
 
   return(long_df)
 }
-#+end_src
-
-#+RESULTS:
-
-** Clean IPUMS Variables
-#+begin_src R 
-  wide_df_lbld <- long_df |>
-    pivot_wider(
-      id_cols = any_of(c("id", "sex", "race", "birthyr_avg",
-                         "income_bsfm", "income_tot", "income_oth")),
-      names_from = YEAR,
-      values_from = any_of(c("age", "salary",
-        "STATEFIP", "COUNTYICP", "CITY", "URBAN", "GQ", "FARM",
-        "ENUMDIST", "PERNUM", "SLWT", "SEX", "AGE", "MARST",
-        "BIRTHYR", "CHBORN", "RACE", "RACED", "BPL", "BPLD", "MBPL",
-        "MBPLD", "FBPL", "FBPLD", "NATIVITY", "CITIZEN", "SCHOOL",
-        "HIGRADE", "HIGRADED", "EDUC", "EDUCD", "EMPSTAT", "EMPSTATD",
-        "LABFORCE", "CLASSWKR", "CLASSWKRD", "OCC", "OCC1950", "IND",
-        "IND1950", "WKSWORK1", "HRSWORK1", "DURUNEMP", "INCTOT",
-        "INCWAGE", "INCBUSFM", "INCOTHER", "OCCSCORE", "MIGRATE5",
-        "MIGRATE5D", "MIGPLAC5", "MIGCOUNTYICP5"))
-      )
 #+end_src
 
 ** County-Level Wages
@@ -1433,13 +1469,11 @@ collect_county_stats <- function(ddi, inflator = 1.69) {
   # callback function to calculate county summary stats
   countystat_cb <- function(x, pos) {
     x |>
-      select(YEAR, STATEFIP, COUNTYICP, INCWAGE, RACE) |>
-      group_by(YEAR, STATEFIP, COUNTYICP) |>
+      filter(YEAR == 1940) |>
       mutate(
-        INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE),
-        # adjust 1940 wages for inflation to 1950 dollars
-        INCWAGE = ifelse(YEAR == 1940, INCWAGE * inflator, INCWAGE) ) |>
-      group_by(YEAR, STATEFIP, COUNTYICP) |>
+        INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE * inflator)
+      ) |>
+      group_by(STATEFIP, COUNTYICP) |>
       summarise(
         county_med.salary   = median(INCWAGE, na.rm=T),
         county_pop          = n(),
@@ -1453,10 +1487,11 @@ collect_county_stats <- function(ddi, inflator = 1.69) {
   county_data <- read_ipums_micro_chunked(
     ddi,
     callback = IpumsDataFrameCallback$new(countystat_cb),
-    chunk_size = 1e5,
+    chunk_size = 1e6,
+    vars = c("YEAR", "STATEFIP", "COUNTYICP", "INCWAGE", "RACE"),
     verbose = TRUE
   ) |>
-    group_by(YEAR, STATEICP, COUNTYICP) |>
+    group_by(STATEFIP, COUNTYICP) |>
     summarise(
       # hopefully mean of sample median is good aprx for median?
       county_med.salary   = mean(county_med.salary, na.rm=T),
@@ -1472,12 +1507,7 @@ collect_county_stats <- function(ddi, inflator = 1.69) {
 }
 #+end_src
 
-}
-#+end_src
-
-#+RESULTS:
-
-* County GIS Files
+* TODO County GIS Files
 ** Historical Counties
 :PROPERTIES:
 :header-args:R: :session *R:downloads*

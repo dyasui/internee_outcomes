@@ -54,5 +54,5 @@ list(
              left_join(
                linked_data_lbl,
                county_stats, 
-               by = c("YEAR", "STATEFIP", "COUNTYICP") ) )
+               by = c("STATEFIP", "COUNTYICP") ) )
 )
