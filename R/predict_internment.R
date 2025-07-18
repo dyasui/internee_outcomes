@@ -7,7 +7,6 @@ calc_int_proportion <- function(wra_data, ddi,
   library(dbplyr)
   library(duckdb)
 
-  by <- c("STATEFIP", "COUNTYICP", "RACE", "SEX", "BIRTHYR", "BPL")
   mutate_vars <- list() # variables to be mutated if present
   groups <- by
   
@@ -28,7 +27,7 @@ calc_int_proportion <- function(wra_data, ddi,
       x <- x |> mutate(!!!mutate_vars)
     }
     result <- x |> count(across(all_of(c(groups, "YEAR"))))
-    print(result) # for debuging
+    ## print(result) # for debuging
     return(result)
   }
 

@@ -28,31 +28,18 @@ list(
     extract_ready,
     submit_and_download_extract(extract_def, download_dir = "data/fullcount_census/")
   ),
-  tar_target(ddi_path, extract_ready, format = "file"),
+  tar_target(ddi_fullcount, extract_ready, format = "file"),
 
-  # Write MLP crosswalks to local database to save on memory
-  tar_target(
-    cw_csv,
-    "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2.csv",
-    format = "file"
-  ),
-  tar_target(cw_tbl, write_cw_db(db_path = "data/ipums_db.duckdb", cw_file = cw_csv, tbl_name = "mlp_crosswalks")),
+  # TODO script extract def and download for MLP v2 data
 
-  # Link microrecords
-  tar_target(fc_tbl, write_ipums_db(ddi = ddi_path, tbl_name = "fullcount")),
-  tar_target(linked_data,
-             link_mlp(db_path = "data/ipums_db.duckdb",
-                      cw_tbl  = cw_tbl,
-                      fc_tbl = fc_tbl)),
+  # calculate internment proportions
+  tar_target(internpr_county,
+             calc_int_proportion(wra_data, ddi = ddi_fullcount,
+                                 by = c("STATEFIP", "COUNTYICP"),
+                                 label = "internment_county")),
+  tar_target(internpr,
+             calc_int_proportion(wra_data, ddi = ddi_fullcount,
+                                 by = c("STATEFIP", "COUNTYICP", "RACE"),
+                                 label = "internment_prob"))
 
-  # join internment statuses to linked data sample
-  tar_target(linked_data_prI, predict_internment(linked_data, wra_data = wra_data)),
-  tar_target(linked_data_lbl, clean_sample(linked_data_prI, ddi = ddi_path)),
-  # join linked data to county-level statistics
-  tar_target(county_stats, collect_county_stats(ddi_path)),
-  tar_target(linked_data_full,
-             left_join(
-               linked_data_lbl,
-               county_stats, 
-               by = c("STATEFIP", "COUNTYICP") ) )
 )

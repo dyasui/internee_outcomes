@@ -43,23 +43,20 @@ list(
     extract_ready,
     submit_and_download_extract(extract_def, download_dir = "data/fullcount_census/")
   ),
-  tar_target(ddi_path, extract_ready, format = "file"),
+  tar_target(ddi_fullcount, extract_ready, format = "file"),
 
   # TODO script extract def and download for MLP v2 data
 
   # calculate internment proportions
-  tar_target(internpr_county, calc_int_proportion(wra_data, ddi = ddi_path, by = c("STATEFIP", "COUNTYICP"))),
+  tar_target(internpr_county,
+             calc_int_proportion(wra_data, ddi = ddi_fullcount,
+                                 by = c("STATEFIP", "COUNTYICP"),
+                                 label = "internment_county")),
+  tar_target(internpr,
+             calc_int_proportion(wra_data, ddi = ddi_fullcount,
+                                 by = c("STATEFIP", "COUNTYICP", "RACE"),
+                                 label = "internment_prob"))
 
-  # join internment statuses to linked data sample
-  tar_target(linked_data_prI, predict_internment(linked_data, wra_data = wra_data)),
-  tar_target(linked_data_lbl, clean_sample(linked_data_prI, ddi = ddi_path)),
-  # join linked data to county-level statistics
-  tar_target(county_stats, collect_county_stats(ddi_path)),
-  tar_target(linked_data_full,
-             left_join(
-               linked_data_lbl,
-               county_stats, 
-               by = c("STATEFIP", "COUNTYICP") ) )
 )
 #+end_src
 
@@ -1122,7 +1119,7 @@ write_ipums_db <- function(ddi, db_path = "data/ipums_db.duckdb", tbl_name) {
 
 * MLP Linked Census Data
 :PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment* :colnames yes :tangle R/linking.R
+:HEADER-ARGS:R: :session *R:internment* :colnames yes 
 :END:
 Reading all linked data from IPUMS MLP version 2
 #+begin_src R :results output
@@ -1230,7 +1227,6 @@ calc_int_proportion <- function(wra_data, ddi,
   library(dbplyr)
   library(duckdb)
 
-  by <- c("STATEFIP", "COUNTYICP", "RACE", "SEX", "BIRTHYR", "BPL")
   mutate_vars <- list() # variables to be mutated if present
   groups <- by
   
@@ -1251,7 +1247,7 @@ calc_int_proportion <- function(wra_data, ddi,
       x <- x |> mutate(!!!mutate_vars)
     }
     result <- x |> count(across(all_of(c(groups, "YEAR"))))
-    print(result) # for debuging
+    ## print(result) # for debuging
     return(result)
   }
 
