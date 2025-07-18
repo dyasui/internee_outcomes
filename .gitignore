@@ -33,3 +33,8 @@ data/BehindBarbedWire_StoryMap
 data/nhgis0038_shape.zip
 \#manuscript.org#
 WRA-internees.org~
+
+**#
+*.tex
+*.html
+*.pdf
