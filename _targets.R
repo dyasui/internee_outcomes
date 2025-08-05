@@ -44,6 +44,9 @@ list(
   tar_target(internpr,
              calc_int_proportion(wra_data, ddi = ddi_fullcount,
                                  by = c("STATEFIP", "COUNTYICP", "RACE"),
-                                 label = "internment_prob"))
+                                 label = "internment_prob")),
+
+  # collect main analysis samples
+  tar_target(sample_wide, collect_sample(mlp_db, mlp_tbl))
 
 )
