@@ -38,3 +38,4 @@ WRA-internees.org~
 *.tex
 *.html
 *.pdf
+data/mlp.duckdb

@@ -31,6 +31,10 @@ list(
   tar_target(ddi_fullcount, extract_ready, format = "file"),
 
   # TODO script extract def and download for MLP v2 data
+  # write MLP data to local database
+  tar_target(ddi_mlp, "data/mlp_v2_0/usa_00131.xml", format = "file"),
+  tar_target(mlp_db, "data/mlp.duckdb", format = "file"),
+  tar_target(mlp_tbl, write_ipums_db(ddi_mlp, mlp_db, "mlp_1940_1950", debug = TRUE, chunk_size = 1e7)),
 
   # calculate internment proportions
   tar_target(internpr_county,

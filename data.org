@@ -46,6 +46,10 @@ list(
   tar_target(ddi_fullcount, extract_ready, format = "file"),
 
   # TODO script extract def and download for MLP v2 data
+  # write MLP data to local database
+  tar_target(ddi_mlp, "data/mlp_v2_0/usa_00131.xml", format = "file"),
+  tar_target(mlp_db, "data/mlp.duckdb", format = "file"),
+  tar_target(mlp_tbl, write_ipums_db(ddi_mlp, mlp_db, "mlp_1940_1950", debug = TRUE, chunk_size = 1e7)),
 
   # calculate internment proportions
   tar_target(internpr_county,
@@ -1090,126 +1094,59 @@ test_dt <- read_ipums_micro_yield(ddi = "data/fullcount_census/usa_00128.xml")$y
 print(object.size(test_dt), units = "auto")
 #+end_src
 
-#+begin_src R
-write_ipums_db <- function(ddi, db_path = "data/ipums_db.duckdb", tbl_name) {
-  conn <- dbConnect(duckdb(), dbdir = db_path)
-
-  writedb_cb <- function(x,pos) {
-    if (pos == 1) {
-      dbWriteTable(conn, tbl_name, x, overwrite = TRUE)
-    } else {
-      data_filtered <- x |>
-        filter(RACE %in% c(4,5))
-      dbWriteTable(conn, tbl_name, data_filtered, overwrite = FALSE, append = TRUE)
-    }
-  }
-
-  read_ipums_micro_chunked(
-    ddi,
-    callback = readr::SideEffectChunkCallback$new(writedb_cb),
-    verbose = T,
-    chunk_size = 1e7 # observations to read per chunk
-  )
-
-  dbDisconnect(conn)
-
-  tbl_name
-}
-#+end_src
-
 * MLP Linked Census Data
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment* :colnames yes 
 :END:
 Reading all linked data from IPUMS MLP version 2
 #+begin_src R :results output
-mlp_ddi <- "data/mlp_v2_0/usa_00131.xml"
-yield <- read_ipums_micro_yield(mlp_ddi)
-yield$yield(0) |> colnames() 
+library(targets)
+library(duckdb)
+
+tar_load(c(mlp_tbl, mlp_db, ddi_mlp))
+con <- dbConnect(duckdb(), dbdir = mlp_db)
 #+end_src
 
 #+RESULTS:
-#+begin_example
-Use of data from IPUMS USA is subject to conditions including that users should cite the data appropriately. Use command `ipums_conditions()` for more details.
- [1] "YEAR"          "SERIAL"        "STATEFIP"      "COUNTYICP"     "CITY"         
- [6] "URBAN"         "GQ"            "FARM"          "ACRENONF"      "PERNUM"       
-[11] "SLREC"         "MOMLOC"        "POPLOC"        "SEX"           "AGE"          
-[16] "MARST"         "BIRTHYR"       "RACE"          "RACED"         "BPL"          
-[21] "BPLD"          "MBPL"          "MBPLD"         "FBPL"          "FBPLD"        
-[26] "NATIVITY"      "CITIZEN"       "HIGRADE"       "HIGRADED"      "EDUC"         
-[31] "EDUCD"         "EMPSTAT"       "EMPSTATD"      "LABFORCE"      "CLASSWKR"     
-[36] "CLASSWKRD"     "OCC"           "OCC1950"       "IND"           "IND1950"      
-[41] "WKSWORK1"      "HRSWORK1"      "DURUNEMP"      "INCTOT"        "INCWAGE"      
-[46] "INCBUSFM"      "INCNONWG"      "INCOTHER"      "OCCSCORE"      "MIGRATE5"     
-[51] "MIGRATE5D"     "MIGPLAC5"      "MIGCOUNTYICP5" "VERSIONHIST"   "VETSTAT"      
-[56] "VETSTATD"      "VETWWII"       "HISTID"        "HIK"           "LINK1940"     
-[61] "LINK1950"      "VERSIONHIK"    "NATIVITY_MOM"  "NATIVITY_POP"  "NATIVITY_SP"  
-[66] "NATIVITY_MOM2" "NATIVITY_POP2" "HIGRADED_MOM"  "HIGRADED_POP"  "HIGRADED_MOM2"
-[71] "HIGRADED_POP2" "EDUC_MOM"      "EDUC_POP"      "EDUC_MOM2"     "EDUC_POP2"    
-[76] "EMPSTAT_MOM"   "EMPSTAT_POP"   "EMPSTAT_MOM2"  "EMPSTAT_POP2"  "OCC1950_MOM"  
-[81] "OCC1950_POP"   "OCC1950_MOM2"  "OCC1950_POP2"  "INCWAGE_MOM"   "INCWAGE_POP"  
-[86] "INCWAGE_MOM2"  "INCWAGE_POP2"  "OCCSCORE_MOM"  "OCCSCORE_POP"  "OCCSCORE_MOM2"
-[91] "OCCSCORE_POP2" "VETWWII_MOM"   "VETWWII_POP"   "VETWWII_SP"    "VETWWII_MOM2" 
-[96] "VETWWII_POP2"
-#+end_example
 
-| Source:  | Year | Total   | Japanese | Chinese | Japanese + Chinese |
-|----------+------+---------+----------+---------+--------------------|
-| Census   | 1940 | 132.9 m |   126701 |   78205 |             204906 |
-|          | 1950 | 152.3 m |   278603 |  119522 |             398125 |
-|----------+------+---------+----------+---------+--------------------|
-| MLP v2.0 | both | 73.7 m  |          |         |              20341 |
-** Linked Sample Size
-I only need the histid crosswalks rows for people who would match my sample of Japanese and Chinese Americans.
-#+begin_src R
-callback <- function(x, pos) {
-  x |>
-    filter(RACE %in% c(4,5))
+** Write MLP data to database
+
+#+begin_src R :tangle R/database.R
+#, Writes census microdata from an IPUMS ddi path to a local database
+#,
+#, @param ddi Path to an IPUMS DDI .xml file.
+#, @param dbdir Path to a local duckdb database.
+#,              A new file will be created if it doesnt exist already
+#, @param tbl_name String name of the table in the database
+#, @param chunk_size Number of rows to read in each chunk
+#, @returns A name of the table where data is written
+write_ipums_db <- function(ddi, dbdir, tbl_name, debug = FALSE, chunk_size = 1e6) {
+  con <- dbConnect(duckdb(), dbdir = dbdir)
+  
+  # Remove previous version of the table if it exists
+  if (tbl_name %in% dbListTables(con)) {
+    dbRemoveTable(con, tbl_name)
+  }
+
+  write_chunk <- function(chunk, pos) {
+    dbWriteTable(con, tbl_name, chunk, append = TRUE)
+    if (debug == TRUE) {
+      print(chunk)
+    }
+  }
+
+  read_ipums_micro_chunked(
+    ddi,
+    callback = readr::SideEffectChunkCallback$new(write_chunk),
+    chunk_size = chunk_size # observations to read per chunk
+  )
+
+  dbDisconnect(con)
+
+  return(tbl_name)
 }
-
-hids_list <- read_ipums_micro_chunked(
-  ddi_path,
-  callback = IpumsDataFrameCallback$new(callback),
-  chunk_size = 1e6,
-  vars = c("YEAR", "RACE", "HISTID")
-)
 #+end_src
 
-After filtering for all of the rows for these individuals in my full-count census data download,
-I can pull out a list of all of the histid values that occur for them in both 1940 and 1950.
-#+begin_src R
-hids_1940 <- hids_list |>
-  filter(YEAR==1940) |>
-  select(HISTID) |>
-  pull()
-
-hids_1950 <- hids_list |>
-  filter(YEAR==1950) |>
-  select(HISTID) |>
-  pull()
-#+end_src
-
-Now that I have a subset of only the histids that I actually need linked,
-I can pull them out of the full list of histid crosswalks that I have saved in my database.
-#+begin_src R
-conn <- dbConnect(duckdb(), dbdir = "data/ipums_db.duckdb")
-
-cw_list <- tbl(conn, "mlp_crosswalks") |>
-  filter(histid_1940 %in% hids_1940 | histid_1950 %in% hids_1950) |>
-  collect()
-#+end_src
-
-Based on this, there are 19,278 individuals who are either Japanese or Chinese and linked between the 1940 and 1950 censuses for the current version of MLP.
-
-
-The match rate for this population is less than the ~40% match rate in the MLP linkages overall.
-Based on the numbers in the table above, the match rate for Japanese/Chinese respondents is 20341 / 204906 ≈ 10%.
-
-To help save myself (and others) from having to read through the entire set of linking crosswalks in the future,
-I will save a list of these histid crosswalks to a csv file in my repository.
-#+begin_src R
-write_csv(cw_list, file = "data/mlp_1940_1950_v1_2_csv/mlp_1940_1950_v1.2-JConly.csv")
-#+end_src
 * Predicted Interment Status Estimator
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment*

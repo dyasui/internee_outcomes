@@ -1,3 +1,24 @@
+collect_sample <- function(db, table,
+                           vars = c("RACE", "BIRTHYR", "INCWAGE", "STATEFIP", "COUNTYICP", "AGE", "SEX",
+                                    "EDUCD", "CLASSWKR", "WKSWORK1", "OCC1950", "OCCSCORE", "EMPSTAT")) {
+  con <- dbConnect(duckdb(), mlp_db)
+
+  reg_data <- tbl(con, mlp_tbl) |>
+    filter(
+      !is.na(STATEFIP),
+      !is.na(COUNTYICP),
+      (BIRTHYR < 1926)
+    ) |>
+    pivot_wider(
+      id_cols = HIK, names_from = YEAR,
+      values_from = vars
+    ) |>
+    filter(RACE_1940 %in% c(4,5)) |>
+    collect() 
+
+  dbDisconnect(con)
+}
+
 clean_sample <- function(wide_df, ddi, inflator = 1.69) {
   # ten-year inflation rate from bls.gov/data/inflation_calculator.htm
   wide_df <- wide_df |>

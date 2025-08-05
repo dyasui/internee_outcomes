@@ -1,41 +1,126 @@
 #+TITLE: Internee Outcomes: Data Analysis
-#+PROPERTY: header-args:R :export both
+#+PROPERTY: header-args:R: :session *R:internment* :export both
 
-* Linked Sample Income
-:PROPERTIES:
-:HEADER-ARGS:R: :tangle R/analysis.R :session *R:internment*
-:END:
-
-#+begin_src R :results silent
+#+begin_src R :results silent :session *R:internment*
 library(tidyverse)
+library(duckdb)
 library(haven)
+library(fixest)
+library(ggplot2)
+
 library(targets)
 tar_load(c(linked_data_full))
 #+end_src
 
-#+begin_src R :results silent
-sampleline_sample <- linked_data_full |>
-  mutate(sampleline_1950 = case_when(
-           YEAR==1950 & SLWT!=0 ~ 1,
-           YEAR==1950 & SLWT==0 ~ 0,
-           YEAR==1940 ~ 1
-         )) |> 
-  filter(birthyr < 1925, LABFORCE==2, sampleline_1950==1) |>
-  mutate(pr_intern = ifelse(RACE==4, 0, prI_county),
-         pr_intern2 = ifelse(RACE==4, 0, prI_full),
-         pr_intern3 = ifelse(RACE==4, 0, prI_AB),
-         across(c("STATEFIP", "BPL", "OCC1950", "MIGRATE5"), as_factor)
-         ) |>
-  group_by(id) |>
-  filter(n() >= 2) |>
-  ungroup() |>
-  pivot_wider(
-    id_cols = c("id", "race", "sex", "pr_intern", "pr_intern2", "pr_intern3", "migrate10", "income_tot"),
-    names_from = YEAR,
-    values_from = c("age", "salary", "employed", "OCC1950",
-                    "OCCSCORE", "WKSWORK1", "yearsschool", "STATEFIP",
-                    "county_med.salary", "county_pop", "county_pop.japanese")
+* MLP Linked Internees
+:PROPERTIES:
+:header-args:R: :session *R:internment*
+:END:
+** Linked Sample Size
+I want to focus on the Japanese and Chinese populations as the main treatment and control groups of my study.
+However, it's not as simple as just filtering on race status in one reference year.
+There are many linked individuals who report different racial categories across the different census years.
+This may be due to transcription errors, differences in census takers, false matches in the MLP linking process, etc.
+
+#+begin_src R
+tbl(con, mlp_tbl) |>
+  count(YEAR, RACE) |>
+  collect() |>
+  ipumsr::set_ipums_var_attributes(var_info = ipumsr::read_ipums_ddi(ddi_mlp)) |>
+  mutate(RACE = as_factor(RACE)) |>
+  pivot_wider(names_from = RACE, values_from = n)
+#+end_src
+
+#+RESULTS:
+| YEAR |    White | Black/African American | American Indian or Alaska Native | Chinese | Japanese | Other Asian or Pacific Islander | Other race, nec |
+|------+----------+------------------------+----------------------------------+---------+----------+---------------------------------+-----------------|
+| 1940 | 68426104 |                5006313 |                           144394 |   20882 |    52930 |                           13855 |             237 |
+| 1950 | 68444757 |                5052709 |                           110224 |   13146 |    35008 |                            7797 |            1074 |
+
+Notice how almost all of the individuals who are reported as White are consistently White across years,
+but the number of linked individuals who are Chinese or Japanese decrease significantly in 1950.
+This may be because the 1950 full-count census data are more recent and still being worked on,
+so for now it's probably safest to use the 1940 =RACE= status to assign race in my study.
+
+Based on this, there are 73,812 linked individuals who report being either Japanese or Chinese in 1940
+(and potentially some other race in 1950).
+
+
+The match rate for this population is a little less than the ~55% match rate in the MLP linkages overall.
+Based on the numbers in the table above, the match rate for Japanese/Chinese respondents is 73,812 / 204,906 ≈ 36%.
+
+| Source:  | Year | Total   | Japanese | Chinese | Japanese + Chinese |
+|----------+------+---------+----------+---------+--------------------|
+| Census   | 1940 | 132.9 m |   126701 |   78205 |             204906 |
+|          | 1950 | 152.3 m |   278603 |  119522 |             398125 |
+|----------+------+---------+----------+---------+--------------------|
+| MLP v2.0 | 1940 | 73.7 m  |    52930 |   20882 |              73812 |
+|          | 1950 | 73.7 m  |    35008 |   13146 |              48154 |
+
+For my main analysis on the growth of incomes among this group,
+I select only those individuals who would have been of working age in 1940 and thus able to have worked a job in both years observed.
+This means that I filter the MLP sample for anyone born before 1926.
+Someone born in January of 1926 would have been 13 in the year 1939
+making them too young to be asked about their earnings or employment when surveyed in 1940.
+#+begin_src R
+j_c_sample <- tbl(con, mlp_tbl) |>
+  pivot_wider(id_cols = HIK, names_from = YEAR, values_from = c("RACE", "BIRTHYR", "INCWAGE", "STATEFIP", "COUNTYICP")) |>
+  filter(RACE_1940 %in% c(4,5)) |>
+  mutate(
+    in_sample = ifelse(BIRTHYR_1940 < 1926, "old enough", "too young")
   )
+
+workingage_sample <- j_c_sample |>
+  filter(in_sample == "old enough")
+
+j_c_sample |>
+  count(in_sample) |>
+  mutate(percent = round((n / sum(n))*100))
+#+end_src
+
+#+RESULTS:
+| in_sample  |     n | percent |
+|------------+-------+---------|
+| too young  | 24300 |      33 |
+| old enough | 49512 |      67 |
+
+Now for the subsample of MLP respondents who are reported as Japanese or Chinese in 1940,
+how many of them consistently report a wage in both years,
+as well as a state and county across both years?
+#+begin_src R
+wage_sample <- workingage_sample |>
+  filter(
+    !INCWAGE_1940 %in% c(999999, 999998),
+    !INCWAGE_1950 %in% c(999999,999998),
+    !is.na(STATEFIP_1940),
+    !is.na(COUNTYICP_1940),
+    !is.na(STATEFIP_1950),
+    !is.na(COUNTYICP_1950)
+  )
+
+wage_sample |>
+  count(RACE_1940)
+#+end_src
+
+#+RESULTS:
+| RACE_1940 |    n |
+|-----------+------|
+|         4 | 2470 |
+|         5 | 6610 |
+
+So there should be 9,080 observations in my main analysis sample.
+
+** Descriptive Patterns
+#+begin_src R
+tar_load(internpr)
+plt_data <- wage_sample |>
+  collect() |>
+  left_join(
+    internpr,
+    by = c("RACE_1940"="RACE", "STATEFIP_1940"="STATEFIP", "COUNTYICP_1940"="COUNTYICP")
+  ) |>
+  mutate(INCWAGE_1940 = INCWAGE_1940 * 1.69) |>
+  mutate(Earning_growth = (INCWAGE_1950 - INCWAGE_1940) / INCWAGE_1940)
 #+end_src
 
 #+RESULTS:
