@@ -1,8 +1,9 @@
 #+TITLE: Data Documentation
 #+AUTHOR: Dante Yasui
+#+STARTUP: noindent
 #+OPTIONS: toc:2
 
-R Setup:
+#+name: R-setup
 #+begin_src R :session *R:internment* :results silent
 library(tidyverse)
 library(targets)
@@ -11,13 +12,12 @@ library(duckdb)
 #+end_src
 
 * Targets Workflow
-
-#+begin_src R :tangle _targets.R :session *R:internment*
+#+name: _targets.R
+#+begin_src R :tangle _targets.R :session *R:internment* :results silent
 # Load packages required to define the pipeline:
 library(targets)
+library(dplyr)
 # library(tarchetypes) # Load other packages as needed.
-
-suppressPackageStartupMessages(library(dplyr))
 
 # Set target options:
 tar_option_set(
@@ -32,44 +32,38 @@ tar_source()
 
 # Target list describes workflow
 list(
-  # Process internment camp data
   tar_target(form26_raw, "data/WRA.FORM26.PU.txt", format = "file"),
   tar_target(wra_addr, "data/WRA_prev_address.csv", format = "file"),
-  tar_target(wra_data, compile_WRA(form26_raw, wra_addr)),
+  tar_target(wra_data, compile_WRA(form26_raw, wra_addr))
 
-  # download IPUMS data and save extract locations
-  tar_target(extract_def, define_ipums_extract()),
-  tar_target(
-    extract_ready,
-    submit_and_download_extract(extract_def, download_dir = "data/fullcount_census/")
-  ),
-  tar_target(ddi_fullcount, extract_ready, format = "file"),
+  ## tar_target(extract_def, define_ipums_extract()),
+  ## tar_target(
+  ##   extract_ready,
+  ##   submit_and_download_extract(extract_def, download_dir = "data/fullcount_census/")
+  ## ),
+  ## tar_target(ddi_fullcount, extract_ready, format = "file"),
+  ## tar_target(ddi_mlp, "data/mlp_v2_0/usa_00131.xml", format = "file"),
+  ## tar_target(mlp_db, "data/mlp.duckdb", format = "file"),
+  ## tar_target(mlp_tbl, write_ipums_db(ddi_mlp, mlp_db, "mlp_1940_1950", debug = TRUE, chunk_size = 1e7)),
 
-  # TODO script extract def and download for MLP v2 data
-  # write MLP data to local database
-  tar_target(ddi_mlp, "data/mlp_v2_0/usa_00131.xml", format = "file"),
-  tar_target(mlp_db, "data/mlp.duckdb", format = "file"),
-  tar_target(mlp_tbl, write_ipums_db(ddi_mlp, mlp_db, "mlp_1940_1950", debug = TRUE, chunk_size = 1e7)),
+  ## tar_target(internpr_county,
+  ##            calc_int_proportion(wra_data, ddi = ddi_fullcount,
+  ##                                by = c("STATEFIP", "COUNTYICP"),
+  ##                                label = "internment_county")),
+  ## tar_target(internpr,
+  ##            calc_int_proportion(wra_data, ddi = ddi_fullcount,
+  ##                                by = c("STATEFIP", "COUNTYICP", "RACE"),
+  ##                                label = "internment_prob")),
 
-  # calculate internment proportions
-  tar_target(internpr_county,
-             calc_int_proportion(wra_data, ddi = ddi_fullcount,
-                                 by = c("STATEFIP", "COUNTYICP"),
-                                 label = "internment_county")),
-  tar_target(internpr,
-             calc_int_proportion(wra_data, ddi = ddi_fullcount,
-                                 by = c("STATEFIP", "COUNTYICP", "RACE"),
-                                 label = "internment_prob")),
-
-  # collect main analysis samples
-  tar_target(sample_wide, collect_sample(mlp_db, mlp_tbl))
+  ## tar_target(sample_wide, collect_sample(mlp_db, mlp_tbl))
 
 )
 #+end_src
 
-#+RESULTS:
-
 All of the functions above are defined in their own code blocks in the rest of this document.
+
+The targets workflow is currently set up to clean the 
+
 * Helper Functions and Definitions
 ** Geographic State and County Codes
 I started the process of going through the =NARA-WRA-Form26_documentation.pdf=
@@ -193,18 +187,37 @@ is_evac_county <- function(STATEFIP, COUNTYICP) {
 :PROPERTIES:
 :HEADER-ARGS:R: :tangle R/compile_WRA.R :session *R:internment*
 :END:
+
+<<<WRA form 26>>>:
 The internee data file is available in the [[https://catalog.archives.gov/][National Archives]] catalog with the NAID =1264228=.
 I use the fixed-width file =WRA.FORM26.PU.txt=, of this text file from Jaime Arellano-Bover's online replication package in the [[https://www.openicpsr.org/openicpsr/project/144561/version/V1/view][OpenICPSR repository]].
+Consult the file [[file:./data/NARA-WRA-Form26_documentation.pdf]] to see the documentation page which defines all source variables and thier column positions in the data file.
 
-| Coding | Data |
-|--------+------|
-| \pi    | -    |
-| \alpha | &    |
+The original form included internee's names, the assembly center and WRA camp they were first assigned to,
+the county and city of thier previous address before being brought to the assembly centers,
+as well as demographic information such as their education attainment, birthplace and year, occupation, and father's characteristics.
+
+Here is a glimpse at how the original data form looks:
+#+begin_src R :tangle no
+# Load dataset
+wra_file <- "data/WRA.FORM26.PU.txt"
+read_lines(wra_file, n_max = 5)
+#+end_src
+
+#+RESULTS:
+| KAHASHI TAKEO    401121315&000  172X33001A2714128H5Z309736   041   40388341112  |
+| ZUKI    CHIEKO   0071--011&000--000X0H186 6429710P6Z      057   62595759911061  |
+| A AS IMA M SAO    5 115241&&41014685X12152A2797969V7Z309631   387   50704272044 |
+| AKASA    AKIRA    3B1301346&000--000X23217D1434130L9Z               30396411021 |
+| ATO      SHIGEKO J111301515-000  111X03092E642813&Q6Z               10218511072 |
+
+The first 18 columns of WRA form 26 contain first and last name strings, the remaining columns are all coded with a combination of alphanumeric and a few special characters (=-= and =&=).
+In the documentation page, the characters $\pi$ and $\alpha$ were used in the original coding, but were replaced by the characters =-= and =&=, respectively, when converted to the digital fixed width data file.
 
 ** Cleaning Functions
 Here is a version of Arellano-Bover's original Stata code to process the WRA form 26 data,
 rewritten in R.
-The file =WRA.FORM26.PU.txt= is read into R as fixed width data using =read_fwf= from the =readr= package.
+The text file is read into R as fixed width data using =read_fwf= from the =readr= package.
 #+begin_src R :results silent
 #------------------------------------------------------------------------------#
 #                               README                                         #
@@ -217,13 +230,7 @@ The file =WRA.FORM26.PU.txt= is read into R as fixed width data using =read_fwf=
 #------------------------------------------------------------------------------#
 #+end_src
 
-The original form included internee's names, the assembly center and WRA camp they were first assigned to,
-the county and city of thier previous address before being brought to the assembly centers,
-as well as demographic information such as their education attainment, birthplace and year, occupation, and father's characteristics.
-
-Consult the file [[file:./data/NARA-WRA-Form26_documentation.pdf]] to see the documentation page which defines all source variables and thier column positions in the data file.
-
-
+#+name: fun:read_fw_form26
 #+begin_src R :results silent
 # variables defined by column ranges in original file
 read_fw_form26 <- function(data_file = "data/WRA.FORM26.PU.txt") {
@@ -241,7 +248,7 @@ read_fw_form26 <- function(data_file = "data/WRA.FORM26.PU.txt") {
       "last_name",    "first_name",      "initial",     "camp",            "assembly",
       "prev_address", "brth_cntry_pnts", "fath_occ_us", "fath_occ_abroad", "school_jap",
       "school_jap2",  "high_educ",       "arrival_us",  "length_jap",      "times_jap",
-      "age_jap",      "military",        "ind_number",  "sex_marrge",      "race",
+      "age_jap",      "military",        "ind_number",  "sex_marrge",      "race_raw",
       "birth_yr",     "birthplace",      "japsch_ssn",  "educ",            "lang",
       "rel",          "qual_occ_1",      "qual_occ_2",  "qual_occ_3",      "pot_occ_1",
       "pot_occ_2",    "file_no",         "file_no_2")
@@ -255,24 +262,6 @@ read_fw_form26 <- function(data_file = "data/WRA.FORM26.PU.txt") {
   return(fw_data)
 }
 #+end_src
-
-Here is a glimpse at how the original data form looks:
-#+begin_src R :tangle no :results silent
-library(tidyverse)
-library(haven)  # for reading stata data_raw files
-
-# Load dataset
-wra_file <- "data/WRA.FORM26.PU.txt"
-read_lines(wra_file, n_max = 5)
-#+end_src
-
-#+RESULTS:
-| KAHASHI TAKEO    401121315&000  172X33001A2714128H5Z309736   041   40388341112  |
-| ZUKI    CHIEKO   0071--011&000--000X0H186 6429710P6Z      057   62595759911061  |
-| A AS IMA M SAO    5 115241&&41014685X12152A2797969V7Z309631   387   50704272044 |
-| AKASA    AKIRA    3B1301346&000--000X23217D1434130L9Z               30396411021 |
-| ATO      SHIGEKO J111301515-000  111X03092E642813&Q6Z               10218511072 |
-
 Compare with the version after using the function =read_fw_form26()= defined above:
 #+begin_src R :colnames yes :tangle no
 read_fw_form26() |> head(n=5) |> select(initial:race)
@@ -292,15 +281,15 @@ There are 137 rows which need to be removed due to mistakenly inserted formattin
 form26_drop_dup <- function(fw_data) {
   library(dplyr)
   fw_data |>
-    filter(
+    dplyr::filter(
       ind_number != "", # Drop records with empty ind_number
-      ! last_name %in% c("\\\\JOB", "\\\\\\\\")
+      !str_detect(last_name, "\\\\")
       ) |> 
     # Handle duplicates
     group_by(ind_number, file_no, first_name, last_name) |>
     mutate(dup_n = row_number(), .after = last_name) |>
+    dplyr::filter(dup_n == 1) |>
     ungroup() |>
-    filter(dup_n == 1) |>
     select(-dup_n)
 }
 #+end_src
@@ -331,49 +320,57 @@ form26_label <- function(raw_data) {
   
   int_data <- raw_data |> 
     mutate(
-      camp = case_when(camp==1 ~ "Manzanar",
-                       camp==2 ~ "Poston",
-                       camp==3 ~ "Gila River",
-                       camp==4 ~ "Tule Lake",
-                       camp==5 ~ "Minidoka",
-                       camp==6 ~ "Topaz",
-                       camp==7 ~ "Heart Mountain",
-                       camp==8 ~ "Granada",
-                       camp==9 ~ "Rohwer",
-                       camp==0 ~ "Jerome"),
-      assembly = case_when(assembly==0 ~ "none",
-                           assembly==1 ~ "Manzanar",
-                           assembly==2 ~ "Fresno",
-                           assembly==3 ~ "Marysville",
-                           assembly==4 ~ "Mayor",
-                           assembly==5 ~ "Merced",
-                           assembly==6 ~ "Pinedale",
-                           assembly==7 ~ "Pomona",
-                           assembly==8 ~ "Portland",
-                           assembly==9 ~ "Puyallup",
-                           assembly=="-"~ "Sacramento",
-                           assembly=="A"~ "Salinas",
-                           assembly=="B"~ "Santa Anita",
-                           assembly=="C"~ "Stockton",
-                           assembly=="D"~ "Tanforan",
-                           assembly=="E"~ "Tulare",
-                           assembly=="F"~ "Turlock",
-                           .default = NA ),
+      camp = case_when(
+        camp==0 ~ "Jerome",
+        camp==1 ~ "Manzanar",
+        camp==2 ~ "Poston",
+        camp==3 ~ "Gila River",
+        camp==4 ~ "Tule Lake",
+        camp==5 ~ "Minidoka",
+        camp==6 ~ "Topaz",
+        camp==7 ~ "Heart Mountain",
+        camp==8 ~ "Granada",
+        camp==9 ~ "Rohwer",
+        camp=="D" ~ "miscoded",
+        camp=="I" ~ "miscoded",
+        camp=="R" ~ "miscoded"
+      ),
+      assembly = case_when(
+        assembly=="-"~ "Sacramento",
+        assembly==0 ~ "none",
+        assembly==1 ~ "Manzanar",
+        assembly==2 ~ "Fresno",
+        assembly==3 ~ "Marysville",
+        assembly==4 ~ "Mayor",
+        assembly==5 ~ "Merced",
+        assembly==6 ~ "Pinedale",
+        assembly==7 ~ "Pomona",
+        assembly==8 ~ "Portland",
+        assembly==9 ~ "Puyallup",
+        assembly=="A"~ "Salinas",
+        assembly=="B"~ "Santa Anita",
+        assembly=="C"~ "Stockton",
+        assembly=="D"~ "Tanforan",
+        assembly=="E"~ "Tulare",
+        assembly=="F"~ "Turlock",
+        assembly=="Z" ~ "miscode",
+        .default = NA
+      ),
       sex = case_when(sex_marrge %in% c("1", "2", "3", "4", "5", "0") ~ 1, # men
                       sex_marrge %in% c("6", "7", "8", "9", "-", "&") ~ 2, # women
                       .default = NA),
-      sex = labelled(as.integer(sex), c("Male" = 1, "Female" = 2)),
+      ## sex = labelled(as.integer(sex), c("Male" = 1, "Female" = 2)),
       marst = case_when(sex_marrge %in% c("1", "6") ~ 1, # single
                         sex_marrge %in% c("2", "9") ~ 2, # married
                         sex_marrge %in% c("3", "8") ~ 3, # widowed
                         sex_marrge %in% c("4", "9") ~ 4, # divorced
                         sex_marrge == "5" ~ 5, # separated
                         .default = NA),
-      marst = labelled(as.integer(marst), c("single" = 1,
-                                            "married" = 2,
-                                            "widowed" = 3,
-                                            "divorced" = 4,
-                                            "separated" = 5)),
+      ## marst = labelled(as.integer(marst), c("single" = 1,
+      ##                                       "married" = 2,
+      ##                                       "widowed" = 3,
+      ##                                       "divorced" = 4,
+      ##                                       "separated" = 5)),
       birthyr = case_when(as.integer(birth_yr) > 42 ~
                             as.integer(birth_yr) + 1800, # born after 1842
                           as.integer(birth_yr) <= 42 ~ as.integer(birth_yr) + 1900,
@@ -384,17 +381,17 @@ form26_label <- function(raw_data) {
                                          "9-", "90", "92", "93", "94", "95", "96", "97", "98",
                                          "99") ~ 5,
                        race %in% c("1", "2") ~ 0), # other race or not specified
-      race = labelled(race, c("White" = 1, "Japanese" = 5, "Other/ns" = 0)),
+      ## race = labelled(race, c("White" = 1, "Japanese" = 5, "Other/ns" = 0)),
       bpl_pop = case_when(brth_cntry_pnts %in% c("B", "1", "4", "7", "C") ~ 501, # japan
                           brth_cntry_pnts %in% c("K", "2", "5", "8", "L") ~ 99, # US
                           brth_cntry_pnts %in% c("T", "3", "6", "9", "U") ~ 15, # Hawaii
                           .default = NA),
-      bpl_pop = labelled(bpl_pop, c("Japan" = 501, "United States" = 99, "Hawaii" = 15)),
+      ## bpl_pop = labelled(bpl_pop, c("Japan" = 501, "United States" = 99, "Hawaii" = 15)),
       bpl_mom = case_when(brth_cntry_pnts %in% c("A", "1", "2", "3", "D") ~ 501, # japan
                           brth_cntry_pnts %in% c("J", "4", "5", "6", "M") ~ 99, # US
                           brth_cntry_pnts %in% c("S", "7", "8", "9", "V") ~ 15, # Hawaii
                           .default = NA),
-      bpl_mom = labelled(bpl_mom, c("Japan" = 501, "United States" = 99, "Hawaii" = 15)),
+      ## bpl_mom = labelled(bpl_mom, c("Japan" = 501, "United States" = 99, "Hawaii" = 15)),
       yrimmig = suppressWarnings(as.integer(arrival_us)),
       yrimmig = case_when(arrival_us %in% 43:99 ~ yrimmig + 1800, # arrived after 1842
                           arrival_us %in% 00:42 ~ yrimmig + 1900,
@@ -427,38 +424,38 @@ form26_label <- function(raw_data) {
                         "99") ~ 5,       # is foreign born themselves
       .default = NA_real_                    # for any other cases, assign NA
       ),
-      nativity = labelled(nativity, c("Native born, native parents"=1,
-                                      "Native born, native mother"=2,
-                                      "Native born, native father"=3,
-                                      "Native born, foreign parents"=4,
-                                      "Foreign born"=5)),
+      ## nativity = labelled(nativity, c("Native born, native parents"=1,
+      ##                                 "Native born, native mother"=2,
+      ##                                 "Native born, native father"=3,
+      ##                                 "Native born, foreign parents"=4,
+      ##                                 "Foreign born"=5)),
       generation = case_when(
       (race==5 & nativity == 5) ~ "Issei",
       (race==5 & nativity %in% 2:4) ~ "Nisei",
       (race==5 & nativity == 1) ~ "Sansei",
       ),
-      fath_occ_us = labelled(suppressWarnings(as.integer(fath_occ_us)),
-                             c("Professional & semiprofessional"=1,
-                               "Managerial and official (exept farm)"=2,
-                               "Clerical and sales"=3,
-                               "Service"=4,
-                               "Farm operators and managers"=5,
-                               "Fishermen"=6,
-                               "Skilled craftsmen and foremen"=7,
-                               "Semi-skilled operators (except farm)"=8,
-                               "Unskilled laborers (except farm)"=9
-                               )),
-      fath_occ_abroad = labelled(suppressWarnings(as.integer(fath_occ_abroad)),
-                                 c("Professional & semiprofessional"=1,
-                                   "Managerial and official (exept farm)"=2,
-                                   "Clerical and sales"=3,
-                                   "Service"=4,
-                                   "Farm operators and managers"=5,
-                                   "Fishermen"=6,
-                                   "Skilled craftsmen and foremen"=7,
-                                   "Semi-skilled operators (except farm)"=8,
-                                   "Unskilled laborers (except farm)"=9
-                                   )),
+      ## fath_occ_us = labelled(suppressWarnings(as.integer(fath_occ_us)),
+      ##                        c("Professional & semiprofessional"=1,
+      ##                          "Managerial and official (exept farm)"=2,
+      ##                          "Clerical and sales"=3,
+      ##                          "Service"=4,
+      ##                          "Farm operators and managers"=5,
+      ##                          "Fishermen"=6,
+      ##                          "Skilled craftsmen and foremen"=7,
+      ##                          "Semi-skilled operators (except farm)"=8,
+      ##                          "Unskilled laborers (except farm)"=9
+      ##                          )),
+      ## fath_occ_abroad = labelled(suppressWarnings(as.integer(fath_occ_abroad)),
+      ##                            c("Professional & semiprofessional"=1,
+      ##                              "Managerial and official (exept farm)"=2,
+      ##                              "Clerical and sales"=3,
+      ##                              "Service"=4,
+      ##                              "Farm operators and managers"=5,
+      ##                              "Fishermen"=6,
+      ##                              "Skilled craftsmen and foremen"=7,
+      ##                              "Semi-skilled operators (except farm)"=8,
+      ##                              "Unskilled laborers (except farm)"=9
+      ##                              )),
       school_jap = case_when(
         school_jap == "&" ~ NA,
         school_jap == "0" ~ 0,
@@ -493,14 +490,14 @@ form26_label <- function(raw_data) {
         high_educ %in% "3" ~ 3, # "Teaching, Nursing, or other Certification",
         .default = NA
       ),
-      degfield = labelled(degfield,
-                          c("Not specified" = 00, "Agriculture" = 11,
-                            "Arts" = 60, "Biological Sciences" = 36,
-                            "Engineering" = 24, "Home Economics" = 29,
-                            "Physical Sciences" = 50, "Public Health, Hygiene, Physical Ed, Nursing, and Pre-Med."=54,
-                            "Social Sciences and Mathematics" = 37,
-                            "Divinity, Law, or Other Doctorate" = 2,
-                            "Teaching, Nursing, org other Certification"=3)),
+      ## degfield = labelled(degfield,
+      ##                     c("Not specified" = 00, "Agriculture" = 11,
+      ##                       "Arts" = 60, "Biological Sciences" = 36,
+      ##                       "Engineering" = 24, "Home Economics" = 29,
+      ##                       "Physical Sciences" = 50, "Public Health, Hygiene, Physical Ed, Nursing, and Pre-Med."=54,
+      ##                       "Social Sciences and Mathematics" = 37,
+      ##                       "Divinity, Law, or Other Doctorate" = 2,
+      ##                       "Teaching, Nursing, org other Certification"=3)),
       high_deg = case_when(
         high_educ %in% c("A", "B", "C", "D", "E", "F", "G", "H", "I") ~ "bachelors", # bachelors degree
         high_educ %in% c("J", "K", "L", "M", "N", "O", "P", "Q", "R") ~ "masters", # masters degree
@@ -586,21 +583,21 @@ form26_label <- function(raw_data) {
         birthplace == 83 ~ 200, # Mexico
         birthplace == 84 ~ 300, # South America
         .default = NA),
-      bpl = labelled(bpl, c("Alabama" = 001, "Alaska" = 002, "Arizona"
-                            = 004, "Arkansas" = 005, "California" = 006, "Colorado" = 008,
-                            "Connecticut" = 009, "Delaware" = 010, "District of Columbia" =
-                                                                     011, "Florida" = 012, "Georgia" = 013, "Hawaii" = 015, "Idaho" =
-                                                                                                                              016, "Illinois" = 017, "Indiana" = 018, "Iowa" = 019, "Kansas" =
-                                                                                                                                                                                      020, "Kentucky" = 021, "Louisiana" = 022, "Maine" = 023,
-                            "Maryland" = 024, "Massachusetts" = 025, "Michigan" = 026,
-                            "Minnesota" = 027, "Mississippi" = 028, "Missouri" = 029,
-                            "Montana" = 030, "Nebraska" = 031, "Nevada" = 032, "New Hampshire" = 033, "New Jersey" = 034, "New Mexico" = 035, "New York" = 036, "North Carolina" = 037, "North Dakota" = 038, "Ohio"
-                            = 039, "Oklahoma" = 040, "Oregon" = 041, "Pennsylvania" = 042,
-                            "Rhode Island" = 044, "South Carolina" = 045, "South Dakota" =
-                                                                            046, "Tennessee" = 047, "Texas" = 048, "Utah" = 049, "Vermont" =
-                                                                                                                                   050, "Virginia" = 051, "Washington" = 053, "West Virginia" =
-                                                                                                                                                                                054, "Wisconsin" = 055, "Wyoming" = 056, "United states, ns" =
-                                                                                                                                                                                                                           099, "Japan" = 501, "Canada" = 150, "Mexico" = 200, "South America" = 300) ),
+      ## bpl = labelled(bpl, c("Alabama" = 001, "Alaska" = 002, "Arizona"
+      ##                       = 004, "Arkansas" = 005, "California" = 006, "Colorado" = 008,
+      ##                       "Connecticut" = 009, "Delaware" = 010, "District of Columbia" =
+      ##                                                                011, "Florida" = 012, "Georgia" = 013, "Hawaii" = 015, "Idaho" =
+      ##                                                                                                                         016, "Illinois" = 017, "Indiana" = 018, "Iowa" = 019, "Kansas" =
+      ##                                                                                                                                                                                 020, "Kentucky" = 021, "Louisiana" = 022, "Maine" = 023,
+      ##                       "Maryland" = 024, "Massachusetts" = 025, "Michigan" = 026,
+      ##                       "Minnesota" = 027, "Mississippi" = 028, "Missouri" = 029,
+      ##                       "Montana" = 030, "Nebraska" = 031, "Nevada" = 032, "New Hampshire" = 033, "New Jersey" = 034, "New Mexico" = 035, "New York" = 036, "North Carolina" = 037, "North Dakota" = 038, "Ohio"
+      ##                       = 039, "Oklahoma" = 040, "Oregon" = 041, "Pennsylvania" = 042,
+      ##                       "Rhode Island" = 044, "South Carolina" = 045, "South Dakota" =
+      ##                                                                       046, "Tennessee" = 047, "Texas" = 048, "Utah" = 049, "Vermont" =
+      ##                                                                                                                              050, "Virginia" = 051, "Washington" = 053, "West Virginia" =
+      ##                                                                                                                                                                           054, "Wisconsin" = 055, "Wyoming" = 056, "United states, ns" =
+      ##                                                                                                                                                                                                                      099, "Japan" = 501, "Canada" = 150, "Mexico" = 200, "South America" = 300) ),
       birthplace = recode(birthplace, !!! geo_dict),
       )
 
@@ -937,18 +934,18 @@ form26_label <- function(raw_data) {
     599, 1699, "Foremen, n.o.c.",
     )
 
-  # Vector for recoding (named vector: names = old codes, values = new codes)
+                                        # Vector for recoding (named vector: names = old codes, values = new codes)
   recode_vec <- setNames(occ_codes$occ1950, occ_codes$Code)
   
-  # Vector for value labels (names = descriptions, values = new numeric codes)
+                                        # Vector for value labels (names = descriptions, values = new numeric codes)
   label_vec <- setNames(occ_codes$occ1950, occ_codes$Description)
 
   occ_vars <- names(int_data)[str_detect(names(int_data), "^(qual|pot)_occ_")]
 
   lbl_data <- int_data |>
     mutate(qual_occ_1 = suppressWarnings(as.integer(qual_occ_1))) |> 
-    mutate(across(all_of(occ_vars), ~ recode(.x, !!!recode_vec))) |>       # Recode character codes to new numeric
-    mutate(across(all_of(occ_vars), ~ labelled(as.integer(.x), labels = label_vec)))  # Apply labels
+    mutate(across(all_of(occ_vars), ~ recode(.x, !!!recode_vec))) # Recode character codes to new numeric
+  ## mutate(across(all_of(occ_vars), ~ labelled(as.integer(.x), labels = label_vec)))  # Apply labels
 
   return(lbl_data)
 }
@@ -982,6 +979,13 @@ compile_WRA <- function(wra_file="data/WRA.FORM26.PU.txt",
            fath_occ_us, fath_occ_abroad, school_jap,
            NHGISST, NHGISCTY, STATEFIP, COUNTYICP,
            last_name, first_name, qual_occ_1, qual_occ_2)
+
+  # I have to get rid of the haven labels so it can be stored as part of the targets workflow
+  final_data <- data_int |>
+    mutate(across(where(is.factor), as.character)) |> 
+    purrr::modify_if(haven::is.labelled, as.numeric)
+
+  return(final_data)
 }
 #+end_src
 
@@ -1115,37 +1119,73 @@ con <- dbConnect(duckdb(), dbdir = mlp_db)
 ** Write MLP data to database
 
 #+begin_src R :tangle R/database.R
-#, Writes census microdata from an IPUMS ddi path to a local database
-#,
-#, @param ddi Path to an IPUMS DDI .xml file.
-#, @param dbdir Path to a local duckdb database.
-#,              A new file will be created if it doesnt exist already
-#, @param tbl_name String name of the table in the database
-#, @param chunk_size Number of rows to read in each chunk
-#, @returns A name of the table where data is written
-write_ipums_db <- function(ddi, dbdir, tbl_name, debug = FALSE, chunk_size = 1e6) {
+#' Writes census microdata from an IPUMS ddi path to a local database
+#'
+#' @param ddi Path to an IPUMS DDI .xml file.
+#' @param dbdir Path to a local duckdb database.
+#'              A new file will be created if it doesnt exist already
+#' @param tbl_name String name of the table in the database
+#' @param chunk_size Number of rows to read in each chunk
+#' @param replace Logical. If TRUE, replace existing table. If FALSE, skip if table exists.
+#' @param debug Logical. If TRUE, print chunk information during processing
+#' @returns A name of the table where data is written
+write_ipums_db <- function(ddi, dbdir, tbl_name,
+                           debug = FALSE, chunk_size = 1e6,
+                           replace = FALSE) {
+  library(duckdb)
+  library(DBI)
+  library(ipumsr)
+  
   con <- dbConnect(duckdb(), dbdir = dbdir)
   
-  # Remove previous version of the table if it exists
-  if (tbl_name %in% dbListTables(con)) {
-    dbRemoveTable(con, tbl_name)
+  # Check if table already exists
+  table_exists <- tbl_name %in% dbListTables(con)
+  
+  if (table_exists && !replace) {
+    message("Table '", tbl_name, "' already exists. Use replace = TRUE to overwrite.")
+    dbDisconnect(con)
+    return(tbl_name)
   }
-
+  
+  if (table_exists && replace) {
+    message("Replacing existing table '", tbl_name, "'")
+    dbRemoveTable(con, tbl_name)
+  } else if (!table_exists) {
+    message("Creating new table '", tbl_name, "'")
+  }
+  
+  # Track progress
+  total_rows <- 0
+  
   write_chunk <- function(chunk, pos) {
     dbWriteTable(con, tbl_name, chunk, append = TRUE)
-    if (debug == TRUE) {
-      print(chunk)
+    total_rows <<- total_rows + nrow(chunk)
+    
+    if (debug) {
+      message("Processed chunk at position ", pos, " with ", nrow(chunk), " rows. Total: ", total_rows)
     }
   }
 
-  read_ipums_micro_chunked(
-    ddi,
-    callback = readr::SideEffectChunkCallback$new(write_chunk),
-    chunk_size = chunk_size # observations to read per chunk
-  )
+  # Read and write data in chunks
+  tryCatch({
+    read_ipums_micro_chunked(
+      ddi,
+      callback = readr::SideEffectChunkCallback$new(write_chunk),
+      chunk_size = chunk_size
+    )
+    
+    message("Successfully wrote ", total_rows, " rows to table '", tbl_name, "'")
+    
+  }, error = function(e) {
+    message("Error writing to database: ", e$message)
+    if (dbExistsTable(con, tbl_name)) {
+      dbRemoveTable(con, tbl_name)
+      message("Removed incomplete table due to error")
+    }
+    stop(e)
+  })
 
   dbDisconnect(con)
-
   return(tbl_name)
 }
 #+end_src
