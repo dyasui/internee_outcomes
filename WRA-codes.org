@@ -138,27 +138,27 @@ _Relocation Project_ <<camp>>
 |   NA |                |     2 |
 
 _Assembly Centers_ <<assembly>>
-| code | description         |
-|------+---------------------|
-|  "-" | Sacramento          |
-|    0 | None                |
-|    1 | Manzanar            |
-|    2 | Fresno              |
-|    3 | Marysville (Arboga) |
-|    4 | Mayor               |
-|    5 | Merced              |
-|    6 | Pinedale            |
-|    7 | Pomona              |
-|    8 | Portland            |
-|    9 | Puyallup            |
-|    A | Salinas             |
-|    B | Santa Anita         |
-|    C | Stockton            |
-|    D | Tanforan            |
-|    E | Tulare              |
-|    F | Turlock             |
-|    Z | miscode             |
-|   NA |                     |
+| code | description         |     n |
+|------+---------------------+-------|
+|  "-" | Sacramento          |  4596 |
+|    0 | None                | 20109 |
+|    1 | Manzanar            |  9556 |
+|    2 | Fresno              |  5066 |
+|    3 | Marysville (Arboga) |  2403 |
+|    4 | Mayor               |   249 |
+|    5 | Merced              |  4079 |
+|    6 | Pinedale            |  4659 |
+|    7 | Pomona              |  5262 |
+|    8 | Portland            |  3661 |
+|    9 | Puyallup            |  7335 |
+|    A | Salinas             |  3545 |
+|    B | Santa Anita         | 18404 |
+|    C | Stockton            |  4174 |
+|    D | Tanforan            |  7685 |
+|    E | Tulare              |  4911 |
+|    F | Turlock             |  3550 |
+|    Z | miscode             |     1 |
+|   NA |                     |     1 |
 
 #+begin_quote
 If no assembly center is listed, we shall assume that the person went directly to the Relocation Project given or was born in t he Relocation Project;
@@ -196,33 +196,40 @@ The size of city code is obtained by finding the population of the city from the
 #+end_quote
 ** Birthplaces and Nativity
 <<brth_cntry_pnts>>
-| code | Father's Place of Birth | Mother's Place of Birth |
-|------+-------------------------+-------------------------|
-| W    | Unk.                    | Unk.                    |
-| A    | Unk.                    | Japan                   |
-| J    | Unk.                    | U.S. exc.               |
-| S    | Unk.                    | Hawaii                  |
-| X    | Unk.                    | Other                   |
-| B    | Japan                   | Unk.                    |
-| 1    | Japan                   | Japan                   |
-| 4    | Japan                   | U.S. exc.               |
-| 7    | Japan                   | Hawaii                  |
-| C    | Japan                   | Other                   |
-| K    | U.S. exc.               | Unk.                    |
-| 2    | U.S. exc.               | Japan                   |
-| 5    | U.S. exc.               | U.S. exc.               |
-| 8    | U.S. exc.               | Hawaii                  |
-| L    | U.S. exc.               | Other                   |
-| T    | Hawaii                  | Unk.                    |
-| 3    | Hawaii                  | Japan                   |
-| 6    | Hawaii                  | U.S. exc.               |
-| 9    | Hawaii                  | Hawaii                  |
-| U    | Hawaii                  | Other                   |
-| Y    | Other                   | Unk.                    |
-| D    | Other                   | Japan                   |
-| M    | Other                   | U.S. exc.               |
-| V    | Other                   | Hawaii                  |
-| Z    | Other                   | Other                   |
+| code | Father's Place of Birth | Mother's Place of Birth |     n |
+|------+-------------------------+-------------------------+-------|
+| W    | Unk.                    | Unk.                    |    76 |
+| A    | Unk.                    | Japan                   |    32 |
+| J    | Unk.                    | U.S. exc.               |    14 |
+| S    | Unk.                    | Hawaii                  |     4 |
+| X    | Unk.                    | Other                   |     1 |
+| B    | Japan                   | Unk.                    |   301 |
+| 1    | Japan                   | Japan                   | 94768 |
+| 4    | Japan                   | U.S. exc.               |  5545 |
+| 7    | Japan                   | Hawaii                  |  1235 |
+| C    | Japan                   | Other                   |    65 |
+| K    | U.S. exc.               | Unk.                    |     4 |
+| 2    | U.S. exc.               | Japan                   |   347 |
+| 5    | U.S. exc.               | U.S. exc.               |  4509 |
+| 8    | U.S. exc.               | Hawaii                  |   151 |
+| L    | U.S. exc.               | Other                   |     6 |
+| T    | Hawaii                  | Unk.                    |     1 |
+| 3    | Hawaii                  | Japan                   |   449 |
+| 6    | Hawaii                  | U.S. exc.               |   811 |
+| 9    | Hawaii                  | Hawaii                  |   754 |
+| U    | Hawaii                  | Other                   |    16 |
+| Y    | Other                   | Unk.                    |     1 |
+| D    | Other                   | Japan                   |    28 |
+| M    | Other                   | U.S. exc.               |    36 |
+| V    | Other                   | Hawaii                  |     1 |
+| Z    | Other                   | Other                   |    39 |
+| &    | NA                      | NA                      |     7 |
+| -    | NA                      | NA                      |     1 |
+| 0    | NA                      | NA                      |    15 |
+| G    | NA                      | NA                      |     2 |
+| H    | NA                      | NA                      |     1 |
+| I    | NA                      | NA                      |     1 |
+| NA   | NA                      | NA                      |    25 |
 
 _Birthplace_ <<birthplace>>
 #+begin_quote
@@ -230,117 +237,147 @@ The code for birthplace will be a two digit code,
 and can be obtained from the appended code.
 The code specifies the United States by states, Japan by regions, Hawaii by counties, and other countries by country only.
 #+end_quote
+#+name: birthplace
 | code | description                                 | bpl |     n |
 |------+---------------------------------------------+-----+-------|
-|   -- | unknown                                     |     |    17 |
-|   00 | United States Unspecified                   |     |     7 |
-|   11 | Washington                                  |     |  8936 |
-|   12 | Oregon                                      |     |  2250 |
-|   13 | California                                  |   6 | 53783 |
-|   21 | New Mexico                                  |     |    43 |
-|   22 | Colorado                                    |   8 |   250 |
-|   23 | Idaho                                       |     |   205 |
-|   24 | Montana                                     |     |   153 |
-|   25 | Nevada                                      |     |    79 |
-|   26 | Arizona                                     |   4 |   417 |
-|   27 | Utah                                        |     |   378 |
-|   28 | Wyoming                                     |     |   180 |
-|   31 | Alabama                                     |   1 |     0 |
-|   32 | Arkansas                                    |   5 |    38 |
-|   33 | Kentucky                                    |     |     1 |
-|   34 | Louisiana                                   |     |     5 |
-|   36 | Oklahoma                                    |     |    25 |
-|   37 | Tennessee                                   |     |     1 |
-|   38 | Texas                                       |     |    63 |
-|   4& | Wisconsin                                   |     |     3 |
-|   4- | South Dakota                                |     |     1 |
-|   40 | Ohio                                        |     |    10 |
-|   41 | Illinois                                    |     |    28 |
-|   42 | Indiana                                     |     |     5 |
-|   43 | Iowa                                        |     |     1 |
-|   44 | Kansas                                      |     |     3 |
-|   45 | Michigan                                    |     |     7 |
-|   46 | Minnesota                                   |     |     2 |
-|   47 | Missouri                                    |     |     9 |
-|   48 | Nebraska                                    |     |    65 |
-|   49 | North Dakota                                |     |     5 |
-|   5& | West Virginia                               |     |     1 |
-|   5- | Virginia                                    |     |     2 |
-|   51 | District of Columbia                        |  11 |     4 |
-|   52 | Delaware                                    |  10 |     0 |
-|   53 | Florida                                     |     |     7 |
-|   54 | Georgia                                     |     |     3 |
-|   55 | Maryland                                    |     |     3 |
-|   56 | New Jersey                                  |     |     3 |
-|   57 | New York                                    |     |    29 |
-|   59 | Pennsylvania                                |     |     3 |
-|   61 | Connecticut                                 |   9 |     4 |
-|   62 | Maine                                       |     |     1 |
-|   63 | Massachusetts                               |     |     5 |
-|   64 | New Hampshire                               |     |     1 |
-|   65 | Rhode Island                                |     |     0 |
-|   65 | Vermont                                     |     |     0 |
-|   70 | Hawaii, Unspecified                         |     |   211 |
-|   71 | Hawaii County                               |     |  1355 |
-|   72 | Honolulu County                             |     |  1622 |
-|   73 | Kauai County                                |     |   440 |
-|   74 | Maui County                                 |     |   448 |
-|   81 | Alaska                                      |   2 |   115 |
-|   82 | Canada                                      |     |    39 |
-|   83 | Mexico                                      |     |    10 |
-|   84 | South America                               |     |     3 |
-|   85 | American Samoa                              |     |     0 |
-|   86 | Guam                                        |     |     0 |
-|   87 | Puerto Rico                                 |     |     0 |
-|   88 | Virgin Islands                              |     |     0 |
-|   89 | Wake Island                                 |     |     0 |
-|   80 | Poland                                      |     |     1 |
-|   8- | Germany                                     |     |     1 |
-|   8& | Ireland                                     |     |     3 |
-|   90 | Japan, Unspecified                          |     |   226 |
-|   91 | Sakhalin or Saghalien or Karafuto Is        |     |     3 |
-|   92 | Hokkaido or Yezu Is.                        |     |   112 |
-|   93 | Honshu Northern Division                    |     |  1965 |
-|   94 | Honshu Central Division                     |     |  3848 |
-|   95 | Honshu Central Division                     |     |  2176 |
-|   96 | Honshu Southern Division                    |     | 17773 |
-|   97 | Urban Prefectures (Kyoto, Osaka, and Tokyo) |     |  1415 |
-|   98 | Shikoku                                     |     |  1588 |
-|   99 | Kyushu                                      |     |  8835 |
-|   9- | Formosa/Taiwan                              |     |     0 |
-|   9& | Chosen/Korea                                |     |     0 |
-|   4E | miscode                                     |     |     1 |
-|   9V | miscode                                     |     |     2 |
+|   -- | unknown                                     |  NA |    17 |
+|   00 | United States Unspecified                   | 099 |     7 |
+|   11 | Washington                                  | 053 |  8936 |
+|   12 | Oregon                                      | 041 |  2250 |
+|   13 | California                                  | 006 | 53783 |
+|   21 | New Mexico                                  | 035 |    43 |
+|   22 | Colorado                                    | 008 |   250 |
+|   23 | Idaho                                       | 016 |   205 |
+|   24 | Montana                                     | 030 |   153 |
+|   25 | Nevada                                      | 032 |    79 |
+|   26 | Arizona                                     | 004 |   417 |
+|   27 | Utah                                        | 049 |   378 |
+|   28 | Wyoming                                     | 056 |   180 |
+|   31 | Alabama                                     | 001 |     0 |
+|   32 | Arkansas                                    | 005 |    38 |
+|   33 | Kentucky                                    | 021 |     1 |
+|   34 | Louisiana                                   | 022 |     5 |
+|   36 | Oklahoma                                    | 040 |    25 |
+|   37 | Tennessee                                   | 047 |     1 |
+|   38 | Texas                                       | 048 |    63 |
+|   4& | Wisconsin                                   | 055 |     3 |
+|   4- | South Dakota                                | 046 |     1 |
+|   40 | Ohio                                        | 039 |    10 |
+|   41 | Illinois                                    | 017 |    28 |
+|   42 | Indiana                                     | 018 |     5 |
+|   43 | Iowa                                        | 019 |     1 |
+|   44 | Kansas                                      | 020 |     3 |
+|   45 | Michigan                                    | 026 |     7 |
+|   46 | Minnesota                                   | 027 |     2 |
+|   47 | Missouri                                    | 029 |     9 |
+|   48 | Nebraska                                    | 031 |    65 |
+|   49 | North Dakota                                | 038 |     5 |
+|   5& | West Virginia                               | 054 |     1 |
+|   5- | Virginia                                    | 051 |     2 |
+|   51 | District of Columbia                        | 011 |     4 |
+|   52 | Delaware                                    | 010 |     0 |
+|   53 | Florida                                     | 012 |     7 |
+|   54 | Georgia                                     | 013 |     3 |
+|   55 | Maryland                                    | 024 |     3 |
+|   56 | New Jersey                                  | 034 |     3 |
+|   57 | New York                                    | 036 |    29 |
+|   59 | Pennsylvania                                | 042 |     3 |
+|   61 | Connecticut                                 | 009 |     4 |
+|   62 | Maine                                       | 023 |     1 |
+|   63 | Massachusetts                               | 025 |     5 |
+|   64 | New Hampshire                               | 033 |     1 |
+|   65 | Rhode Island                                | 044 |     0 |
+|   65 | Vermont                                     | 050 |     0 |
+|   70 | Hawaii, Unspecified                         | 015 |   211 |
+|   71 | Hawaii County                               | 015 |  1355 |
+|   72 | Honolulu County                             | 015 |  1622 |
+|   73 | Kauai County                                | 015 |   440 |
+|   74 | Maui County                                 | 015 |   448 |
+|   81 | Alaska                                      | 002 |   115 |
+|   82 | Canada                                      | 150 |    39 |
+|   83 | Mexico                                      | 200 |    10 |
+|   84 | South America                               | 300 |     3 |
+|   85 | American Samoa                              | 100 |     0 |
+|   86 | Guam                                        | 105 |     0 |
+|   87 | Puerto Rico                                 | 110 |     0 |
+|   88 | Virgin Islands                              | 115 |     0 |
+|   89 | Wake Island                                 | 120 |     0 |
+|   80 | Poland                                      | 455 |     1 |
+|   8- | Germany                                     | 453 |     1 |
+|   8& | Ireland                                     | 414 |     3 |
+|   90 | Japan, Unspecified                          | 501 |   226 |
+|   91 | Sakhalin or Saghalien or Karafuto Is        | 501 |     3 |
+|   92 | Hokkaido or Yezu Is.                        | 501 |   112 |
+|   93 | Honshu Northern Division                    | 501 |  1965 |
+|   94 | Honshu Central Division                     | 501 |  3848 |
+|   95 | Honshu Central Division                     | 501 |  2176 |
+|   96 | Honshu Southern Division                    | 501 | 17773 |
+|   97 | Urban Prefectures (Kyoto, Osaka, and Tokyo) | 501 |  1415 |
+|   98 | Shikoku                                     | 501 |  1588 |
+|   99 | Kyushu                                      | 501 |  8835 |
+|   9- | Formosa/Taiwan                              | 500 |     0 |
+|   9& | Chosen/Korea                                | 502 |     0 |
+|   4E | miscode                                     |  NA |     1 |
+|   9V | miscode                                     |  NA |     2 |
 
 _Year of First Arrival in Territorial U.S. for Foreign Born_ <<arrival_us>>
 Last two digits of year or one of the following codes:
-| && | unknown                              |   329 |
-| -- | American born never in Japan         | 51511 |
-| NA | American born who have been in Japan | 19697 |
-| -  | miscode                              |     2 |
-| 0- | miscode                              |     1 |
-| 1  | miscode                              |     1 |
-| 2  | miscode                              |     1 |
+| code | description                          |     n |
+|------+--------------------------------------+-------|
+| &&   | unknown                              |   329 |
+| --   | American born never in Japan         | 51511 |
+| NA   | American born who have been in Japan | 19697 |
+| -    | miscode                              |     2 |
+| 0-   | miscode                              |     1 |
+| 1    | miscode                              |     1 |
+| 2    | miscode                              |     1 |
 
 ** Occupations
 *** Fathers's Occupation in the U.S. and Abroad
-- _Father's Occupation in U.S._ <<fath_occ_us>>
-| code | description                           | uses_codes     |
-|------+---------------------------------------+----------------|
-|    & | Blank, unknown, none, dash            |                |
-|    - | Unrevised forms (not on schedule)     |                |
-|    1 | Professional & semiprofessional       | 0-0 Thru 0-69  |
-|    2 | Managerial and official (except farm) | 0-7 Thru 0-99  |
-|    3 | Clerical and sales                    | 1-01 Thru 1-97 |
-|    4 | Service                               | 2-01 Thru 2-95 |
-|    5 | Farm operators and managers           | 3-00 Thru 3-09 |
-|    6 | Farm laborers including foremen       | 3-11 Thru 3-49 |
-|    7 | Fishermen                             | 3-87 Thru 3-89 |
-|    8 | (Skilled craftsmen and foremen        |                |
-|      | (Semi-skilled operators (except farm) | 4 Thru 7       |
-|    9 | Unskilled laborers (except farm)      | 8 Thru 9       |
+_Father's Occupation in U.S._ <<fath_occ_us>>
+#+name: fath_occ_us
+| code | description                           | uses_codes     |     n |
+|------+---------------------------------------+----------------+-------|
+|    & | Blank, unknown, none, dash            |                | 33666 |
+|    - | Unrevised forms (not on schedule)     |                |  6726 |
+|    1 | Professional & semiprofessional       | 0-0 Thru 0-69  |    28 |
+|    2 | Managerial and official (except farm) | 0-7 Thru 0-99  | 12328 |
+|    3 | Clerical and sales                    | 1-01 Thru 1-97 |  2617 |
+|    4 | Service                               | 2-01 Thru 2-95 |  3607 |
+|    5 | Farm operators and managers           | 3-00 Thru 3-09 | 30421 |
+|    6 | Farm laborers including foremen       | 3-11 Thru 3-49 |  9554 |
+|    7 | Fishermen                             | 3-87 Thru 3-89 |  1263 |
+|    8 | Skilled craftsmen and foremen         | 4 Thru 7       |  5763 |
+|    9 | Unskilled laborers (except farm)      | 8 Thru 9       |  1091 |
+|    D | miscode                               |                |     1 |
+|    V | miscode                               |                |     2 |
+|   NA | NA                                    |                |    10 |
 
-*** Qualified Occupations and Activities
+_Father's Occupation Abroad_ <<fath_occ_abroad>>
+#+name: fath_occ_abroad
+| code | description                           | uses_codes     |     n |
+|------+---------------------------------------+----------------+-------|
+| &    | Blank, unknown, none, dash            |                | 63965 |
+| -    | Unrevised forms (not on schedule)     |                |  9627 |
+| 1    | Professional & semiprofessional       | 0-0 Thru 0-69  |  1927 |
+| 2    | Managerial and official (except farm) | 0-7 Thru 0-99  |  4796 |
+| 3    | Clerical and sales                    | 1-01 Thru 1-97 |   801 |
+| 4    | Service                               | 2-01 Thru 2-95 |   371 |
+| 5    | Farm operators and managers           | 3-00 Thru 3-09 | 24713 |
+| 6    | Farm laborers including foremen       | 3-11 Thru 3-49 |   177 |
+| 7    | Fishermen                             | 3-87 Thru 3-89 |   476 |
+| 8    | Skilled craftsmen and foremen         | 4 Thru 7       |  2193 |
+| 9    | Unskilled laborers (except farm)      | 8 Thru 9       |   141 |
+| A    | miscode                               |                |     2 |
+| B    | miscode                               |                |     1 |
+| D    | miscode                               |                |     4 |
+| F    | miscode                               |                |     1 |
+| H    | miscode                               |                |     1 |
+| L    | miscode                               |                |     2 |
+| V    | miscode                               |                |     2 |
+| NA   | NA                                    |                |    13 |
+
+*** Qualified Occupations and Activities				      
 Here are all of the unique codes for qualified occupations of internees that are present after some initial filtering:
 #+begin_src R :results silent
 raw_codes <- read_fw_form26() |> form26_drop_dup() |> distinct(qual_occ_1) |> pull()
