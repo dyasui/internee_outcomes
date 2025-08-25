@@ -1,0 +1,203 @@
+:PROPERTIES:
+:GPTEL_MODEL: anthropic/claude-sonnet-4
+:GPTEL_BACKEND: OpenRouter
+:GPTEL_SYSTEM: You are a large language model living in Emacs and a helpful assistant. Respond concisely.
+:GPTEL_BOUNDS: ((response (5908 7115)))
+:END:
+#+PROPERTY: header-args:R :session *R* :colnames yes
+#+TITLE: Aggregating total sample variance from chunked subsets
+
+#+begin_src R :results silent
+library(tidyverse)
+#+end_src
+
+* Algorithm Description
+I found a [[https://math.stackexchange.com/questions/3604607/can-i-work-out-the-variance-in-batchesmath][stackexchange answer]] giving the following formula for calculating the total variance in chunks of different sizes.
+#+begin_quote
+$$
+s_T^2 =
+\frac{ (n_i - 1) s_i^2 + (n_T - 1) s_T^2 }
+{ n_i + n_T - 1} +
+\frac{ n_i n_T (\bar{x_i} - \bar{x_T}^2}
+{ (n_i + n_T) (n_i + n_T - 1) }
+$$
+1. Set i=1.
+2. Compute $n_i$, $x_i$, and $s_{xi}^2$, the sample size, sample mean, and sample variance of dataset i.
+3. Increment i.
+4. Repeat Step 2.
+5. Use the above two formulas to compute a new $n_T$, $x_T$, and $s_T^2$ representing the sample size, sample mean, and sample variance of all datasets up to set i.
+6. If the last dataset was used to compute the result in step 5, stop. Otherwise, go to step 3.
+#+end_quote
+
+* Simplified Example
+Here is an example dataset of our random variable of interest =x= for which we want to calculate the overall variance
+in each of the groups represented by =g=.
+#+begin_src R
+data <- tibble(
+  x = round(rnorm(mean = 0, sd = 1, n = 100), 2),
+  g = sample(1:3, 100, replace = T)
+)
+head(data)
+#+end_src
+
+#+RESULTS:
+|     x | g |
+|-------+---|
+|  0.45 | 3 |
+|  0.38 | 3 |
+| -1.38 | 3 |
+|  0.98 | 3 |
+| -0.75 | 3 |
+| -0.69 | 1 |
+
+Suppose that the original dataframe was too large to fit in memory, but we managed to calculate summary statistics on these individual chunks.
+The chunks can be of different sample sizes represented by =n_i= for the number of observations in each of the =i= chunks.
+
+#+begin_src R
+chunk_sumstats <- data |>
+  mutate(chunk = rep(1:10, each=10)) |>
+  group_by(chunk, g) |>
+  summarise(
+    xbar = mean(x, na.rm = T),
+    var  = var(x, na.rm = T),
+    n    = n()
+  )
+#+end_src
+
+#+RESULTS:
+| chunk | g |               xbar |                var | n |
+|-------+---+--------------------+--------------------+---|
+|     1 | 1 | 0.0566666666666667 |  0.570233333333333 | 3 |
+|     1 | 2 |              0.215 |            0.21125 | 2 |
+|     1 | 3 |             -0.064 |            0.93843 | 5 |
+|     2 | 1 |              -0.66 |            0.69484 | 6 |
+|     2 | 2 |             -0.235 |            0.91125 | 2 |
+|     2 | 3 |               1.71 |             0.6962 | 2 |
+|     3 | 1 |  -1.09333333333333 |  0.442233333333333 | 3 |
+|     3 | 2 |               0.25 |   2.29666666666667 | 4 |
+|     3 | 3 |  0.593333333333333 |  0.233233333333333 | 3 |
+|     4 | 1 |              0.475 |            0.70805 | 2 |
+|     4 | 2 |             0.1825 |  0.938958333333333 | 4 |
+|     4 | 3 |             -0.705 |   4.37523333333333 | 4 |
+|     5 | 1 |            -0.9325 |  0.137758333333333 | 4 |
+|     5 | 2 |              1.285 |            0.25205 | 2 |
+|     5 | 3 | 0.0325000000000001 |   2.60875833333333 | 4 |
+|     6 | 1 |             0.1275 |  0.861958333333333 | 4 |
+|     6 | 2 |             -0.825 |            2.35445 | 2 |
+|     6 | 3 |             0.4975 |           0.699225 | 4 |
+|     7 | 1 |              -0.86 |                    | 1 |
+|     7 | 2 |            -0.3975 |   1.31275833333333 | 4 |
+|     7 | 3 |             -0.204 |            0.93413 | 5 |
+|     8 | 1 |             0.2275 |           0.341825 | 4 |
+|     8 | 2 |             0.8525 |           0.185825 | 4 |
+|     8 | 3 |               0.57 |             0.4418 | 2 |
+|     9 | 1 |               -0.2 | 0.0543333333333333 | 4 |
+|     9 | 2 |               0.08 |   5.27286666666667 | 4 |
+|     9 | 3 |             -0.335 |            0.18605 | 2 |
+|    10 | 1 |              1.475 |            0.91125 | 2 |
+|    10 | 2 |             -0.955 |            0.13005 | 2 |
+|    10 | 3 |  0.403333333333333 |   1.50226666666667 | 6 |
+
+Here is my application of this algorithm in R.
+To match the format of my chunked dataset, it takes a tibble with chunked summary statistics.
+#+begin_src R 
+# Function to combine two statistics (Welford's online variance formula)
+combine_var <- function(stat1, stat2) {
+  n1 <- stat1$n; x1 <- stat1$mean; sx1 <- stat1$var
+  n2 <- stat2$n; x2 <- stat2$mean; sx2 <- stat2$var
+  
+  n_combined <- n1 + n2
+  mean_combined <- (n1 * x1 + n2 * x2) / n_combined
+  var_combined <- ((n1 - 1) * sx1 + (n2 - 1) * sx2) / (n_combined - 1) + 
+                  n1 * n2 * (x1 - x2)^2 / (n_combined * (n_combined - 1))
+  
+  list(n = n_combined, mean = mean_combined, var = var_combined)
+}
+
+# apply combine_var over subsample sum stats
+total_var <- function(chunks, n, mean, var, groups) {
+  library(purrr)
+  cumulative_stats <- chunks |>
+    # if group only has one observation, drop it
+    filter({{n}} > 1) |>
+    group_by({{ groups }}) |>
+    mutate(
+      stats = map(row_number(),
+                  ~ list(n = {{n}}[.x],
+                         mean = {{mean}}[.x],
+                         var = {{var}}[.x])
+                  )
+      ) |>
+    pull(stats) |>
+    accumulate(combine_var,
+               .init = list(
+                 n = 0,
+                 mean = 0,
+                 var = 0)) |>
+    tail(-1) |>
+    map_dfr(~ tibble(n = .x$n, mean = .x$mean, var = .x$var),
+            .id = "cumulative_step")
+
+  cumulative_stats
+}
+
+steps <- total_var(chunk_sumstats,
+          n = n,
+          mean = xbar,
+          var = var,
+          groups = g)
+#+end_src
+
+#+RESULTS:
+| cumulative_step |  n |                 mean |               var |
+|-----------------+----+----------------------+-------------------|
+|               1 |  3 |   0.0566666666666667 | 0.570233333333333 |
+|               2 |  5 |                 0.12 |           0.34545 |
+|               3 | 10 |                0.028 | 0.580017777777778 |
+|               4 | 16 |                -0.23 |           0.69796 |
+|               5 | 18 |   -0.230555555555556 | 0.669452614379085 |
+|               6 | 20 |              -0.0365 | 0.992381842105263 |
+|               7 | 23 |   -0.174347826086957 |  1.02969841897233 |
+|               8 | 27 |   -0.111481481481481 |  1.15988233618234 |
+|               9 | 30 |               -0.041 |           1.10223 |
+|              10 | 32 | -0.00874999999999998 |  1.07006290322581 |
+|              11 | 36 |               0.0125 |  1.03196785714286 |
+|              12 | 40 |             -0.05925 |  1.31020198717949 |
+|              13 | 44 |   -0.138636363636364 |  1.26242135306554 |
+|              14 | 46 |  -0.0767391304347826 |  1.29807579710145 |
+|              15 | 50 |               -0.068 |  1.35272653061224 |
+|              16 | 54 |  -0.0535185185185185 |  1.30209493361286 |
+|              17 | 56 |  -0.0810714285714286 |  1.31842428571429 |
+|              18 | 60 |              -0.0425 |          1.285775 |
+|              19 | 64 |           -0.0646875 |  1.27415228174603 |
+|              20 | 69 |  -0.0747826086956522 |  1.23673708439898 |
+|              21 | 73 |  -0.0582191780821918 |   1.1870703957382 |
+|              22 | 77 |  -0.0109090909090909 |  1.17331363636364 |
+|              23 | 79 |  0.00379746835443038 |  1.15732641999351 |
+|              24 | 83 | -0.00602409638554216 |  1.10478765794887 |
+|              25 | 87 | -0.00206896551724138 |  1.23766776263031 |
+|              26 | 89 |  -0.0095505617977528 |  1.21411570480082 |
+|              27 | 91 |   0.0230769230769231 |  1.24515931623932 |
+|              28 | 93 |  0.00204301075268818 |  1.23985338943431 |
+|              29 | 99 |   0.0263636363636364 |  1.24985194805195 |
+
+** Plot the results
+#+begin_src R :results silent
+plt_data <- steps |>
+  mutate(step = as.integer(cumulative_step)) |>
+  select(-cumulative_step) |>
+  pivot_longer(cols = c("mean", "var"), names_to = "stat")
+
+#+end_src
+
+#+RESULTS:
+#+begin_src R :exports results :results graphics file :file ../notes/figures/tot_var_convergence.pdf
+ggplot(aes(x = step, y = value, color = stat, group = stat), data = plt_data) +
+  geom_line() +
+  geom_hline(yintercept = mean(data$x), color = "red") +
+  geom_hline(yintercept = var(data$x), color = "blue") +
+  facet_wrap(~stat)
+#+end_src
+
+#+RESULTS:
+[[file:../notes/figures/tot_var_convergence.pdf]]
