@@ -10,7 +10,7 @@ library(haven)
 library(ggridges)
 
 library(targets)
-tar_load(c(linked_data_full))
+tar_load(c(linked_data_full, ddi_path))
 #+end_src
 
 #+begin_src R
@@ -62,7 +62,8 @@ theme_internment <- function(){
 #+RESULTS:
 
 ** Wages Diff-in-Diff
-#+begin_src R :exports results :results graphics file :file figures/did_plot.pdf :width 7 :height 5 
+#+begin_src R
+# Collect average wages by racial group from database
 callback <- function(x, pos) {
   x |>
     group_by(YEAR, RACE) |>
@@ -73,6 +74,7 @@ callback <- function(x, pos) {
         YEAR == 1950 ~ INCWAGE
       )
     ) |>
+    filter(!is.na(salary)) |>
     summarise(
       k = n(),
       mean = mean(salary, na.rm = T),
@@ -83,20 +85,102 @@ callback <- function(x, pos) {
 group_salaries <- ipumsr::read_ipums_micro_chunked(ddi_path,
                          callback = ipumsr::IpumsDataFrameCallback$new(callback),
                          chunk_size = 1e7,
-                         vars = c("YEAR", "RACE", "INCWAGE")) |>
-  group_by(YEAR, RACE)
+                         vars = c("YEAR", "RACE", "INCWAGE"))
+			 #+end_src
+
+#+RESULTS:
+: /Users/dante/work/Research/Internment
+
+#+begin_src R :tangle R/helper_functions.R
+combine_var <- function(stat1, stat2) {
+  n1 <- stat1$n; x1 <- stat1$mean; sx1 <- stat1$var
+  n2 <- stat2$n; x2 <- stat2$mean; sx2 <- stat2$var
+  
+  n_combined <- n1 + n2
+  mean_combined <- (n1 * x1 + n2 * x2) / n_combined
+  var_combined <- ((n1 - 1) * sx1 + (n2 - 1) * sx2) / (n_combined - 1) + 
+                  n1 * n2 * (x1 - x2)^2 / (n_combined * (n_combined - 1))
+  
+  list(n = n_combined, mean = mean_combined, var = var_combined)
+}
+
+# apply combine_var over subsample sum stats
+total_var <- function(chunks, n, mean, var, groups) {
+  library(purrr)
+  cumulative_stats <- chunks |>
+    # if group only has one observation, drop it
+    filter({{n}} > 1) |>
+    group_by({{ groups }}) |>
+    mutate(
+      stats = map(row_number(),
+                  ~ list(n = {{n}}[.x],
+                         mean = {{mean}}[.x],
+                         var = {{var}}[.x])
+                  )
+      ) |>
+    pull(stats) |>
+    reduce(combine_var,
+               .init = list(
+                 n = 0,
+                 mean = 0,
+                 var = 0)) # |>
+    ## tail(-1) |>
+    ## map_dfr(~ tibble(n = .x$n, mean = .x$mean, var = .x$var),
+    ##         .id = "cumulative_step")
+
+  cumulative_stats
+}
 #+end_src
 
-#+begin_src R
-plt_data <- group_salaries |>
-  group_by(YEAR, RACE)
-  summarise(
-    n = sum(k),
-    mean = sum(mean, na.rm=T) / sum(k),
-    variance = 1/(sum(k)-1)*(sum((k-1)*var) + sum(k*(mean-weighted.mean(mean,k))^2)),
-    sd = sqrt(variance)
-  )
+#+RESULTS:
 
+This =group_salaries= object has summary statistics for each chunk of 10 million observations in the census microdata 
+
+#+begin_src R :colnames yes
+plt_data <- group_salaries |>
+  group_by(YEAR, RACE) |>
+  # map total variance formula to each group's tibble
+  group_modify(~ {
+    result <- total_var(chunks = .x, n = k, mean = mean, var = var)
+    tibble(
+      total_n = result$n,
+      mean = result$mean, 
+      var = result$var
+    )
+  }) |>
+  mutate(
+    sd = sqrt(var),
+    RACE = case_when(
+      RACE==1 ~ "White",
+      RACE==2 ~ "Black",
+      RACE==3 ~ "Native",
+      RACE==4 ~ "Chinese",
+      RACE==5 ~ "Japanese",
+      RACE==6 ~ "Asian other",
+      RACE==7 ~ "Other"
+    )
+  )
+#+end_src
+
+#+RESULTS:
+| YEAR | RACE        |  total_n |             mean |              var |               sd |
+|------+-------------+----------+------------------+------------------+------------------|
+| 1940 | White       | 80303230 | 788.045553329873 | 1774149.73259516 | 1331.97212155329 |
+| 1940 | Black       |  8123518 | 354.998958034018 |  353462.54364016 | 594.527159716157 |
+| 1940 | Native      |   179212 | 241.996114211102 | 334372.915812468 | 578.249873162517 |
+| 1940 | Chinese     |    57185 | 576.150095129844 | 669669.730244907 | 818.333507956815 |
+| 1940 | Japanese    |    89691 | 494.368516685057 | 881649.657179719 | 938.962010509328 |
+| 1940 | Asian other |    41649 | 928.212809911402 | 618398.506153839 |   786.3831802333 |
+| 1940 | Other       |      323 | 641.650619195046 | 1348959.04614682 | 1161.44696226165 |
+| 1950 | White       | 20194696 | 1100.25975137256 | 2684292.17834694 | 1638.38096251969 |
+| 1950 | Black       |  2157925 | 934.517325671679 | 2276220.36243285 | 1508.71480486964 |
+| 1950 | Native      |    61083 |  570.87323805313 | 1571925.38917342 | 1253.76448712404 |
+| 1950 | Chinese     |    19269 | 800.726555607451 | 1830584.12021075 | 1352.99080566379 |
+| 1950 | Japanese    |    33453 |  645.00044839028 |  1646083.5323745 | 1282.99786920107 |
+| 1950 | Asian other |    14381 | 491.610458243517 | 1336587.64268338 | 1156.10883686761 |
+| 1950 | Other       |      518 | 943.532818532819 | 1967032.56275065 |  1402.5093806284 |
+
+#+begin_src R :exports results :results graphics file :file figures/race_wage_plot.pdf :width 7 :height 5 
 ggplot() +
   geom_line(
     aes(x=YEAR, y = mean, group = RACE, color = RACE),
@@ -107,12 +191,13 @@ ggplot() +
     aes(x = YEAR, ymin = mean-sd, ymax = mean+sd),
     data = plt_data
   ) +
-  facet_wrap(~RACE) +
+  facet_wrap(~RACE, nrow = 2) +
 ## scale_color_manual(values=c("#003049", "#D62828", "#F77F00", "#FCBF49")) +
   theme_internment() +
-  labs(title="Interned Japanese Experienced Higher Wage Growth",
+  scale_x_continuous(breaks = c(1940, 1950)) +
+  labs(title="Average Incomes by Race, 1940 to 1950",
        x="Year",
-       y="Average Income (1950 dollars, wage and salary income only)",
+       y="Average Income \n(1950 dollars, wage and salary income only)",
        caption="") +
   theme(legend.title = element_blank(),
         legend.position = "bottom") +
@@ -120,6 +205,7 @@ ggplot() +
 #+end_src
 
 #+RESULTS:
+[[file:figures/race_wage_plot.pdf]]
 ** OCCSCORE Distribution: MLP Treatment vs Control
 #+begin_src R :exports results :results graphics file :file figures/mlp-occscore-distribution_plot.pdf :width 6 :height 4
 plt_data <- read_csv("data/linked_sample.csv") |>
