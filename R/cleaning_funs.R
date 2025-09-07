@@ -1,52 +1,114 @@
 collect_sample <- function(db, table,
-                           vars = c("RACE", "BIRTHYR", "INCWAGE", "STATEFIP", "COUNTYICP", "AGE", "SEX",
-                                    "EDUCD", "CLASSWKR", "WKSWORK1", "OCC1950", "OCCSCORE", "EMPSTAT")) {
-  con <- dbConnect(duckdb(), mlp_db)
+                           vars = c("RACE", "BIRTHYR", "INCWAGE",
+                                    "STATEFIP", "COUNTYICP", "AGE",
+                                    "SEX", "EDUCD", "CLASSWKR",
+                                    "WKSWORK1", "OCC1950", "OCCSCORE",
+                                    "EMPSTAT")) {
+  # connect to database on file
+  con <- dbConnect(duckdb(), db)
+  # disconnect from database on function exit
+  on.exit(dbDisconnect(con))
 
-  reg_data <- tbl(con, mlp_tbl) |>
+  # save table as temporary object
+  db_tbl <- tbl(con, table)
+
+  # collect HIKs of interest from 1940 data
+  hiks_to_keep <- db_tbl |>
+    filter(YEAR == 1940, RACE %in% c(4,5)) |>
+    select(HIK)
+
+  # Main query: join to keep only relevent HIKs,
+  # then filter and collect
+  reg_data <- db_tbl |>
+    semi_join(hiks_to_keep, by = "HIK") |>
     filter(
       !is.na(STATEFIP),
       !is.na(COUNTYICP),
       (BIRTHYR < 1926)
     ) |>
+    select(HIK, YEAR, all_of(vars)) |>
+    collect() |>
     pivot_wider(
       id_cols = HIK, names_from = YEAR,
-      values_from = vars
-    ) |>
-    filter(RACE_1940 %in% c(4,5)) |>
-    collect() 
+      values_from = all_of(vars)
+    ) 
 
-  dbDisconnect(con)
+  return(reg_data)
 }
 
-clean_sample <- function(wide_df, ddi, inflator = 1.69) {
+adjust_dollar_vars <- function(df, inflator = 1.69,
+                               harmonize_incwage = TRUE,
+                               replace = FALSE,
+                               name_style = c("var_adj_year", "var_year_adj")) {
+  name_style <- match.arg(name_style)
+  cols <- grep("^(INCWAGE|INCTOT|INCBUSFM|INCOTHER)_(1940|1950)$", names(df), value = TRUE)
+  if (!length(cols)) return(df)
+
+  have_incwage_1940 <- "INCWAGE_1940" %in% names(df)
+  incwage_1950_top <- if (harmonize_incwage && have_incwage_1940) 5001 * inflator else 10000
+
+  top_1950 <- c(INCWAGE = incwage_1950_top, INCTOT = 10000, INCBUSFM = 10000, INCOTHER = 10000)
+
+  na_codes_for <- function(var) {
+    switch(var,
+      INCWAGE  = c(999999, 999998),
+      INCTOT   = c(9999999, 9999998),
+      INCBUSFM = c(99999, 99998),
+      INCOTHER = c(99999, 99998),
+      numeric(0)
+    )
+  }
+
+  for (col in cols) {
+    base <- sub("_(1940|1950)$", "", col)
+    yr   <- as.integer(sub(".*_(\\d{4})$", "\\1", col))
+    x    <- as.numeric(df[[col]])
+
+    # set NA/unknown codes to NA (preserve negatives like net loss)
+    na_codes <- na_codes_for(base)
+    x[x %in% na_codes] <- NA_real_
+
+    # inflate 1940 to 1950 dollars
+    if (yr == 1940) x <- x * inflator
+
+    # pick topcode
+    top <- if (yr == 1940 && base == "INCWAGE") 5001 * inflator else
+           if (yr == 1950) top_1950[[base]] else NA_real_
+
+    # cap at top (vectorized)
+    if (!is.na(top)) x <- ifelse(x > top, top, x)
+
+    # name for output column
+    newname <- if (replace) {
+      col
+    } else if (name_style == "var_adj_year") {
+      paste0(base, "_adj_", yr)
+    } else {
+      paste0(base, "_", yr, "_adj")
+    }
+
+    df[[newname]] <- x
+  }
+
+  df
+}
+
+clean_wide_vars <- function(wide_df, ddi, inflator = 1.69) {
   # ten-year inflation rate from bls.gov/data/inflation_calculator.htm
   wide_df <- wide_df |>
+    # adjust dollar amounts for inflation and missing values
+    adjust_dollar_vars(inflator = 1.69) |>
     # deal with inconsistencies in reported birthyear across censuses by averaging
     mutate(
-      birthyr_avg = (BIRTHYR_1950 + BIRTHYR_1940) / 2,
-      age_1940 = 1940 - birthyr_avg,
-      age_1950 = 1950 - birthyr_avg
+      birthyr_adj = round( (BIRTHYR_1950 + BIRTHYR_1940) / 2 ),
+      age_adj_1940 = 1940 - birthyr_adj,
+      age_adj_1950 = 1950 - birthyr_adj
     ) |>
     # base time-invariant demographics on 1940 response
     mutate(
-      sex = ifelse(SEX_1940==1, "Male", "Female"),
-      race = case_when(RACE_1940==5 ~ "Japanese",
+      sex_adj = ifelse(SEX_1940==1, "Male", "Female"),
+      race_adj = case_when(RACE_1940==5 ~ "Japanese",
                        RACE_1940==4 ~ "Chinese")
-    ) |>
-    # adjust dollar amounts for inflation and missing values
-    mutate(
-      # remove NA values and convert 1940 incomes to 1950 dollars
-      salary_1940 = ifelse(INCWAGE_1940 %in% c(999999,999998), NA, INCWAGE_1940 * inflator ),
-      salary_1950 = case_when(INCWAGE_1950 %in% c(999999,999998) ~ NA,
-                              INCWAGE_1950 > (5001 * inflator) ~ 5001 * inflator,
-                              .default = INCWAGE_1950),
-      income_bsfm = case_when(INCBUSFM_1950 %in% c(99999, 99998) ~ NA,
-                                .default = INCBUSFM_1950),
-      income_tot = case_when(INCTOT_1950 %in% c(9999999, 9999998) ~ NA,
-                             .default = INCTOT_1950),
-      income_oth = case_when(INCOTHER_1950 %in% c(99999, 99998) ~ NA,
-                             .default = INCOTHER_1950)
     ) |>
     mutate(
       # create indicator for migration status
@@ -54,58 +116,34 @@ clean_sample <- function(wide_df, ddi, inflator = 1.69) {
       # create new individual-level id
       id = row_number()
     ) 
+}
 
+clean_long_vars <- function(wide_df, ddi) {
   long_df <- wide_df |>
-    select(!starts_with("YEAR")) |> # redundant
+    # select(!starts_with("YEAR")) |> # redundant
     pivot_longer(
       cols = matches("_(1940|1950)$") & !contains("histid_"),
       names_to = c(".value", "YEAR"),
       names_pattern = "(.*)_(1940|1950)"
     ) |>
-    set_ipums_var_attributes(ipumsr::read_ipums_ddi(ddi)) |>
+    set_ipums_var_attributes(var_info = ipumsr::read_ipums_ddi(ddi)) |>
     mutate(
-      YEAR = as.integer(YEAR),
-      married = ifelse(MARST %in% 1:2, 1, 0),
-      foreign = ifelse(NATIVITY == 5, 1, 0),
-      college = ifelse(EDUC %in% 7:11, 1, 0),
-      employed = ifelse(EMPSTAT == 1, 1, 0),
-      generation = case_when(
-        NATIVITY == 5 ~ "first-generation", # foriegn born
-        NATIVITY %in% 2:4 ~ "second-generation", # both or either parent foriegn born
-        NATIVITY == 1 & (FBPL %in% 1:120 | MBPL %in% 1:120) ~ "third-generation",
-        .default = NA
-      ),
-      yearsschool = case_when(
-        as_factor(EDUCD) == "Missing" ~ NA_integer_,
-        as_factor(EDUCD) == "No schooling completed" ~ 0,
-        as_factor(EDUCD) == "Kindergarten" ~ 0.5,
-        as_factor(EDUCD) == "Grade 1" ~ 1,
-        as_factor(EDUCD) == "Grade 2" ~ 2,
-        as_factor(EDUCD) == "Grade 3" ~ 3,
-        as_factor(EDUCD) == "Grade 4" ~ 4,
-        as_factor(EDUCD) == "Grade 5" ~ 5,
-        as_factor(EDUCD) == "Grade 6" ~ 6,
-        as_factor(EDUCD) == "Grade 7" ~ 7,
-        as_factor(EDUCD) == "Grade 8" ~ 8,
-        as_factor(EDUCD) == "Grade 9" ~ 9,
-        as_factor(EDUCD) == "Grade 10" ~ 10,
-        as_factor(EDUCD) == "Grade 11" ~ 11,
-        as_factor(EDUCD) == "Grade 12" ~ 12,
-        as_factor(EDUCD) == "1 year of college" ~ 13,
-        as_factor(EDUCD) == "2 years of college" ~ 14,
-        as_factor(EDUCD) == "3 years of college" ~ 15,
-        as_factor(EDUCD) == "4 years of college" ~ 16,
-        as_factor(EDUCD) == "5 years of college" ~ 17,
-        as_factor(EDUCD) == "6 years of college" ~ 18,
-        as_factor(EDUCD) == "7 years of college" ~ 19,
-        as_factor(EDUCD) == "8+ years of college" ~ 20
-        ),
-      occupation = ifelse(OCC1950 %in% 979:999, NA, as_factor(OCC1950)),
-      county_ez = is_evac_county(STATEFIP, COUNTYICP)
-    )
-    
+      across(any_of("YEAR"), ~ as.integer(.)),
+      across(any_of("MARST"), ~ifelse(. %in% 1:2, 1, 0), .names = "married"),
+      across(any_of("NATIVITY"), ~ifelse(. == 5, 1, 0), .names = "foreign"),
+      across(any_of("EDUC"), ~ifelse(. %in% 7:11, 1, 0), .names = "college"),
+      across(any_of("EMPSTAT"), ~ifelse(. == 1, 1, 0), .names = "employed"),
+      across(any_of("OCC1950"),
+             ~ifelse(. %in% 979:999, NA, as_factor(.)),
+             .names = "occupation"))
 
   return(long_df)
+}
+
+clean_mlp <- function(wide_df, ddi, inflator = 1.6) {
+  wide_df |>
+    clean_wide_vars(ddi = ddi, inflator = inflator) |>
+    clean_long_vars(ddi = ddi)
 }
 
 collect_county_stats <- function(ddi, inflator = 1.69) {

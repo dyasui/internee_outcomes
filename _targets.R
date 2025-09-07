@@ -16,26 +16,24 @@ tar_source()
 
 # Target list describes workflow
 list(
-  # Process internment camp data
   tar_target(form26_raw, "data/WRA.FORM26.PU.txt", format = "file"),
   tar_target(wra_addr, "data/WRA_prev_address.csv", format = "file"),
   tar_target(wra_data, compile_WRA(form26_raw, wra_addr)),
 
-  # download IPUMS data and save extract locations
   tar_target(extract_def, define_ipums_extract()),
   tar_target(
     extract_ready,
-    submit_and_download_extract(extract_def, download_dir = "data/fullcount_census/")
+    submit_and_download_extract(
+      extract_def,
+      download_dir = "data/fullcount_census/"
+    )
   ),
-  tar_target(ddi_fullcount, extract_ready, format = "file"),
 
-  # TODO script extract def and download for MLP v2 data
-  # write MLP data to local database
+  tar_target(ddi_fullcount, extract_ready, format = "file"),
   tar_target(ddi_mlp, "data/mlp_v2_0/usa_00131.xml", format = "file"),
   tar_target(mlp_db, "data/mlp.duckdb", format = "file"),
   tar_target(mlp_tbl, write_ipums_db(ddi_mlp, mlp_db, "mlp_1940_1950", debug = TRUE, chunk_size = 1e7)),
 
-  # calculate internment proportions
   tar_target(internpr_county,
              calc_int_proportion(wra_data, ddi = ddi_fullcount,
                                  by = c("STATEFIP", "COUNTYICP"),
@@ -45,7 +43,7 @@ list(
                                  by = c("STATEFIP", "COUNTYICP", "RACE"),
                                  label = "internment_prob")),
 
-  # collect main analysis samples
-  tar_target(sample_wide, collect_sample(mlp_db, mlp_tbl))
+  tar_target(sample_wide, collect_sample(mlp_db, mlp_tbl)),
+  tar_target(sample_long, clean_mlp(sample_wide, ddi_mlp, 1.69))
 
 )

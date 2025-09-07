@@ -34,28 +34,33 @@ tar_source()
 list(
   tar_target(form26_raw, "data/WRA.FORM26.PU.txt", format = "file"),
   tar_target(wra_addr, "data/WRA_prev_address.csv", format = "file"),
-  tar_target(wra_data, compile_WRA(form26_raw, wra_addr))
+  tar_target(wra_data, compile_WRA(form26_raw, wra_addr)),
 
-  ## tar_target(extract_def, define_ipums_extract()),
-  ## tar_target(
-  ##   extract_ready,
-  ##   submit_and_download_extract(extract_def, download_dir = "data/fullcount_census/")
-  ## ),
-  ## tar_target(ddi_fullcount, extract_ready, format = "file"),
-  ## tar_target(ddi_mlp, "data/mlp_v2_0/usa_00131.xml", format = "file"),
-  ## tar_target(mlp_db, "data/mlp.duckdb", format = "file"),
-  ## tar_target(mlp_tbl, write_ipums_db(ddi_mlp, mlp_db, "mlp_1940_1950", debug = TRUE, chunk_size = 1e7)),
+  tar_target(extract_def, define_ipums_extract()),
+  tar_target(
+    extract_ready,
+    submit_and_download_extract(
+      extract_def,
+      download_dir = "data/fullcount_census/"
+    )
+  ),
 
-  ## tar_target(internpr_county,
-  ##            calc_int_proportion(wra_data, ddi = ddi_fullcount,
-  ##                                by = c("STATEFIP", "COUNTYICP"),
-  ##                                label = "internment_county")),
-  ## tar_target(internpr,
-  ##            calc_int_proportion(wra_data, ddi = ddi_fullcount,
-  ##                                by = c("STATEFIP", "COUNTYICP", "RACE"),
-  ##                                label = "internment_prob")),
+  tar_target(ddi_fullcount, extract_ready, format = "file"),
+  tar_target(ddi_mlp, "data/mlp_v2_0/usa_00131.xml", format = "file"),
+  tar_target(mlp_db, "data/mlp.duckdb", format = "file"),
+  tar_target(mlp_tbl, write_ipums_db(ddi_mlp, mlp_db, "mlp_1940_1950", debug = TRUE, chunk_size = 1e7)),
 
-  ## tar_target(sample_wide, collect_sample(mlp_db, mlp_tbl))
+  tar_target(internpr_county,
+             calc_int_proportion(wra_data, ddi = ddi_fullcount,
+                                 by = c("STATEFIP", "COUNTYICP"),
+                                 label = "internment_county")),
+  tar_target(internpr,
+             calc_int_proportion(wra_data, ddi = ddi_fullcount,
+                                 by = c("STATEFIP", "COUNTYICP", "RACE"),
+                                 label = "internment_prob")),
+
+  tar_target(sample_wide, collect_sample(mlp_db, mlp_tbl)),
+  tar_target(sample_long, clean_mlp(sample_wide, ddi_mlp, 1.69))
 
 )
 #+end_src
@@ -77,14 +82,14 @@ Here is a function which strips the names and NHGIS codes from a shapefile downl
 For the list of state and county names in the WIP previous address list,
 I want to give them appropriate NHGIS codes to make the joins with other datasets easier.
 The county names from the WRA records should match the county names from the NHGIS system for counties in 1940.
-#+begin_src R :colnames yes :tangle no :session *R:internment*
+#+begin_src R :colnames yes :tangle R/helper-functions :session *R:internment*
 library(tidyverse)
 nhgis_shp <- "data/nhgis0035_shape.zip"
 
 get_nhgis_codes <- function(shp) {
   library(dplyr)
   library(ipumsr)
-
+.R
   nhgis_codes <- read_ipums_sf(shp, file_select = matches("us_county_1950")) |>
     sf::st_drop_geometry() |>
     mutate(STATENAM = case_when(
@@ -375,12 +380,15 @@ form26_label <- function(raw_data) {
                             as.integer(birth_yr) + 1800, # born after 1842
                           as.integer(birth_yr) <= 42 ~ as.integer(birth_yr) + 1900,
                           .default = NA), # born before or during 1942
-      race = case_when(race %in% c("4", "7", "L", "O", "V", "5", "J", "M", "P", "W", "6", "K", "N", "Q", "X") ~ 5, # japanese including mixed-race
-                       race %in% c("8", "S", "T", "U") ~ 1, # white non-japanese
-                       birthplace %in% c("81", "82", "83", "84", "80", "8-", "8&",
-                                         "9-", "90", "92", "93", "94", "95", "96", "97", "98",
-                                         "99") ~ 5,
-                       race %in% c("1", "2") ~ 0), # other race or not specified
+      race = case_when(
+        race_raw %in% c("4", "7", "L", "O", "V", "5", "J", "M", "P", "W",
+                    "6", "K", "N", "Q", "X") ~ 5, # japanese including mixed-race
+        race_raw %in% c("8", "S", "T", "U") ~ 1, # white non-japanese
+        birthplace %in% c("81", "82", "83", "84", "80", "8-", "8&",
+                          "9-", "90", "92", "93", "94", "95", "96",
+                          "97", "98", "99") ~ 5,
+        race_raw %in% c("1", "2") ~ 0 # other race or not specified
+      ), 
       ## race = labelled(race, c("White" = 1, "Japanese" = 5, "Other/ns" = 0)),
       bpl_pop = case_when(brth_cntry_pnts %in% c("B", "1", "4", "7", "C") ~ 501, # japan
                           brth_cntry_pnts %in% c("K", "2", "5", "8", "L") ~ 99, # US
@@ -603,335 +611,335 @@ form26_label <- function(raw_data) {
 
   occ_codes <- tribble(
     ~Code,  ~occ1950,  ~Description,
-    ## "0-1", 1001, "Artistic work",
-    ## "0-2", 1002, "Musical work",
-    ## "0-3", 1003, "Literary work",
-    ## "0-4", 1004, "Entertainment work",
-    ## "0-6", 1006, "Technical work",
-    ## "0-8", 1008, "Managerial work",
-    ## "1-1", 1011, "Computing work",
-    ## "1-2", 1012, "Recording work",
-    ## "1-4", 1014, "General Clerical work",
-    ## "1-5", 1015, "Public Contact work",
-    ## "2-1", 1021, "Cooking",
-    ## "2-3", 1023, "Child care",
-    ## "2-5", 1025, "Personal Service",
-    ## "3-1", 1031, "Farming",
-    ## "3-8", 1038, "Fishery work",
-    ## "3-9", 1039, "Forestry work",
-    ## "4-2", 1042, "Machine trades",
-    ## "4-6", 1046, "Crafts",
-    ## "6-2", 1062, "Observational work",
-    ## "6-4", 1064, "Manipulative work",
-    ## "6-6", 1066, "Elemental work",
-    001, 000, "Accountants and auditors",
-    002, 001, "Actors and actresses",
-    003, 003, "Architects",
-    004, 004, "Artists, sculptors, and teachers of art",
-    006, 006, "Authors, editors, and reporters",
-    007, 007, "Chemists, assayers, and metallurgists",
-    008, 009, "Clergymen",
-    011, 010, "College presidents, professors, and instructors",
-    012, 1112, "County agents and farm demonstrators",
-    013, 032, "Dentists",
-    015, 042, "Engineers, chemical",
-    016, 043, "Engineers, civil",
-    017, 044, "Engineers, electrical",
-    018, 045, "Engineers, industrial",
-    019, 046, "Engineers, mechanical",
-    020, 048, "Engineers, mining",
-    022, 055, "Lawyers and judges",
-    023, 056, "Librarians",
-    024, 057, "Musicians and teachers of music",
-    025, 073, "Pharmacists",
-    026, 075, "Physicians and surgeons",
-    027, 079, "Social and welfare workers",
-    028, 083, "Statisticians",
-    030, 1130, "Teachers, primary school and kindergarten",
-    031, 1131, "Teachers (secondary school) and principals",
-    032, 093, "Teachers and instructors, n.o.c.",
-    033, 058, "Trained nurses",
-    034, 098, "Veterinarians",
-    038, 099, "Professional occupations, n.o.c.",
-    041, 1141, "Aviators",
-    042, 008,  "Chiropractors",
-    043, 514,  "Decorators and window dressers",
-    044, 1144, "Commercial artists",
-    045, 031,  "Dancers and chorus girls",
-    046, 033, "Designers",
-    048, 035, "Draftsmen",
-    050, 095, "Laboratory technicians and assistants",
-    052, 097, "Healers and medical service occupations, n.e.c.",
-    053, 071, "Optometrists",
-    056, 074, "Photographers",
-    057, 005, "Athletes, sports instructors, and sports officials",
-    061, 076, "Radio operators",
-    062, 1162, "Showmen",
-    064, 092, "Surveyors",
-    065, 054, "Embalmers and undertakers",
-    066, 096, "Technicians, except laboratory",
-    068, 1168, "Semiprofessional occupations, n.e.c.",
-    071, 1171, "Hotel and restaurant managers",
-    072, 290, "Retail managers",
-    073, 1173, "Wholesale managers",
-    074, 200, "Buyers and department heads, stores",
-    075, 205, "Floor men and floor managers, stores",
-    079, 210, "Inspectors, managerial and official",
-    081, 400, "Advertising agents",
-    083, 260, "Officials of lodges, societies, unions, etc.",
-    085, 204, "Credit men",
-    087, 230, "Managers and superintendents, buildings",
-    088, 240, "Ship captains, mates, pilots and engineers",
-    091, 280, "Purchasing agents and buyers, n.o.c.",
-    092, 203, "Conductors, railroad",
-    094, 250, "Public officials, n.o.c.",
-    095, 1195, "Inspectors, public service, n.o.c.",
-    097, 1197, "Judges, court clerks, and auditors",
-    098, 1198, "Managers and officials, n.o.c.",
-    101, 310, "Bookkeepers and cashiers, except bank cashiers",
-    102, 341, "Bookkeeping machine operators",
-    103, 1203, "Clerks",
-    104, 1204, "Clerks, general",
-    105, 1205, "Clerks, general office",
-    106, 1206, "Financial institution clerks, n.o.c.",
-    107, 1207, "Hotel clerks, n.o.c.",
-    108, 1208, "Insurance clerks, n.o.c.",
-    110, 1210, "Printing and publishing clerks, n.o.c.",
-    111, 1211, "Railroad clerks, n.o.c.",
-    112, 1212, "Clerks in trade, n.o.c.",
-    115, 1215, "Collectors, bills and accounts",
-    116, 1216, "Correspondence clerks",
-    117, 1217, "File clerks",
-    118, 1218, "General industry clerks",
-    120, 301, "Library assistants and attendants",
-    123, 340, "Messengers, errand boys, and office boys and girls",
-    124, 360, "Telegraph messengers",
-    125, 1225, "Office machine operators",
-    126, 1226, "Paymasters, payroll clerks, and timekeepers",
-    127, 1227, "Post office clerks",
-    128, 335, "Mail carriers",
-    131, 325, "Express messengers and railway mail clerks",
-    132, 302, "Physicians' and dentists' assistants and attendants",
-    133, 350, "Secretaries",
-    134, 1234, "Shipping and receiving clerks",
-    136, 1236, "Statistical clerks and compilers",
-    137, 1237, "Stenographers and typists",
-    138, 1238, "Stock clerks",
-    141, 365, "Telegraph operators",
-    142, 370, "Telephone operators",
-    143, 1243, "Baggage, transportation",
-    144, 380, "Ticket, station, and express agents, transportation",
-    145, 1245, "Weighers",
-    148, 1248, "Agents and appraisers, n.o.c.",
-    149, 1249, "Clerks and kindred occupations, n.o.c.",
-    151, 410, "Auctioneers",
-    152, 1252, "Salesmen, brokerage and commission firms, n.e.c.",
-    155, 1255, "Canvassers and solicitors",
-    156, 420, "Demonstrators",
-    157, 450, "Salesmen, insurance",
-    158, 460, "Newsboys",
-    161, 430, "Hucksters and peddlers",
-    163, 470, "Salesmen, real estate",
-    165, 480, "Salesmen, stock and bond",
-    170, 490, "Sales clerks",
-    175, 1275, "Salespersons",
-    180, 1280,  "Salesmen, to consumers",
-    185, 1285,  "Salesmen, n.o.c.",
-    186, 1286,  "Salesmen and sales agents, except to consumers",
-    187, 1287,  "Sales clerks, dry cleaning and laundry",
-    197, 1297, "Shoppers",
-    201, 1301, "Day workers",
-    202, 710, "Laundresses, private family",
-    203, 1303, "Housewomen, private family",
-    204, 1304, "Housesman and yardman",
-    205, 1305, "Cooks; domestic",
-    206, 1306, "Maids, general",
-    207, 1307, "Nursomaids",
-    208, 1308, "Parlormaids",
-    209, 1309, "Miscellaneous servants, private family",
-    221, 750,  "Bartenders",
-    222, 1322, "Bellmen and related occupations",
-    223, 752, "Boarding-house and lodging-house keepers",
-    224, 1324, "Maids and housesman, hotels, restaurants, etc.",
-    225, 764, "Housewomen, stewards and hostesses",
-    226, 754, "Cooks, except private family",
-    227, 784, "Waiters and waitresses, except private family",
-    228, 1328, "Ship Stewards",
-    229, 1329, "Kitchen workers in hotels, restaurants, railroads, steamships, etc., n.e.c.",
-    232, 740, "Barbers, beauticians, and manicurists",
-    234, 751, "Bootblacks",
-    236, 1336, "Guides, except hunting and trapping",
-    238, 772, "Midwives and practical nurses",
-    240, 732, "Attendants, recreation and amusement, n.e.c.",
-    242, 730, "Attendants, hospitals and other institutions, n.e.c.",
-    243, 731, "Attendants, professional and personal service, n.o.c.",
-    244, 1344, "Camp attendants",
-    245, 1345, "Doormen",
-    247, 1347, "Apprentices to service occupations",
-    248, 783, "Ushers",
-    261, 763, "Guards and watchmen, except crossing watchmen",
-    262, 1362, "Crossing watchmen and bridge tenders",
-    263, 762, "Firemen, fire department",
-    265, 773, "Policemen and doctivos, except in public service",
-    266, 782, "Sheriffs and bailiffs",
-    268, 1368, "Soldiers, sailors, marines, and coast guards, n.o.c.",
-    282, 753, "Charwomen and cleaners",
-    284, 770, "Janitors and sextons",
-    286, 780, "Porters, n.o.c.",
-    291, 1391, "Pullman porters",
-    292, 1392, "Baggage porters",
-    295, 761, "Elevator operators",
-    301, 1401, "Cash grain farmers",
-    302, 1402, "Cotton farmers",
-    303, 1403, "Crop specialty farmers",
-    304, 1404, "Dairy farmers",
-    305, 1405, "Fruit farmers",
-    306, 100, "General farmers",
-    307, 1407, "Animal and livestock farmers",
-    308, 1408, "Poultry farmers",
-    309, 1409, "Truck farmers",
-    311, 1411, "Farm hands, grain",
-    312, 1412, "Farm hands, cotton",
-    313, 1413, "Farm hands, crop specialty",
-    314, 1414, "Farm hands, dairy",
-    315, 1415, "Farm hands, fruit",
-    316, 1416, "Farm hands, general farms",
-    317, 1417, "Farm hands, animal and livestock",
-    318, 1418, "Farm hands, poultry",
-    319, 1419, "Farm hands, vegetables",
-    330, 1430, "Fruit and vegetable graders and packers",
-    331, 1431, "Blight control laborers and bindwood eradicators",
-    332, 1432, "Irrigation occupations",
-    335, 1435, "Farm mechanics",
-    336, 1436, "Farm couples",
-    337, 123, "Farm managers and foremen",
-    338, 1438, "Nursery operators and florist growers",
-    339, 1439, "Nursery and landscaping laborers",
-    340, 930, "Gardeners and groundskeepers, cemeteries, etc.",
-    341, 1441, "Hatchery men",
-    342, 1442, "Laborers, hatchery",
-    343, 1443, "Stablemen",
-    344, 1444, "Barn bosses",
-    347, 1447, "Cotton ginnors",
-    348, 1448, "Technical agricultural occupations, n.o.c.",
-    349, 1449, "Agricultural occupations, n.o.c.",
-    387, 910, "Fishermen and oystermen",
-    388, 1488, "Sponge and seaweed gatherers",
-    389, 1489, "Fishing (occupations), n.o.c.",
-    391, 1491, "Forestry occupations, n.o.c., logging",
-    396, 1492, "Hunting and trapping, n.o.c.",
-    397, 1497, "Hunters and trappers",
-    401, 500, "Bakers",
-    402, 1502, "Occupations in production of bakery products, n.o.c.",
-    602, 1602, "(semiskilled) Occupations in production of bakery products, n.o.c.",
-    802, 1702, "(unskilled) Occupations in production of bakery products, n.o.c.",
-    403, 1503, "Occupations in production of beverages",
-    603, 1603, "(semiskilled) Occupations in production of beverages",
-    803, 1703, "(unskilled) Occupations in production of beverages",
-    404, 1504, "Occupations in canning and preserving of food",
-    604, 1604, "(semiskilled) Occupations in canning and preserving of food",
-    804, 1704, "(unskilled) Occupations in canning and preserving of food",
-    405, 1505, "Occupations in production of confections",
-    605, 1605, "(semiskilled) Occupations in production of confections",
-    805, 1705, "(unskilled) Occupations in production of confections",
-    406, 1506, "Occupations in processing of dairy products",
-    606, 1606, "(semiskilled) Occupations in processing of dairy products",
-    806, 1706, "(unskilled) Occupations in processing of dairy products",
-    407, 1507, "Millers, grain, flour, food, etc.",
-    607, 1607, "(semiskilled) Millers, grain, flour, food, etc.",
-    408, 1508, "Occupations in production of grain-mill products, n.o.c.",
-    608, 1608, "(semiskilled) Occupations in production of grain-mill products, n.o.c.",
-    808, 1708, "(unskilled) Occupations in production of grain-mill products, n.o.c.",
-    409, 1509, "Occupations in slaughtering and in preparation of meat products",
-    609, 1609, "(semiskilled) Occupations in slaughtering and in preparation of meat products",
-    809, 1809, "(unskilled) Occupations in slaughtering and in preparation of meat products",
-    410, 1510, "Occupations in production of miscellaneous food products",
-    610, 1610, "(semiskilled) Occupations in production of miscellaneous food products",
-    810, 1710, "(unskilled) Occupations in production of miscellaneous food products",
-    412, 1512, "Occupations in manufacture of tobacco products",
-    612, 1612, "(semiskilled) Occupations in manufacture of tobacco products",
-    812, 1712, "(unskilled) Occupations in manufacture of tobacco products",
-    415, 684, "Weavers, textile",
-    416, 543, "Loom fixers",
-    618, 1618, "(semiskilled) Nonprocess occupations, in manufacture of textiles, n.o.c.",
-    818, 1718, "(unskilled) Nonprocess occupations, in manufacture of textiles, n.o.c.",
-    419, 1519, "Occupations in manufacture of textiles, n.o.c.",
-    619, 1619, "(semiskilled) Occupations in manufacture of textiles, n.o.c.",
-    819, 1719, "(unskilled) Occupations in manufacture of textiles, n.o.c.",
-    423, 625,  "Milliners",
-    425, 633,  "Dressmakers and seamstresses",
-    625, 1625, "(semiskilled) Dressmakers and seamstresses",
-    426, 590,  "Tailors and tailoresses",
-    427, 1527, "Occupations in fabrication of textile products, n.o.c.",
-    627, 1627, "(semiskilled) Occupations in fabrication of textile products, n.o.c.",
-    827, 1727, "(unskilled) Occupations in fabrication of textile products, n.o.c.",
-    429, 532,  "Inspectors, scalers, and graders, log and lumber",
-    629, 1632,  "(semikilled) Inspectors, scalers, and graders, log and lumber",
-    430, 950,  "Lumbermen, raftsmen, and woodchoppers",
-    630, 1630,  "(semiskilled) Lumbermen, raftsmen, and woodchoppers",
-    830, 1730,  "(unskilled) Lumbermen, raftsmen, and woodchoppers",
-    431, 1531,  "Sawmill occupations, n.o.c.",
-    631, 1631,  "(semiskilled) Sawmill occupations, n.o.c.",
-    831, 1731,  "(unskilled) Sawmill occupations, n.o.c.",
-    439, 1539,  "Occupations in manufacture of miscellaneous finished lumber products, n.o.c.",
-    639, 1639,  "(semiskilled) Occupations in manufacture of miscellaneous finished lumber products, n.o.c.",
-    839, 1739,  "(unskilled) Occupations in manufacture of miscellaneous finished lumber products, n.o.c.",
-    432, 505,  "Cabinetmakers",
-    444, 512, "Compositors and typesetters",
-    644, 1644, "(semiskilled) Compositors and typesetters",
-    445, 520, "Electrotypers and stereographers",
-    447, 571, "Phtoengravers",
-    448, 575, "Pressmen and plate printers, printing",
-    449, 1529, "Occupations in printing and publishing, n.o.c.",
-    649, 1629, "(semiskilled) Occupations in printing and publishing, n.o.c.",
-    452, 1552, "Occupations in production of paint and varnish",
-    459, 1559, "Occupations in manufacture of leather",
-    659, 1659, "(semiskilled) Occupations in manufacture of leather",
-    460, 582, "Shoemakers and shoe repairmen, not factory",
-    471, 534, "Jewelers, watchmakers, goldsmiths, and silversmiths",
-    475, 544, "Machinists",
-    476, 592, "Toolmakers and die sinkers and setters",
-    480, 591, "Tinsmiths, coppersmiths, and sheet metal workers",
-    481, 561, "Molders",
-    483, 503, "Boilermakers",
-    485, 685, "Welders and flame cutters",
-    486, 501, "Blacksmiths, forgemen, and hammermen",
-    491, 641, "Furnacemen, smeltermen, and pourers",
-    497, 515, "Electricians",
-    508, 563, "Opticians, lens grinders, and polishers",
-    509, 1709, "Occupations in manufacture of fabricated plastic products",
-    512, 572, "Piano and organ tuners",
-    516, 670, "Painters, except construction and maintenence",
-    517, 570, "Pattern and model makers, except paper",
-    518, 634, "Dyers",
-    521, 650, "Miners, and mining-machine operators",
-    525, 510, "Carpenters",
-    526, 511, "Cement and concrete finishers",
-    527, 564, "Painters, construction and maintenance",
-    528, 565, "Paperhangers",
-    530, 574, "Plumbers, gas fitters, and storm fitters",
-    735, 632, "Routemen",
-    536, 1536, "Chauffers and drivers, bus, taxi; truck; and tractor",
-    736, 682, "(semiskilled) Chauffers and drivers, bus, taxi; truck; and tractor",
-    537, 960, "Teamsters",
-    541, 541, "Locomotive engineers",
-    542, 542, "Locomotive firemen",
-    543, 661, "Motormen, street, subway, and elevated railway",
-    555, 562, "Motion picture projectionists",
-    557, 643, "Ocupations in laundering, cleaning, dying, and processing apparel and other articles",
-    558, 1558, "Meatcutters, except in slaughtering and packing houses",
-    760, 621, "Attendants, filling stations and parking lots",
-    572, 583, "Engineers, stationary",
-    580, 545, "Mechanics and repairmen, airplane",
-    581, 550, "Mechanics and repairmen, motor vehicle",
-    583, 554, "Mechanics and repairmen, n.o.c.",
-    785, 920, "Garage laborers and car washers and greasers",
-    586, 671, "Photographic process occupations",
-    591, 1691, "Foremen, manufacturing",
-    594, 1694, "Foremen, construction",
-    595, 1695, "Foremen, transportation, communication, and utilities",
-    597, 1697, "Foremen, services, amusements",
-    599, 1699, "Foremen, n.o.c.",
+    "0-1", 1001, "Artistic work",
+    "0-2", 1002, "Musical work",
+    "0-3", 1003, "Literary work",
+    "0-4", 1004, "Entertainment work",
+    "0-6", 1006, "Technical work",
+    "0-8", 1008, "Managerial work",
+    "1-1", 1011, "Computing work",
+    "1-2", 1012, "Recording work",
+    "1-4", 1014, "General Clerical work",
+    "1-5", 1015, "Public Contact work",
+    "2-1", 1021, "Cooking",
+    "2-3", 1023, "Child care",
+    "2-5", 1025, "Personal Service",
+    "3-1", 1031, "Farming",
+    "3-8", 1038, "Fishery work",
+    "3-9", 1039, "Forestry work",
+    "4-2", 1042, "Machine trades",
+    "4-6", 1046, "Crafts",
+    "6-2", 1062, "Observational work",
+    "6-4", 1064, "Manipulative work",
+    "6-6", 1066, "Elemental work",
+    "001", 000, "Accountants and auditors",
+    "002", 001, "Actors and actresses",
+    "003", 003, "Architects",
+    "004", 004, "Artists, sculptors, and teachers of art",
+    "006", 006, "Authors, editors, and reporters",
+    "007", 007, "Chemists, assayers, and metallurgists",
+    "008", 009, "Clergymen",
+    "011", 010, "College presidents, professors, and instructors",
+    "012", 1112, "County agents and farm demonstrators",
+    "013", 032, "Dentists",
+    "015", 042, "Engineers, chemical",
+    "016", 043, "Engineers, civil",
+    "017", 044, "Engineers, electrical",
+    "018", 045, "Engineers, industrial",
+    "019", 046, "Engineers, mechanical",
+    "020", 048, "Engineers, mining",
+    "022", 055, "Lawyers and judges",
+    "023", 056, "Librarians",
+    "024", 057, "Musicians and teachers of music",
+    "025", 073, "Pharmacists",
+    "026", 075, "Physicians and surgeons",
+    "027", 079, "Social and welfare workers",
+    "028", 083, "Statisticians",
+    "030", 1130, "Teachers, primary school and kindergarten",
+    "031", 1131, "Teachers (secondary school) and principals",
+    "032", 093, "Teachers and instructors, n.o.c.",
+    "033", 058, "Trained nurses",
+    "034", 098, "Veterinarians",
+    "038", 099, "Professional occupations, n.o.c.",
+    "041", 1141, "Aviators",
+    "042", 008,  "Chiropractors",
+    "043", 514,  "Decorators and window dressers",
+    "044", 1144, "Commercial artists",
+    "045", 031,  "Dancers and chorus girls",
+    "046", 033, "Designers",
+    "048", 035, "Draftsmen",
+    "050", 095, "Laboratory technicians and assistants",
+    "052", 097, "Healers and medical service occupations, n.e.c.",
+    "053", 071, "Optometrists",
+    "056", 074, "Photographers",
+    "057", 005, "Athletes, sports instructors, and sports officials",
+    "061", 076, "Radio operators",
+    "062", 1162, "Showmen",
+    "064", 092, "Surveyors",
+    "065", 054, "Embalmers and undertakers",
+    "066", 096, "Technicians, except laboratory",
+    "068", 1168, "Semiprofessional occupations, n.e.c.",
+    "071", 1171, "Hotel and restaurant managers",
+    "072", 290, "Retail managers",
+    "073", 1173, "Wholesale managers",
+    "074", 200, "Buyers and department heads, stores",
+    "075", 205, "Floor men and floor managers, stores",
+    "079", 210, "Inspectors, managerial and official",
+    "081", 400, "Advertising agents",
+    "083", 260, "Officials of lodges, societies, unions, etc.",
+    "085", 204, "Credit men",
+    "087", 230, "Managers and superintendents, buildings",
+    "088", 240, "Ship captains, mates, pilots and engineers",
+    "091", 280, "Purchasing agents and buyers, n.o.c.",
+    "092", 203, "Conductors, railroad",
+    "094", 250, "Public officials, n.o.c.",
+    "095", 1195, "Inspectors, public service, n.o.c.",
+    "097", 1197, "Judges, court clerks, and auditors",
+    "098", 1198, "Managers and officials, n.o.c.",
+    "101", 310, "Bookkeepers and cashiers, except bank cashiers",
+    "102", 341, "Bookkeeping machine operators",
+    "103", 1203, "Clerks",
+    "104", 1204, "Clerks, general",
+    "105", 1205, "Clerks, general office",
+    "106", 1206, "Financial institution clerks, n.o.c.",
+    "107", 1207, "Hotel clerks, n.o.c.",
+    "108", 1208, "Insurance clerks, n.o.c.",
+    "110", 1210, "Printing and publishing clerks, n.o.c.",
+    "111", 1211, "Railroad clerks, n.o.c.",
+    "112", 1212, "Clerks in trade, n.o.c.",
+    "115", 1215, "Collectors, bills and accounts",
+    "116", 1216, "Correspondence clerks",
+    "117", 1217, "File clerks",
+    "118", 1218, "General industry clerks",
+    "120", 301, "Library assistants and attendants",
+    "123", 340, "Messengers, errand boys, and office boys and girls",
+    "124", 360, "Telegraph messengers",
+    "125", 1225, "Office machine operators",
+    "126", 1226, "Paymasters, payroll clerks, and timekeepers",
+    "127", 1227, "Post office clerks",
+    "128", 335, "Mail carriers",
+    "131", 325, "Express messengers and railway mail clerks",
+    "132", 302, "Physicians' and dentists' assistants and attendants",
+    "133", 350, "Secretaries",
+    "134", 1234, "Shipping and receiving clerks",
+    "136", 1236, "Statistical clerks and compilers",
+    "137", 1237, "Stenographers and typists",
+    "138", 1238, "Stock clerks",
+    "141", 365, "Telegraph operators",
+    "142", 370, "Telephone operators",
+    "143", 1243, "Baggage, transportation",
+    "144", 380, "Ticket, station, and express agents, transportation",
+    "145", 1245, "Weighers",
+    "148", 1248, "Agents and appraisers, n.o.c.",
+    "149", 1249, "Clerks and kindred occupations, n.o.c.",
+    "151", 410, "Auctioneers",
+    "152", 1252, "Salesmen, brokerage and commission firms, n.e.c.",
+    "155", 1255, "Canvassers and solicitors",
+    "156", 420, "Demonstrators",
+    "157", 450, "Salesmen, insurance",
+    "158", 460, "Newsboys",
+    "161", 430, "Hucksters and peddlers",
+    "163", 470, "Salesmen, real estate",
+    "165", 480, "Salesmen, stock and bond",
+    "170", 490, "Sales clerks",
+    "175", 1275, "Salespersons",
+    "180", 1280,  "Salesmen, to consumers",
+    "185", 1285,  "Salesmen, n.o.c.",
+    "186", 1286,  "Salesmen and sales agents, except to consumers",
+    "187", 1287,  "Sales clerks, dry cleaning and laundry",
+    "197", 1297, "Shoppers",
+    "201", 1301, "Day workers",
+    "202", 710, "Laundresses, private family",
+    "203", 1303, "Housewomen, private family",
+    "204", 1304, "Housesman and yardman",
+    "205", 1305, "Cooks; domestic",
+    "206", 1306, "Maids, general",
+    "207", 1307, "Nursomaids",
+    "208", 1308, "Parlormaids",
+    "209", 1309, "Miscellaneous servants, private family",
+    "221", 750,  "Bartenders",
+    "222", 1322, "Bellmen and related occupations",
+    "223", 752, "Boarding-house and lodging-house keepers",
+    "224", 1324, "Maids and housesman, hotels, restaurants, etc.",
+    "225", 764, "Housewomen, stewards and hostesses",
+    "226", 754, "Cooks, except private family",
+    "227", 784, "Waiters and waitresses, except private family",
+    "228", 1328, "Ship Stewards",
+    "229", 1329, "Kitchen workers in hotels, restaurants, railroads, steamships, etc., n.e.c.",
+    "232", 740, "Barbers, beauticians, and manicurists",
+    "234", 751, "Bootblacks",
+    "236", 1336, "Guides, except hunting and trapping",
+    "238", 772, "Midwives and practical nurses",
+    "240", 732, "Attendants, recreation and amusement, n.e.c.",
+    "242", 730, "Attendants, hospitals and other institutions, n.e.c.",
+    "243", 731, "Attendants, professional and personal service, n.o.c.",
+    "244", 1344, "Camp attendants",
+    "245", 1345, "Doormen",
+    "247", 1347, "Apprentices to service occupations",
+    "248", 783, "Ushers",
+    "261", 763, "Guards and watchmen, except crossing watchmen",
+    "262", 1362, "Crossing watchmen and bridge tenders",
+    "263", 762, "Firemen, fire department",
+    "265", 773, "Policemen and doctivos, except in public service",
+    "266", 782, "Sheriffs and bailiffs",
+    "268", 1368, "Soldiers, sailors, marines, and coast guards, n.o.c.",
+    "282", 753, "Charwomen and cleaners",
+    "284", 770, "Janitors and sextons",
+    "286", 780, "Porters, n.o.c.",
+    "291", 1391, "Pullman porters",
+    "292", 1392, "Baggage porters",
+    "295", 761, "Elevator operators",
+    "301", 1401, "Cash grain farmers",
+    "302", 1402, "Cotton farmers",
+    "303", 1403, "Crop specialty farmers",
+    "304", 1404, "Dairy farmers",
+    "305", 1405, "Fruit farmers",
+    "306", 100, "General farmers",
+    "307", 1407, "Animal and livestock farmers",
+    "308", 1408, "Poultry farmers",
+    "309", 1409, "Truck farmers",
+    "311", 1411, "Farm hands, grain",
+    "312", 1412, "Farm hands, cotton",
+    "313", 1413, "Farm hands, crop specialty",
+    "314", 1414, "Farm hands, dairy",
+    "315", 1415, "Farm hands, fruit",
+    "316", 1416, "Farm hands, general farms",
+    "317", 1417, "Farm hands, animal and livestock",
+    "318", 1418, "Farm hands, poultry",
+    "319", 1419, "Farm hands, vegetables",
+    "330", 1430, "Fruit and vegetable graders and packers",
+    "331", 1431, "Blight control laborers and bindwood eradicators",
+    "332", 1432, "Irrigation occupations",
+    "335", 1435, "Farm mechanics",
+    "336", 1436, "Farm couples",
+    "337", 123, "Farm managers and foremen",
+    "338", 1438, "Nursery operators and florist growers",
+    "339", 1439, "Nursery and landscaping laborers",
+    "340", 930, "Gardeners and groundskeepers, cemeteries, etc.",
+    "341", 1441, "Hatchery men",
+    "342", 1442, "Laborers, hatchery",
+    "343", 1443, "Stablemen",
+    "344", 1444, "Barn bosses",
+    "347", 1447, "Cotton ginnors",
+    "348", 1448, "Technical agricultural occupations, n.o.c.",
+    "349", 1449, "Agricultural occupations, n.o.c.",
+    "387", 910, "Fishermen and oystermen",
+    "388", 1488, "Sponge and seaweed gatherers",
+    "389", 1489, "Fishing (occupations), n.o.c.",
+    "391", 1491, "Forestry occupations, n.o.c., logging",
+    "396", 1492, "Hunting and trapping, n.o.c.",
+    "397", 1497, "Hunters and trappers",
+    "401", 500, "Bakers",
+    "402", 1502, "Occupations in production of bakery products, n.o.c.",
+    "602", 1602, "(semiskilled) Occupations in production of bakery products, n.o.c.",
+    "802", 1702, "(unskilled) Occupations in production of bakery products, n.o.c.",
+    "403", 1503, "Occupations in production of beverages",
+    "603", 1603, "(semiskilled) Occupations in production of beverages",
+    "803", 1703, "(unskilled) Occupations in production of beverages",
+    "404", 1504, "Occupations in canning and preserving of food",
+    "604", 1604, "(semiskilled) Occupations in canning and preserving of food",
+    "804", 1704, "(unskilled) Occupations in canning and preserving of food",
+    "405", 1505, "Occupations in production of confections",
+    "605", 1605, "(semiskilled) Occupations in production of confections",
+    "805", 1705, "(unskilled) Occupations in production of confections",
+    "406", 1506, "Occupations in processing of dairy products",
+    "606", 1606, "(semiskilled) Occupations in processing of dairy products",
+    "806", 1706, "(unskilled) Occupations in processing of dairy products",
+    "407", 1507, "Millers, grain, flour, food, etc.",
+    "607", 1607, "(semiskilled) Millers, grain, flour, food, etc.",
+    "408", 1508, "Occupations in production of grain-mill products, n.o.c.",
+    "608", 1608, "(semiskilled) Occupations in production of grain-mill products, n.o.c.",
+    "808", 1708, "(unskilled) Occupations in production of grain-mill products, n.o.c.",
+    "409", 1509, "Occupations in slaughtering and in preparation of meat products",
+    "609", 1609, "(semiskilled) Occupations in slaughtering and in preparation of meat products",
+    "809", 1809, "(unskilled) Occupations in slaughtering and in preparation of meat products",
+    "410", 1510, "Occupations in production of miscellaneous food products",
+    "610", 1610, "(semiskilled) Occupations in production of miscellaneous food products",
+    "810", 1710, "(unskilled) Occupations in production of miscellaneous food products",
+    "412", 1512, "Occupations in manufacture of tobacco products",
+    "612", 1612, "(semiskilled) Occupations in manufacture of tobacco products",
+    "812", 1712, "(unskilled) Occupations in manufacture of tobacco products",
+    "415", 684, "Weavers, textile",
+    "416", 543, "Loom fixers",
+    "618", 1618, "(semiskilled) Nonprocess occupations, in manufacture of textiles, n.o.c.",
+    "818", 1718, "(unskilled) Nonprocess occupations, in manufacture of textiles, n.o.c.",
+    "419", 1519, "Occupations in manufacture of textiles, n.o.c.",
+    "619", 1619, "(semiskilled) Occupations in manufacture of textiles, n.o.c.",
+    "819", 1719, "(unskilled) Occupations in manufacture of textiles, n.o.c.",
+    "423", 625,  "Milliners",
+    "425", 633,  "Dressmakers and seamstresses",
+    "625", 1625, "(semiskilled) Dressmakers and seamstresses",
+    "426", 590,  "Tailors and tailoresses",
+    "427", 1527, "Occupations in fabrication of textile products, n.o.c.",
+    "627", 1627, "(semiskilled) Occupations in fabrication of textile products, n.o.c.",
+    "827", 1727, "(unskilled) Occupations in fabrication of textile products, n.o.c.",
+    "429", 532,  "Inspectors, scalers, and graders, log and lumber",
+    "629", 1632,  "(semikilled) Inspectors, scalers, and graders, log and lumber",
+    "430", 950,  "Lumbermen, raftsmen, and woodchoppers",
+    "630", 1630,  "(semiskilled) Lumbermen, raftsmen, and woodchoppers",
+    "830", 1730,  "(unskilled) Lumbermen, raftsmen, and woodchoppers",
+    "431", 1531,  "Sawmill occupations, n.o.c.",
+    "631", 1631,  "(semiskilled) Sawmill occupations, n.o.c.",
+    "831", 1731,  "(unskilled) Sawmill occupations, n.o.c.",
+    "439", 1539,  "Occupations in manufacture of miscellaneous finished lumber products, n.o.c.",
+    "639", 1639,  "(semiskilled) Occupations in manufacture of miscellaneous finished lumber products, n.o.c.",
+    "839", 1739,  "(unskilled) Occupations in manufacture of miscellaneous finished lumber products, n.o.c.",
+    "432", 505,  "Cabinetmakers",
+    "444", 512, "Compositors and typesetters",
+    "644", 1644, "(semiskilled) Compositors and typesetters",
+    "445", 520, "Electrotypers and stereographers",
+    "447", 571, "Phtoengravers",
+    "448", 575, "Pressmen and plate printers, printing",
+    "449", 1529, "Occupations in printing and publishing, n.o.c.",
+    "649", 1629, "(semiskilled) Occupations in printing and publishing, n.o.c.",
+    "452", 1552, "Occupations in production of paint and varnish",
+    "459", 1559, "Occupations in manufacture of leather",
+    "659", 1659, "(semiskilled) Occupations in manufacture of leather",
+    "460", 582, "Shoemakers and shoe repairmen, not factory",
+    "471", 534, "Jewelers, watchmakers, goldsmiths, and silversmiths",
+    "475", 544, "Machinists",
+    "476", 592, "Toolmakers and die sinkers and setters",
+    "480", 591, "Tinsmiths, coppersmiths, and sheet metal workers",
+    "481", 561, "Molders",
+    "483", 503, "Boilermakers",
+    "485", 685, "Welders and flame cutters",
+    "486", 501, "Blacksmiths, forgemen, and hammermen",
+    "491", 641, "Furnacemen, smeltermen, and pourers",
+    "497", 515, "Electricians",
+    "508", 563, "Opticians, lens grinders, and polishers",
+    "509", 1709, "Occupations in manufacture of fabricated plastic products",
+    "512", 572, "Piano and organ tuners",
+    "516", 670, "Painters, except construction and maintenence",
+    "517", 570, "Pattern and model makers, except paper",
+    "518", 634, "Dyers",
+    "521", 650, "Miners, and mining-machine operators",
+    "525", 510, "Carpenters",
+    "526", 511, "Cement and concrete finishers",
+    "527", 564, "Painters, construction and maintenance",
+    "528", 565, "Paperhangers",
+    "530", 574, "Plumbers, gas fitters, and storm fitters",
+    "735", 632, "Routemen",
+    "536", 1536, "Chauffers and drivers, bus, taxi; truck; and tractor",
+    "736", 682, "(semiskilled) Chauffers and drivers, bus, taxi; truck; and tractor",
+    "537", 960, "Teamsters",
+    "541", 541, "Locomotive engineers",
+    "542", 542, "Locomotive firemen",
+    "543", 661, "Motormen, street, subway, and elevated railway",
+    "555", 562, "Motion picture projectionists",
+    "557", 643, "Ocupations in laundering, cleaning, dying, and processing apparel and other articles",
+    "558", 1558, "Meatcutters, except in slaughtering and packing houses",
+    "760", 621, "Attendants, filling stations and parking lots",
+    "572", 583, "Engineers, stationary",
+    "580", 545, "Mechanics and repairmen, airplane",
+    "581", 550, "Mechanics and repairmen, motor vehicle",
+    "583", 554, "Mechanics and repairmen, n.o.c.",
+    "785", 920, "Garage laborers and car washers and greasers",
+    "586", 671, "Photographic process occupations",
+    "591", 1691, "Foremen, manufacturing",
+    "594", 1694, "Foremen, construction",
+    "595", 1695, "Foremen, transportation, communication, and utilities",
+    "597", 1697, "Foremen, services, amusements",
+    "599", 1699, "Foremen, n.o.c.",
     )
 
                                         # Vector for recoding (named vector: names = old codes, values = new codes)
@@ -1204,7 +1212,6 @@ calc_int_proportion <- function(wra_data, ddi,
                                 label = "intern_p") {
   library(tidyverse)
   library(dbplyr)
-  library(dbplyr)
   library(duckdb)
 
   mutate_vars <- list() # variables to be mutated if present
@@ -1235,7 +1242,7 @@ calc_int_proportion <- function(wra_data, ddi,
     ddi = ddi,
     callback = IpumsDataFrameCallback$new(callback),
     chunk_size = chunk_size,
-    vars = c(by, "YEAR")
+    vars = c(all_of(by), "YEAR")
   )
 
   pop_grp <- chunks |>
@@ -1273,56 +1280,155 @@ calc_int_proportion <- function(wra_data, ddi,
 ** Clean IPUMS Variables
 #+begin_src R :tangle R/cleaning_funs.R
 collect_sample <- function(db, table,
-                           vars = c("RACE", "BIRTHYR", "INCWAGE", "STATEFIP", "COUNTYICP", "AGE", "SEX",
-                                    "EDUCD", "CLASSWKR", "WKSWORK1", "OCC1950", "OCCSCORE", "EMPSTAT")) {
-  con <- dbConnect(duckdb(), mlp_db)
+                           vars = c("RACE", "BIRTHYR", "INCWAGE",
+                                    "STATEFIP", "COUNTYICP", "AGE",
+                                    "SEX", "EDUCD", "CLASSWKR",
+                                    "WKSWORK1", "OCC1950", "OCCSCORE",
+                                    "EMPSTAT")) {
+  # connect to database on file
+  con <- dbConnect(duckdb(), db)
+  # disconnect from database on function exit
+  on.exit(dbDisconnect(con))
 
-  reg_data <- tbl(con, mlp_tbl) |>
+  # save table as temporary object
+  db_tbl <- tbl(con, table)
+
+  # collect HIKs of interest from 1940 data
+  hiks_to_keep <- db_tbl |>
+    filter(YEAR == 1940, RACE %in% c(4,5)) |>
+    select(HIK)
+
+  # Main query: join to keep only relevent HIKs,
+  # then filter and collect
+  reg_data <- db_tbl |>
+    semi_join(hiks_to_keep, by = "HIK") |>
     filter(
       !is.na(STATEFIP),
       !is.na(COUNTYICP),
       (BIRTHYR < 1926)
     ) |>
+    select(HIK, YEAR, all_of(vars)) |>
+    collect() |>
     pivot_wider(
       id_cols = HIK, names_from = YEAR,
-      values_from = vars
-    ) |>
-    filter(RACE_1940 %in% c(4,5)) |>
-    collect() 
+      values_from = all_of(vars)
+    ) 
 
-  dbDisconnect(con)
+  return(reg_data)
+}
+#+end_src
+*** Real Dollar Adjustments
+To account for inflation during the ten years between censuses, I adjust 1940 dollar amounts to 1950 dollars
+using the US Bureau of Labor Statistics [[https://www.bls.gov/data/inflation_calculator.htm][online CPI calculator]] which returns a cumulative inflation rate of 69% from January, 1940 to January, 1950.
+
+The IPUMS census data have the following variable names which are in dollar amounts: ~INCTOT, INCWAGE, INCBUSFM, INCOTHER~.
+
+We also have to account for missing values and topcoding for each variable separately:
+- ~INCTOT~ Specific Variable Codes
+-009995 = -$9,900 (1980)
+-000001 = Net loss (1950)
+0000000 = None
+0000001 = $1 or break even (2000, 2005-onward ACS and PRCS)
+9999999 = N/A
+9999998 = Unknown
+Top code for 1950: $10,000
+
+- ~INCWAGE~ Specific Variable Codes
+999999 = N/A
+999998 = Missing
+Top code for 1940: $5,001
+Top code for 1950: $10,000
+
+- ~INCBUSFM~ Specific Variable Codes
+-0001 = Net loss (1950)
+99999 = N/A
+99998 = Unknown
+Top code for 1950: $10,000
+
+- ~INCOTHER~ Specific Variable Codes
+-0001 = Net loss (1950)
+99999 = N/A
+99998 = Unknown 
+Top code for 1950: $10,000
+
+#+begin_src R :tangle R/cleaning_funs.R
+adjust_dollar_vars <- function(df, inflator = 1.69,
+                               harmonize_incwage = TRUE,
+                               replace = FALSE,
+                               name_style = c("var_adj_year", "var_year_adj")) {
+  name_style <- match.arg(name_style)
+  cols <- grep("^(INCWAGE|INCTOT|INCBUSFM|INCOTHER)_(1940|1950)$", names(df), value = TRUE)
+  if (!length(cols)) return(df)
+
+  have_incwage_1940 <- "INCWAGE_1940" %in% names(df)
+  incwage_1950_top <- if (harmonize_incwage && have_incwage_1940) 5001 * inflator else 10000
+
+  top_1950 <- c(INCWAGE = incwage_1950_top, INCTOT = 10000, INCBUSFM = 10000, INCOTHER = 10000)
+
+  na_codes_for <- function(var) {
+    switch(var,
+      INCWAGE  = c(999999, 999998),
+      INCTOT   = c(9999999, 9999998),
+      INCBUSFM = c(99999, 99998),
+      INCOTHER = c(99999, 99998),
+      numeric(0)
+    )
+  }
+
+  for (col in cols) {
+    base <- sub("_(1940|1950)$", "", col)
+    yr   <- as.integer(sub(".*_(\\d{4})$", "\\1", col))
+    x    <- as.numeric(df[[col]])
+
+    # set NA/unknown codes to NA (preserve negatives like net loss)
+    na_codes <- na_codes_for(base)
+    x[x %in% na_codes] <- NA_real_
+
+    # inflate 1940 to 1950 dollars
+    if (yr == 1940) x <- x * inflator
+
+    # pick topcode
+    top <- if (yr == 1940 && base == "INCWAGE") 5001 * inflator else
+           if (yr == 1950) top_1950[[base]] else NA_real_
+
+    # cap at top (vectorized)
+    if (!is.na(top)) x <- ifelse(x > top, top, x)
+
+    # name for output column
+    newname <- if (replace) {
+      col
+    } else if (name_style == "var_adj_year") {
+      paste0(base, "_adj_", yr)
+    } else {
+      paste0(base, "_", yr, "_adj")
+    }
+
+    df[[newname]] <- x
+  }
+
+  df
 }
 #+end_src
 
+*** Demographics
+
 #+begin_src R :tangle R/cleaning_funs.R
-clean_sample <- function(wide_df, ddi, inflator = 1.69) {
+clean_wide_vars <- function(wide_df, ddi, inflator = 1.69) {
   # ten-year inflation rate from bls.gov/data/inflation_calculator.htm
   wide_df <- wide_df |>
+    # adjust dollar amounts for inflation and missing values
+    adjust_dollar_vars(inflator = 1.69) |>
     # deal with inconsistencies in reported birthyear across censuses by averaging
     mutate(
-      birthyr_avg = (BIRTHYR_1950 + BIRTHYR_1940) / 2,
-      age_1940 = 1940 - birthyr_avg,
-      age_1950 = 1950 - birthyr_avg
+      birthyr_adj = round( (BIRTHYR_1950 + BIRTHYR_1940) / 2 ),
+      age_adj_1940 = 1940 - birthyr_adj,
+      age_adj_1950 = 1950 - birthyr_adj
     ) |>
     # base time-invariant demographics on 1940 response
     mutate(
-      sex = ifelse(SEX_1940==1, "Male", "Female"),
-      race = case_when(RACE_1940==5 ~ "Japanese",
+      sex_adj = ifelse(SEX_1940==1, "Male", "Female"),
+      race_adj = case_when(RACE_1940==5 ~ "Japanese",
                        RACE_1940==4 ~ "Chinese")
-    ) |>
-    # adjust dollar amounts for inflation and missing values
-    mutate(
-      # remove NA values and convert 1940 incomes to 1950 dollars
-      salary_1940 = ifelse(INCWAGE_1940 %in% c(999999,999998), NA, INCWAGE_1940 * inflator ),
-      salary_1950 = case_when(INCWAGE_1950 %in% c(999999,999998) ~ NA,
-                              INCWAGE_1950 > (5001 * inflator) ~ 5001 * inflator,
-                              .default = INCWAGE_1950),
-      income_bsfm = case_when(INCBUSFM_1950 %in% c(99999, 99998) ~ NA,
-                                .default = INCBUSFM_1950),
-      income_tot = case_when(INCTOT_1950 %in% c(9999999, 9999998) ~ NA,
-                             .default = INCTOT_1950),
-      income_oth = case_when(INCOTHER_1950 %in% c(99999, 99998) ~ NA,
-                             .default = INCOTHER_1950)
     ) |>
     mutate(
       # create indicator for migration status
@@ -1330,61 +1436,44 @@ clean_sample <- function(wide_df, ddi, inflator = 1.69) {
       # create new individual-level id
       id = row_number()
     ) 
+}
+#+end_src
 
+#+RESULTS:
+
+#+begin_src R :tangle R/cleaning_funs.R
+clean_long_vars <- function(wide_df, ddi) {
   long_df <- wide_df |>
-    select(!starts_with("YEAR")) |> # redundant
+    # select(!starts_with("YEAR")) |> # redundant
     pivot_longer(
       cols = matches("_(1940|1950)$") & !contains("histid_"),
       names_to = c(".value", "YEAR"),
       names_pattern = "(.*)_(1940|1950)"
     ) |>
-    set_ipums_var_attributes(ipumsr::read_ipums_ddi(ddi)) |>
+    set_ipums_var_attributes(var_info = ipumsr::read_ipums_ddi(ddi)) |>
     mutate(
-      YEAR = as.integer(YEAR),
-      married = ifelse(MARST %in% 1:2, 1, 0),
-      foreign = ifelse(NATIVITY == 5, 1, 0),
-      college = ifelse(EDUC %in% 7:11, 1, 0),
-      employed = ifelse(EMPSTAT == 1, 1, 0),
-      generation = case_when(
-        NATIVITY == 5 ~ "first-generation", # foriegn born
-        NATIVITY %in% 2:4 ~ "second-generation", # both or either parent foriegn born
-        NATIVITY == 1 & (FBPL %in% 1:120 | MBPL %in% 1:120) ~ "third-generation",
-        .default = NA
-      ),
-      yearsschool = case_when(
-        as_factor(EDUCD) == "Missing" ~ NA_integer_,
-        as_factor(EDUCD) == "No schooling completed" ~ 0,
-        as_factor(EDUCD) == "Kindergarten" ~ 0.5,
-        as_factor(EDUCD) == "Grade 1" ~ 1,
-        as_factor(EDUCD) == "Grade 2" ~ 2,
-        as_factor(EDUCD) == "Grade 3" ~ 3,
-        as_factor(EDUCD) == "Grade 4" ~ 4,
-        as_factor(EDUCD) == "Grade 5" ~ 5,
-        as_factor(EDUCD) == "Grade 6" ~ 6,
-        as_factor(EDUCD) == "Grade 7" ~ 7,
-        as_factor(EDUCD) == "Grade 8" ~ 8,
-        as_factor(EDUCD) == "Grade 9" ~ 9,
-        as_factor(EDUCD) == "Grade 10" ~ 10,
-        as_factor(EDUCD) == "Grade 11" ~ 11,
-        as_factor(EDUCD) == "Grade 12" ~ 12,
-        as_factor(EDUCD) == "1 year of college" ~ 13,
-        as_factor(EDUCD) == "2 years of college" ~ 14,
-        as_factor(EDUCD) == "3 years of college" ~ 15,
-        as_factor(EDUCD) == "4 years of college" ~ 16,
-        as_factor(EDUCD) == "5 years of college" ~ 17,
-        as_factor(EDUCD) == "6 years of college" ~ 18,
-        as_factor(EDUCD) == "7 years of college" ~ 19,
-        as_factor(EDUCD) == "8+ years of college" ~ 20
-        ),
-      occupation = ifelse(OCC1950 %in% 979:999, NA, as_factor(OCC1950)),
-      county_ez = is_evac_county(STATEFIP, COUNTYICP)
-    )
-    
+      across(any_of("YEAR"), ~ as.integer(.)),
+      across(any_of("MARST"), ~ifelse(. %in% 1:2, 1, 0), .names = "married"),
+      across(any_of("NATIVITY"), ~ifelse(. == 5, 1, 0), .names = "foreign"),
+      across(any_of("EDUC"), ~ifelse(. %in% 7:11, 1, 0), .names = "college"),
+      across(any_of("EMPSTAT"), ~ifelse(. == 1, 1, 0), .names = "employed"),
+      across(any_of("OCC1950"),
+             ~ifelse(. %in% 979:999, NA, as_factor(.)),
+             .names = "occupation"))
 
   return(long_df)
 }
 #+end_src
 
+#+RESULTS:
+*** Full targets pipeline
+#+begin_src R :tangle R/cleaning_funs.R
+clean_mlp <- function(wide_df, ddi, inflator = 1.6) {
+  wide_df |>
+    clean_wide_vars(ddi = ddi, inflator = inflator) |>
+    clean_long_vars(ddi = ddi)
+}
+#+end_src
 ** County-Level Wages
 #+begin_src R :tangle R/cleaning_funs.R
 collect_county_stats <- function(ddi, inflator = 1.69) {
