@@ -1,8 +1,7 @@
 # Load packages required to define the pipeline:
 library(targets)
+library(dplyr)
 # library(tarchetypes) # Load other packages as needed.
-
-suppressPackageStartupMessages(library(dplyr))
 
 # Set target options:
 tar_option_set(
