@@ -133,16 +133,35 @@ clean_long_vars <- function(wide_df, ddi) {
       across(any_of("NATIVITY"), ~ifelse(. == 5, 1, 0), .names = "foreign"),
       across(any_of("EDUC"), ~ifelse(. %in% 7:11, 1, 0), .names = "college"),
       across(any_of("EMPSTAT"), ~ifelse(. == 1, 1, 0), .names = "employed"),
-      across(any_of("OCC1950"),
-             ~ifelse(. %in% 979:999, NA, as_factor(.)),
-             .names = "occupation"))
+      ## across(any_of("OCC1950"), ~ifelse(. %in% 979:999, NA), .names = "occupation"),
+      OCC1950 = as_factor(OCC1950),
+      across(any_of(c("OCC1950", "RACE", "SEX", "EDUCD", "CLASSWKR", "EMPSTAT")), as_factor)
+    )
 
   return(long_df)
 }
 
-clean_mlp <- function(wide_df, ddi, inflator = 1.6) {
+clean_mlp <- function(wide_df, internpr, ddi, inflator = 1.6) {
   wide_df |>
+    left_join(
+      internpr,
+      by = c(
+        "RACE_1940"="RACE",
+        "STATEFIP_1940"="STATEFIP",
+        "COUNTYICP_1940"="COUNTYICP"
+      )
+    ) |>
     clean_wide_vars(ddi = ddi, inflator = inflator) |>
+    filter(
+      !if_any(starts_with("RACE"),  ~ is.na(.x)),
+      !if_any(starts_with("SEX"), ~ is.na(.x))
+    ) |>
+    mutate(
+      Earning_growth =
+        (INCWAGE_adj_1950 - INCWAGE_adj_1940) /
+        INCWAGE_adj_1940
+    ) |>
+    # pivot to longer and clean variables by year
     clean_long_vars(ddi = ddi)
 }
 
