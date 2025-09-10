@@ -4,7 +4,6 @@ calc_int_proportion <- function(wra_data, ddi,
                                 label = "intern_p") {
   library(tidyverse)
   library(dbplyr)
-  library(dbplyr)
   library(duckdb)
 
   mutate_vars <- list() # variables to be mutated if present
@@ -35,7 +34,7 @@ calc_int_proportion <- function(wra_data, ddi,
     ddi = ddi,
     callback = IpumsDataFrameCallback$new(callback),
     chunk_size = chunk_size,
-    vars = c(by, "YEAR")
+    vars = c(all_of(by), "YEAR")
   )
 
   pop_grp <- chunks |>

@@ -10,7 +10,7 @@ library(ggplot2)
 
 library(targets)
 
-tar_load(c(mlp_db, mlp_tbl, ddi_mlp, internpr))
+tar_load(c(sample_long))
 #+end_src
 
 * MLP Linked Internees
@@ -112,24 +112,14 @@ wage_sample |>
 So there should be 9,080 observations in my main analysis sample.
 
 ** Descriptive Patterns
-#+begin_src R
-tar_load(internpr)
-plt_data <- wage_sample |>
-  collect() |>
-  left_join(
-    internpr,
-    by = c("RACE_1940"="RACE", "STATEFIP_1940"="STATEFIP", "COUNTYICP_1940"="COUNTYICP")
-  ) |>
-  mutate(INCWAGE_1940 = INCWAGE_1940 * 1.69) |>
-  mutate(Earning_growth = (INCWAGE_1950 - INCWAGE_1940) / INCWAGE_1940)
-#+end_src
-
-#+RESULTS:
 
 #+begin_src R :results graphics file :file figures/INCWAGE_plot.pdf
-ggplot(aes(x = internment_prob, y = INCWAGE_1950, color = internment_prob), data = reg_data) +
+ggplot(
+  aes(x = internment_prob, y = Earning_growth, color = internment_prob),
+  data = sample_long
+) +
   geom_point() +
-  facet_wrap(~ RACE_1940 + SEX_1950) +
+  ## facet_wrap(~ as_factor(RACE_1940) + as_factor(SEX_1950)) +
   geom_smooth(method = "lm") +
   scale_y_log10() +
   theme_internment()

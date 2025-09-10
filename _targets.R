@@ -43,7 +43,7 @@ list(
                                  by = c("STATEFIP", "COUNTYICP", "RACE"),
                                  label = "internment_prob")),
 
-  tar_target(sample_wide, collect_sample(mlp_db, mlp_tbl)),
-  tar_target(sample_long, clean_mlp(sample_wide, ddi_mlp, 1.69))
+  tar_target(mlp_sample, collect_sample(mlp_db, mlp_tbl)),
+  tar_target(sample_long, clean_mlp(mlp_sample, internpr, ddi_mlp, 1.69))
 
 )
