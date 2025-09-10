@@ -16,6 +16,8 @@ library(duckdb)
 # Load packages required to define the pipeline:
 library(targets)
 library(dplyr)
+library(ipumsr)
+library(fixest)
 # library(tarchetypes) # Load other packages as needed.
 
 # Set target options:
@@ -58,8 +60,11 @@ list(
                                  by = c("STATEFIP", "COUNTYICP", "RACE"),
                                  label = "internment_prob")),
 
-  tar_target(mlp_sample, collect_sample(mlp_db, mlp_tbl)),
-  tar_target(sample_long, clean_mlp(mlp_sample, internpr, ddi_mlp, 1.69))
+  tar_target(county_stats,
+             collect_county_stats(ddi_fullcount, inflator = 1.69)),
+  tar_target(mlp_raw, collect_mlp(mlp_db, mlp_tbl)),
+  tar_target(mlp_sample, clean_mlp(mlp_raw, internpr, county_stats, ddi_mlp, 1.69)),
+  tar_target(wage_sample, define_wage_sample(mlp_sample))
 
 )
 #+end_src
@@ -67,6 +72,78 @@ list(
 All of the functions above are defined in their own code blocks in the rest of this document.
 
 The targets workflow is currently set up to clean the 
+
+* Sample Selection
+#+begin_src R
+tar_load(mlp_sample)
+mlp_sample |>
+  select(YEAR, RACE, id) |>
+  pivot_wider(id_cols = "id", values_from = RACE, names_from = YEAR, names_prefix = "RACE_") |>
+  filter(!is.na(RACE_1940)) |>
+  count(RACE_1940, RACE_1950) |>
+  pivot_wider(values_from = n, names_from = RACE_1940, names_glue = )
+  #+end_src
+
+#+RESULTS:
+| RACE_1950                        | Chinese | Japanese |
+|----------------------------------+---------+----------|
+| White                            |    3294 |     8621 |
+| Black/African American           |     659 |     1674 |
+| American Indian or Alaska Native |       7 |       31 |
+| Chinese                          |    8767 |       28 |
+| Japanese                         |      28 |    25810 |
+| Other Asian or Pacific Islander  |      36 |       48 |
+| Other race, nec                  |       2 |        6 |
+|                                  |     169 |      332 |
+
+#+begin_src R
+mlp_sample |>
+  pivot_wider(id_cols = "id", values_from = c("INCWAGE", "RACE", "STATEFIP", "COUNTYICP", "SEX", "OCC1950"), names_from = YEAR, names_sep = "_") |>
+  mutate(
+    consistent_wage = ifelse((is.na(INCWAGE_1940) | is.na(INCWAGE_1950)), FALSE, TRUE),
+    consistent_race = ifelse(RACE_1940 != RACE_1950 | is.na(RACE_1940), FALSE, TRUE),
+    consistent_place = ifelse(is.na(COUNTYICP_1940)|is.na(COUNTYICP_1950), FALSE, TRUE),
+    consistent_occ  = ifelse(is.na(OCC1950_1940) | is.na(OCC1950_1950), FALSE, TRUE),
+    consistent_all  = ifelse(consistent_wage & consistent_race & consistent_place & consistent_occ, TRUE, FALSE)
+    ) |>
+  group_by(RACE_1940) |>
+  summarise(
+    across(consistent_wage:consistent_all, ~ sum(., na.rm=T))
+  ) |>
+  filter(!is.na(RACE_1940))
+  #+end_src
+
+#+RESULTS:
+| RACE_1940 | consistent_wage | consistent_race | consistent_place | consistent_occ | consistent_all |
+|-----------+-----------------+-----------------+------------------+----------------+----------------|
+| Chinese   |            2434 |            8767 |            12793 |          12793 |           2069 |
+| Japanese  |            6558 |           25810 |            36218 |          36218 |           6067 |
+
+#+begin_src R :tangle R/cleaning_funs.R
+define_wage_sample <- function(mlp_sample) {
+  mlp_sample |>
+    pivot_wider(
+      names_from = YEAR,
+      values_from = RACE:age_adj
+    ) |>
+    mutate(
+      consistent_wage = ifelse((is.na(INCWAGE_1940) | is.na(INCWAGE_1950)), FALSE, TRUE),
+      consistent_race = ifelse(RACE_1940 != RACE_1950 | is.na(RACE_1940), FALSE, TRUE),
+      consistent_place = ifelse(is.na(COUNTYICP_1940)|is.na(COUNTYICP_1950), FALSE, TRUE),
+      consistent_occ  = ifelse(is.na(OCC1950_1940) | is.na(OCC1950_1950), FALSE, TRUE),
+      consistent_all  = ifelse(consistent_wage & consistent_race & consistent_place & consistent_occ, TRUE, FALSE)
+    ) |>
+    filter(consistent_all == TRUE) |>
+    rename(
+      RACE = race_adj,
+      SEX  = sex_adj
+    ) |>
+    select(-c("RACE_1940", "RACE_1950", "SEX_1940", "SEX_1950"))
+}
+#+end_src
+
+#+RESULTS:
+|---|
 
 * Helper Functions and Definitions
 ** Geographic State and County Codes
@@ -1012,6 +1089,387 @@ write_csv(csv_data, "data/all_internees.csv")
 
 #+RESULTS:
 
+* MLP Linked Census Data
+:PROPERTIES:
+:HEADER-ARGS:R: :session *R:internment* :colnames yes 
+:END:
+Reading all linked data from IPUMS MLP version 2
+#+begin_src R :results output
+library(targets)
+library(duckdb)
+
+tar_load(c(mlp_tbl, mlp_db, ddi_mlp))
+con <- dbConnect(duckdb(), dbdir = mlp_db)
+#+end_src
+
+#+RESULTS:
+
+** Write MLP data to database
+
+#+begin_src R :tangle R/database.R
+#' Writes census microdata from an IPUMS ddi path to a local database
+#'
+#' @param ddi Path to an IPUMS DDI .xml file.
+#' @param dbdir Path to a local duckdb database.
+#'              A new file will be created if it doesnt exist already
+#' @param tbl_name String name of the table in the database
+#' @param chunk_size Number of rows to read in each chunk
+#' @param replace Logical. If TRUE, replace existing table. If FALSE, skip if table exists.
+#' @param debug Logical. If TRUE, print chunk information during processing
+#' @returns A name of the table where data is written
+write_ipums_db <- function(ddi, dbdir, tbl_name,
+                           debug = FALSE, chunk_size = 1e6,
+                           replace = FALSE) {
+  library(duckdb)
+  library(DBI)
+  library(ipumsr)
+  
+  con <- dbConnect(duckdb(), dbdir = dbdir)
+  
+  # Check if table already exists
+  table_exists <- tbl_name %in% dbListTables(con)
+  
+  if (table_exists && !replace) {
+    message("Table '", tbl_name, "' already exists. Use replace = TRUE to overwrite.")
+    dbDisconnect(con)
+    return(tbl_name)
+  }
+  
+  if (table_exists && replace) {
+    message("Replacing existing table '", tbl_name, "'")
+    dbRemoveTable(con, tbl_name)
+  } else if (!table_exists) {
+    message("Creating new table '", tbl_name, "'")
+  }
+  
+  # Track progress
+  total_rows <- 0
+  
+  write_chunk <- function(chunk, pos) {
+    dbWriteTable(con, tbl_name, chunk, append = TRUE)
+    total_rows <<- total_rows + nrow(chunk)
+    
+    if (debug) {
+      message("Processed chunk at position ", pos, " with ", nrow(chunk), " rows. Total: ", total_rows)
+    }
+  }
+
+  # Read and write data in chunks
+  tryCatch({
+    read_ipums_micro_chunked(
+      ddi,
+      callback = readr::SideEffectChunkCallback$new(write_chunk),
+      chunk_size = chunk_size
+    )
+    
+    message("Successfully wrote ", total_rows, " rows to table '", tbl_name, "'")
+    
+  }, error = function(e) {
+    message("Error writing to database: ", e$message)
+    if (dbExistsTable(con, tbl_name)) {
+      dbRemoveTable(con, tbl_name)
+      message("Removed incomplete table due to error")
+    }
+    stop(e)
+  })
+
+  dbDisconnect(con)
+  return(tbl_name)
+}
+#+end_src
+
+** Clean IPUMS Variables
+#+begin_src R :tangle R/cleaning_funs.R
+clean_mlp <- function(wide_df, internpr, countystats, ddi, inflator = 1.6) {
+  wide_df |>
+    left_join(
+      internpr,
+      by = c(
+        "RACE_1940"="RACE",
+        "STATEFIP_1940"="STATEFIP",
+        "COUNTYICP_1940"="COUNTYICP"
+      )
+    ) |>
+    clean_wide_vars(ddi = ddi, inflator = inflator) |>
+    mutate(
+      Earning_growth =
+        (INCWAGE_adj_1950 - INCWAGE_adj_1940) /
+        INCWAGE_adj_1940
+    ) |>
+    # pivot to longer and clean variables by year
+    clean_long_vars(ddi = ddi) |>
+    left_join(countystats, by = c("STATEFIP", "COUNTYICP")) |>
+    select(-c("n_census", "n_interned", "INCWAGE")) |>
+    rename(INCWAGE = INCWAGE_adj) |>
+    mutate(
+      age_adj = as.integer(YEAR) - birthyr_adj,
+      employed = as_factor(employed),
+      migrant = as_factor(migrate10)
+    ) 
+}
+#+end_src
+*** Cleaning sub-functions
+#+begin_src R :tangle R/cleaning_funs.R
+collect_mlp <- function(db, table,
+                           vars = c("RACE", "BIRTHYR", "INCWAGE",
+                                    "STATEFIP", "COUNTYICP", "AGE",
+                                    "SEX", "EDUCD", "CLASSWKR",
+                                    "WKSWORK1", "OCC1950", "OCCSCORE",
+                                    "EMPSTAT")) {
+  # connect to database on file
+  con <- dbConnect(duckdb(), db)
+  # disconnect from database on function exit
+  on.exit(dbDisconnect(con))
+
+  # save table as temporary object
+  db_tbl <- tbl(con, table)
+
+  # collect HIKs of interest from 1940 data
+  hiks_to_keep <- db_tbl |>
+    filter(YEAR == 1940, RACE %in% c(4,5)) |>
+    select(HIK)
+
+  # Main query: join to keep only relevent HIKs,
+  # then filter and collect
+  reg_data <- db_tbl |>
+    semi_join(hiks_to_keep, by = "HIK") |>
+    filter(
+      !is.na(STATEFIP),
+      !is.na(COUNTYICP),
+      (BIRTHYR < 1926)
+    ) |>
+    select(HIK, YEAR, all_of(vars)) |>
+    collect() |>
+    pivot_wider(
+      id_cols = HIK, names_from = YEAR,
+      values_from = all_of(vars)
+    ) 
+
+  return(reg_data)
+}
+#+end_src
+To account for inflation during the ten years between censuses, I adjust 1940 dollar amounts to 1950 dollars
+using the US Bureau of Labor Statistics [[https://www.bls.gov/data/inflation_calculator.htm][online CPI calculator]] which returns a cumulative inflation rate of 69% from January, 1940 to January, 1950.
+
+The IPUMS census data have the following variable names which are in dollar amounts: ~INCTOT, INCWAGE, INCBUSFM, INCOTHER~.
+
+We also have to account for missing values and topcoding for each variable separately:
+- ~INCTOT~ Specific Variable Codes
+-009995 = -$9,900 (1980)
+-000001 = Net loss (1950)
+0000000 = None
+0000001 = $1 or break even (2000, 2005-onward ACS and PRCS)
+9999999 = N/A
+9999998 = Unknown
+Top code for 1950: $10,000
+
+- ~INCWAGE~ Specific Variable Codes
+999999 = N/A
+999998 = Missing
+Top code for 1940: $5,001
+Top code for 1950: $10,000
+
+- ~INCBUSFM~ Specific Variable Codes
+-0001 = Net loss (1950)
+99999 = N/A
+99998 = Unknown
+Top code for 1950: $10,000
+
+- ~INCOTHER~ Specific Variable Codes
+-0001 = Net loss (1950)
+99999 = N/A
+99998 = Unknown 
+Top code for 1950: $10,000
+
+#+begin_src R :tangle R/cleaning_funs.R
+adjust_dollar_vars <- function(df, inflator = 1.69,
+                               harmonize_incwage = TRUE,
+                               replace = FALSE,
+                               name_style = c("var_adj_year", "var_year_adj")) {
+  name_style <- match.arg(name_style)
+  cols <- grep("^(INCWAGE|INCTOT|INCBUSFM|INCOTHER)_(1940|1950)$", names(df), value = TRUE)
+  if (!length(cols)) return(df)
+
+  have_incwage_1940 <- "INCWAGE_1940" %in% names(df)
+  incwage_1950_top <- if (harmonize_incwage && have_incwage_1940) 5001 * inflator else 10000
+
+  top_1950 <- c(INCWAGE = incwage_1950_top, INCTOT = 10000, INCBUSFM = 10000, INCOTHER = 10000)
+
+  na_codes_for <- function(var) {
+    switch(var,
+      INCWAGE  = c(999999, 999998),
+      INCTOT   = c(9999999, 9999998),
+      INCBUSFM = c(99999, 99998),
+      INCOTHER = c(99999, 99998),
+      numeric(0)
+    )
+  }
+
+  for (col in cols) {
+    base <- sub("_(1940|1950)$", "", col)
+    yr   <- as.integer(sub(".*_(\\d{4})$", "\\1", col))
+    x    <- as.numeric(df[[col]])
+
+    # set NA/unknown codes to NA (preserve negatives like net loss)
+    na_codes <- na_codes_for(base)
+    x[x %in% na_codes] <- NA_real_
+
+    # inflate 1940 to 1950 dollars
+    if (yr == 1940) x <- x * inflator
+
+    # pick topcode
+    top <- if (yr == 1940 && base == "INCWAGE") 5001 * inflator else
+           if (yr == 1950) top_1950[[base]] else NA_real_
+
+    # cap at top (vectorized)
+    if (!is.na(top)) x <- ifelse(x > top, top, x)
+
+    # name for output column
+    newname <- if (replace) {
+      col
+    } else if (name_style == "var_adj_year") {
+      paste0(base, "_adj_", yr)
+    } else {
+      paste0(base, "_", yr, "_adj")
+    }
+
+    df[[newname]] <- x
+  }
+
+  df
+}
+#+end_src
+
+
+#+begin_src R :tangle R/cleaning_funs.R
+clean_wide_vars <- function(wide_df, ddi, inflator = 1.69) {
+  # ten-year inflation rate from bls.gov/data/inflation_calculator.htm
+  wide_df <- wide_df |>
+    # adjust dollar amounts for inflation and missing values
+    adjust_dollar_vars(inflator = 1.69) |>
+    # deal with inconsistencies in reported birthyear across censuses by averaging
+    mutate(birthyr_adj = round( (BIRTHYR_1950 + BIRTHYR_1940) / 2 )) |>
+    # base time-invariant demographics on 1940 response
+    mutate(
+      sex_adj = ifelse(SEX_1940==1, "Male", "Female"),
+      race_adj = case_when(RACE_1940==5 ~ "Japanese",
+                       RACE_1940==4 ~ "Chinese")
+    ) |>
+    mutate(
+      # create indicator for migration status
+      migrate10 = ifelse(COUNTYICP_1940!=COUNTYICP_1950, 1, 0),
+      # create new individual-level id
+      id = row_number()
+    ) 
+  return(wide_df)
+}
+#+end_src
+
+#+RESULTS:
+|---|
+
+#+begin_src R :tangle R/cleaning_funs.R
+clean_long_vars <- function(wide_df, ddi) {
+  long_df <- wide_df |>
+    # select(!starts_with("YEAR")) |> # redundant
+    pivot_longer(
+      cols = matches("_(1940|1950)$") & !contains("histid_"),
+      names_to = c(".value", "YEAR"),
+      names_pattern = "(.*)_(1940|1950)"
+    ) |>
+    set_ipums_var_attributes(var_info = ipumsr::read_ipums_ddi(ddi)) |>
+    mutate(
+      across(any_of("YEAR"), ~ as.integer(.)),
+      across(any_of("MARST"), ~ifelse(. %in% 1:2, 1, 0), .names = "married"),
+      across(any_of("NATIVITY"), ~ifelse(. == 5, 1, 0), .names = "foreign"),
+      across(any_of("EDUC"), ~ifelse(. %in% 7:11, 1, 0), .names = "college"),
+      across(any_of("EMPSTAT"), ~ifelse(. == 1, 1, 0), .names = "employed"),
+      ## across(any_of("OCC1950"), ~ifelse(. %in% 979:999, NA), .names = "occupation"),
+      OCC1950 = as_factor(OCC1950),
+      across(any_of(c("OCC1950", "RACE", "SEX", "EDUCD", "CLASSWKR", "EMPSTAT")), as_factor)
+    )
+
+  return(long_df)
+}
+#+end_src
+
+#+RESULTS:
+|---|
+* Predicted Interment Status Estimator
+:PROPERTIES:
+:HEADER-ARGS:R: :session *R:internment*
+:END:
+My version of the estimator outlined is a function which takes in internee data and 1940 census data to calculate predicted internment probability.
+I allow for using different demographic variables to create groups to test different specifications.
+
+#+begin_src R :tangle R/predict_internment.R
+calc_int_proportion <- function(wra_data, ddi,
+                                by = c("STATEFIP", "COUNTYICP", "RACE"),
+                                chunk_size = 1e6,
+                                label = "intern_p") {
+  library(tidyverse)
+  library(dbplyr)
+  library(duckdb)
+
+  mutate_vars <- list() # variables to be mutated if present
+  groups <- by
+  
+  if ("BPL" %in% by) {
+    mutate_vars <- append(mutate_vars, list(bpl_grp = expr(group_bpl(BPL))))
+    groups <- setdiff(groups, "BPL")
+  }
+  
+  if ("BIRTHYR" %in% by) {
+    mutate_vars <- append(mutate_vars, list(byr_grp = expr(group_birthyr(BIRTHYR))))
+    groups <- setdiff(groups, "BIRTHYR")
+  }
+  
+  groups <- c(groups, names(mutate_vars))
+  
+  callback <- function(x, pos) {
+    if (length(mutate_vars) > 0) {
+      x <- x |> mutate(!!!mutate_vars)
+    }
+    result <- x |> count(across(all_of(c(groups, "YEAR"))))
+    ## print(result) # for debuging
+    return(result)
+  }
+
+  chunks <- read_ipums_micro_chunked(
+    ddi = ddi,
+    callback = IpumsDataFrameCallback$new(callback),
+    chunk_size = chunk_size,
+    vars = c(all_of(by), "YEAR")
+  )
+
+  pop_grp <- chunks |>
+    filter(YEAR==1940) |> 
+    group_by(across(all_of(groups))) |>
+    summarise(n_census = sum(n), .groups = "drop") 
+
+  # Count by group in internee data
+  int_grp <- wra_data |>
+    rename_with(toupper, c("race", "sex", "birthyr", "bpl", "bpl_pop", "bpl_mom", "yrimmig", "nativity", "degfield", "educ")) |>
+    mutate(!!!mutate_vars) |> 
+    ## filter(RACE==5) |>
+    group_by(across(all_of(unname(groups)))) |>
+    summarise(n_interned = n(), .groups = "drop")
+
+  # Join and calculate fraction
+  proportions <- pop_grp |>
+    full_join(int_grp, by = groups) |>
+    mutate(
+      n_interned = replace_na(n_interned, 0),
+      pr_interned = n_interned / n_census
+    ) |>
+    rename(!!label := pr_interned)
+
+  return(proportions)
+}
+#+end_src
+
+#+RESULTS:
+
 * Full Count Census
 ** IPUMS API Download
 :PROPERTIES:
@@ -1108,390 +1566,6 @@ test_dt <- read_ipums_micro_yield(ddi = "data/fullcount_census/usa_00128.xml")$y
 print(object.size(test_dt), units = "auto")
 #+end_src
 
-* MLP Linked Census Data
-:PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment* :colnames yes 
-:END:
-Reading all linked data from IPUMS MLP version 2
-#+begin_src R :results output
-library(targets)
-library(duckdb)
-
-tar_load(c(mlp_tbl, mlp_db, ddi_mlp))
-con <- dbConnect(duckdb(), dbdir = mlp_db)
-#+end_src
-
-#+RESULTS:
-
-** Write MLP data to database
-
-#+begin_src R :tangle R/database.R
-#' Writes census microdata from an IPUMS ddi path to a local database
-#'
-#' @param ddi Path to an IPUMS DDI .xml file.
-#' @param dbdir Path to a local duckdb database.
-#'              A new file will be created if it doesnt exist already
-#' @param tbl_name String name of the table in the database
-#' @param chunk_size Number of rows to read in each chunk
-#' @param replace Logical. If TRUE, replace existing table. If FALSE, skip if table exists.
-#' @param debug Logical. If TRUE, print chunk information during processing
-#' @returns A name of the table where data is written
-write_ipums_db <- function(ddi, dbdir, tbl_name,
-                           debug = FALSE, chunk_size = 1e6,
-                           replace = FALSE) {
-  library(duckdb)
-  library(DBI)
-  library(ipumsr)
-  
-  con <- dbConnect(duckdb(), dbdir = dbdir)
-  
-  # Check if table already exists
-  table_exists <- tbl_name %in% dbListTables(con)
-  
-  if (table_exists && !replace) {
-    message("Table '", tbl_name, "' already exists. Use replace = TRUE to overwrite.")
-    dbDisconnect(con)
-    return(tbl_name)
-  }
-  
-  if (table_exists && replace) {
-    message("Replacing existing table '", tbl_name, "'")
-    dbRemoveTable(con, tbl_name)
-  } else if (!table_exists) {
-    message("Creating new table '", tbl_name, "'")
-  }
-  
-  # Track progress
-  total_rows <- 0
-  
-  write_chunk <- function(chunk, pos) {
-    dbWriteTable(con, tbl_name, chunk, append = TRUE)
-    total_rows <<- total_rows + nrow(chunk)
-    
-    if (debug) {
-      message("Processed chunk at position ", pos, " with ", nrow(chunk), " rows. Total: ", total_rows)
-    }
-  }
-
-  # Read and write data in chunks
-  tryCatch({
-    read_ipums_micro_chunked(
-      ddi,
-      callback = readr::SideEffectChunkCallback$new(write_chunk),
-      chunk_size = chunk_size
-    )
-    
-    message("Successfully wrote ", total_rows, " rows to table '", tbl_name, "'")
-    
-  }, error = function(e) {
-    message("Error writing to database: ", e$message)
-    if (dbExistsTable(con, tbl_name)) {
-      dbRemoveTable(con, tbl_name)
-      message("Removed incomplete table due to error")
-    }
-    stop(e)
-  })
-
-  dbDisconnect(con)
-  return(tbl_name)
-}
-#+end_src
-
-* Predicted Interment Status Estimator
-:PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment*
-:END:
-My version of the estimator outlined is a function which takes in internee data and 1940 census data to calculate predicted internment probability.
-I allow for using different demographic variables to create groups to test different specifications.
-
-#+begin_src R :tangle R/predict_internment.R
-calc_int_proportion <- function(wra_data, ddi,
-                                by = c("STATEFIP", "COUNTYICP", "RACE"),
-                                chunk_size = 1e6,
-                                label = "intern_p") {
-  library(tidyverse)
-  library(dbplyr)
-  library(duckdb)
-
-  mutate_vars <- list() # variables to be mutated if present
-  groups <- by
-  
-  if ("BPL" %in% by) {
-    mutate_vars <- append(mutate_vars, list(bpl_grp = expr(group_bpl(BPL))))
-    groups <- setdiff(groups, "BPL")
-  }
-  
-  if ("BIRTHYR" %in% by) {
-    mutate_vars <- append(mutate_vars, list(byr_grp = expr(group_birthyr(BIRTHYR))))
-    groups <- setdiff(groups, "BIRTHYR")
-  }
-  
-  groups <- c(groups, names(mutate_vars))
-  
-  callback <- function(x, pos) {
-    if (length(mutate_vars) > 0) {
-      x <- x |> mutate(!!!mutate_vars)
-    }
-    result <- x |> count(across(all_of(c(groups, "YEAR"))))
-    ## print(result) # for debuging
-    return(result)
-  }
-
-  chunks <- read_ipums_micro_chunked(
-    ddi = ddi,
-    callback = IpumsDataFrameCallback$new(callback),
-    chunk_size = chunk_size,
-    vars = c(all_of(by), "YEAR")
-  )
-
-  pop_grp <- chunks |>
-    filter(YEAR==1940) |> 
-    group_by(across(all_of(groups))) |>
-    summarise(n_census = sum(n), .groups = "drop") 
-
-  # Count by group in internee data
-  int_grp <- wra_data |>
-    rename_with(toupper, c("race", "sex", "birthyr", "bpl", "bpl_pop", "bpl_mom", "yrimmig", "nativity", "degfield", "educ")) |>
-    mutate(!!!mutate_vars) |> 
-    ## filter(RACE==5) |>
-    group_by(across(all_of(unname(groups)))) |>
-    summarise(n_interned = n(), .groups = "drop")
-
-  # Join and calculate fraction
-  proportions <- pop_grp |>
-    full_join(int_grp, by = groups) |>
-    mutate(
-      n_interned = replace_na(n_interned, 0),
-      pr_interned = n_interned / n_census
-    ) |>
-    rename(!!label := pr_interned)
-
-  return(proportions)
-}
-#+end_src
-
-#+RESULTS:
-
-* Cleaning and Defining Main Sample for Analysis
-:PROPERTIES:
-:HEADER-ARGS:R: :session *R:internment*
-:END:
-** Clean IPUMS Variables
-#+begin_src R :tangle R/cleaning_funs.R
-collect_sample <- function(db, table,
-                           vars = c("RACE", "BIRTHYR", "INCWAGE",
-                                    "STATEFIP", "COUNTYICP", "AGE",
-                                    "SEX", "EDUCD", "CLASSWKR",
-                                    "WKSWORK1", "OCC1950", "OCCSCORE",
-                                    "EMPSTAT")) {
-  # connect to database on file
-  con <- dbConnect(duckdb(), db)
-  # disconnect from database on function exit
-  on.exit(dbDisconnect(con))
-
-  # save table as temporary object
-  db_tbl <- tbl(con, table)
-
-  # collect HIKs of interest from 1940 data
-  hiks_to_keep <- db_tbl |>
-    filter(YEAR == 1940, RACE %in% c(4,5)) |>
-    select(HIK)
-
-  # Main query: join to keep only relevent HIKs,
-  # then filter and collect
-  reg_data <- db_tbl |>
-    semi_join(hiks_to_keep, by = "HIK") |>
-    filter(
-      !is.na(STATEFIP),
-      !is.na(COUNTYICP),
-      (BIRTHYR < 1926)
-    ) |>
-    select(HIK, YEAR, all_of(vars)) |>
-    collect() |>
-    pivot_wider(
-      id_cols = HIK, names_from = YEAR,
-      values_from = all_of(vars)
-    ) 
-
-  return(reg_data)
-}
-#+end_src
-*** Real Dollar Adjustments
-To account for inflation during the ten years between censuses, I adjust 1940 dollar amounts to 1950 dollars
-using the US Bureau of Labor Statistics [[https://www.bls.gov/data/inflation_calculator.htm][online CPI calculator]] which returns a cumulative inflation rate of 69% from January, 1940 to January, 1950.
-
-The IPUMS census data have the following variable names which are in dollar amounts: ~INCTOT, INCWAGE, INCBUSFM, INCOTHER~.
-
-We also have to account for missing values and topcoding for each variable separately:
-- ~INCTOT~ Specific Variable Codes
--009995 = -$9,900 (1980)
--000001 = Net loss (1950)
-0000000 = None
-0000001 = $1 or break even (2000, 2005-onward ACS and PRCS)
-9999999 = N/A
-9999998 = Unknown
-Top code for 1950: $10,000
-
-- ~INCWAGE~ Specific Variable Codes
-999999 = N/A
-999998 = Missing
-Top code for 1940: $5,001
-Top code for 1950: $10,000
-
-- ~INCBUSFM~ Specific Variable Codes
--0001 = Net loss (1950)
-99999 = N/A
-99998 = Unknown
-Top code for 1950: $10,000
-
-- ~INCOTHER~ Specific Variable Codes
--0001 = Net loss (1950)
-99999 = N/A
-99998 = Unknown 
-Top code for 1950: $10,000
-
-#+begin_src R :tangle R/cleaning_funs.R
-adjust_dollar_vars <- function(df, inflator = 1.69,
-                               harmonize_incwage = TRUE,
-                               replace = FALSE,
-                               name_style = c("var_adj_year", "var_year_adj")) {
-  name_style <- match.arg(name_style)
-  cols <- grep("^(INCWAGE|INCTOT|INCBUSFM|INCOTHER)_(1940|1950)$", names(df), value = TRUE)
-  if (!length(cols)) return(df)
-
-  have_incwage_1940 <- "INCWAGE_1940" %in% names(df)
-  incwage_1950_top <- if (harmonize_incwage && have_incwage_1940) 5001 * inflator else 10000
-
-  top_1950 <- c(INCWAGE = incwage_1950_top, INCTOT = 10000, INCBUSFM = 10000, INCOTHER = 10000)
-
-  na_codes_for <- function(var) {
-    switch(var,
-      INCWAGE  = c(999999, 999998),
-      INCTOT   = c(9999999, 9999998),
-      INCBUSFM = c(99999, 99998),
-      INCOTHER = c(99999, 99998),
-      numeric(0)
-    )
-  }
-
-  for (col in cols) {
-    base <- sub("_(1940|1950)$", "", col)
-    yr   <- as.integer(sub(".*_(\\d{4})$", "\\1", col))
-    x    <- as.numeric(df[[col]])
-
-    # set NA/unknown codes to NA (preserve negatives like net loss)
-    na_codes <- na_codes_for(base)
-    x[x %in% na_codes] <- NA_real_
-
-    # inflate 1940 to 1950 dollars
-    if (yr == 1940) x <- x * inflator
-
-    # pick topcode
-    top <- if (yr == 1940 && base == "INCWAGE") 5001 * inflator else
-           if (yr == 1950) top_1950[[base]] else NA_real_
-
-    # cap at top (vectorized)
-    if (!is.na(top)) x <- ifelse(x > top, top, x)
-
-    # name for output column
-    newname <- if (replace) {
-      col
-    } else if (name_style == "var_adj_year") {
-      paste0(base, "_adj_", yr)
-    } else {
-      paste0(base, "_", yr, "_adj")
-    }
-
-    df[[newname]] <- x
-  }
-
-  df
-}
-#+end_src
-
-*** Demographics
-
-#+begin_src R :tangle R/cleaning_funs.R
-clean_wide_vars <- function(wide_df, ddi, inflator = 1.69) {
-  # ten-year inflation rate from bls.gov/data/inflation_calculator.htm
-  wide_df <- wide_df |>
-    # adjust dollar amounts for inflation and missing values
-    adjust_dollar_vars(inflator = 1.69) |>
-    # deal with inconsistencies in reported birthyear across censuses by averaging
-    mutate(
-      birthyr_adj = round( (BIRTHYR_1950 + BIRTHYR_1940) / 2 ),
-      age_adj_1940 = 1940 - birthyr_adj,
-      age_adj_1950 = 1950 - birthyr_adj
-    ) |>
-    # base time-invariant demographics on 1940 response
-    mutate(
-      sex_adj = ifelse(SEX_1940==1, "Male", "Female"),
-      race_adj = case_when(RACE_1940==5 ~ "Japanese",
-                       RACE_1940==4 ~ "Chinese")
-    ) |>
-    mutate(
-      # create indicator for migration status
-      migrate10 = ifelse(COUNTYICP_1940!=COUNTYICP_1950, 1, 0),
-      # create new individual-level id
-      id = row_number()
-    ) 
-}
-#+end_src
-
-#+RESULTS:
-
-#+begin_src R :tangle R/cleaning_funs.R
-clean_long_vars <- function(wide_df, ddi) {
-  long_df <- wide_df |>
-    # select(!starts_with("YEAR")) |> # redundant
-    pivot_longer(
-      cols = matches("_(1940|1950)$") & !contains("histid_"),
-      names_to = c(".value", "YEAR"),
-      names_pattern = "(.*)_(1940|1950)"
-    ) |>
-    set_ipums_var_attributes(var_info = ipumsr::read_ipums_ddi(ddi)) |>
-    mutate(
-      across(any_of("YEAR"), ~ as.integer(.)),
-      across(any_of("MARST"), ~ifelse(. %in% 1:2, 1, 0), .names = "married"),
-      across(any_of("NATIVITY"), ~ifelse(. == 5, 1, 0), .names = "foreign"),
-      across(any_of("EDUC"), ~ifelse(. %in% 7:11, 1, 0), .names = "college"),
-      across(any_of("EMPSTAT"), ~ifelse(. == 1, 1, 0), .names = "employed"),
-      ## across(any_of("OCC1950"), ~ifelse(. %in% 979:999, NA), .names = "occupation"),
-      OCC1950 = as_factor(OCC1950),
-      across(any_of(c("OCC1950", "RACE", "SEX", "EDUCD", "CLASSWKR", "EMPSTAT")), as_factor)
-    )
-
-  return(long_df)
-}
-#+end_src
-
-#+RESULTS:
-*** Full targets pipeline
-#+begin_src R :tangle R/cleaning_funs.R
-clean_mlp <- function(wide_df, internpr, ddi, inflator = 1.6) {
-  wide_df |>
-    left_join(
-      internpr,
-      by = c(
-        "RACE_1940"="RACE",
-        "STATEFIP_1940"="STATEFIP",
-        "COUNTYICP_1940"="COUNTYICP"
-      )
-    ) |>
-    clean_wide_vars(ddi = ddi, inflator = inflator) |>
-    filter(
-      !if_any(starts_with("RACE"),  ~ is.na(.x)),
-      !if_any(starts_with("SEX"), ~ is.na(.x))
-    ) |>
-    mutate(
-      Earning_growth =
-        (INCWAGE_adj_1950 - INCWAGE_adj_1940) /
-        INCWAGE_adj_1940
-    ) |>
-    # pivot to longer and clean variables by year
-    clean_long_vars(ddi = ddi)
-}
-#+end_src
 ** County-Level Wages
 #+begin_src R :tangle R/cleaning_funs.R
 collect_county_stats <- function(ddi, inflator = 1.69) {
@@ -1499,12 +1573,13 @@ collect_county_stats <- function(ddi, inflator = 1.69) {
   countystat_cb <- function(x, pos) {
     x |>
       filter(YEAR == 1940) |>
-      mutate(
-        INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE * inflator)
-      ) |>
+      ## mutate(INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE * inflator)) |>
+      rename(INCWAGE_1940 = INCWAGE) |> # var name for adjust_dollar_vars formating
+      adjust_dollar_vars(inflator = inflator) |>
       group_by(STATEFIP, COUNTYICP) |>
       summarise(
-        county_med.salary   = median(INCWAGE, na.rm=T),
+        county_tot.salary   = sum(INCWAGE_adj_1940, na.rm=T),
+        county_haswage.n    = sum(!is.na(INCWAGE_adj_1940)),
         county_pop          = n(),
         county_pop.white    = sum(RACE==1),
         county_pop.chinese  = sum(RACE==4),
@@ -1523,25 +1598,25 @@ collect_county_stats <- function(ddi, inflator = 1.69) {
     group_by(STATEFIP, COUNTYICP) |>
     summarise(
       # hopefully mean of sample median is good aprx for median?
-      county_med.salary   = mean(county_med.salary, na.rm=T),
+      county_med.salary   = sum(county_tot.salary, na.rm=T) / sum(county_haswage.n, na.rm=T),
       county_pop          = sum(county_pop),
       county_pop.white    = sum(county_pop.white),
-      county_pct.white    = sum(county_pop.white) / n(),
+      county_pct.white    = sum(county_pop.white) / sum(county_pop, na.rm=T),
       county_pop.chinese  = sum(county_pop.chinese),
-      county_pct.chinese  = sum(county_pop.chinese) / n(),
+      county_pct.chinese  = sum(county_pop.chinese) / sum(county_pop, na.rm=T),
       county_pop.japanese = sum(county_pop.japanese),
-      county_pct.japanese = sum(county_pop.japanese) / n(),
+      county_pct.japanese = sum(county_pop.japanese) / sum(county_pop, na.rm=T),
       .groups = "drop"
     )
+
+  return(county_data)
 }
 #+end_src
 
+#+RESULTS:
+
 * TODO County GIS Files
 ** Historical Counties
-:PROPERTIES:
-:header-args:R: :session *R:downloads*
-:END:
-
 I download shapefiles for county boundaries in 1940 and 1950 from the [[https://www.nhgis.org/][National Historical Geographic Information System]] (NHGIS).
 
 #+begin_src R :results silent

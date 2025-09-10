@@ -1,4 +1,53 @@
-collect_sample <- function(db, table,
+define_wage_sample <- function(mlp_sample) {
+  mlp_sample |>
+    pivot_wider(
+      names_from = YEAR,
+      values_from = RACE:age_adj
+    ) |>
+    mutate(
+      consistent_wage = ifelse((is.na(INCWAGE_1940) | is.na(INCWAGE_1950)), FALSE, TRUE),
+      consistent_race = ifelse(RACE_1940 != RACE_1950 | is.na(RACE_1940), FALSE, TRUE),
+      consistent_place = ifelse(is.na(COUNTYICP_1940)|is.na(COUNTYICP_1950), FALSE, TRUE),
+      consistent_occ  = ifelse(is.na(OCC1950_1940) | is.na(OCC1950_1950), FALSE, TRUE),
+      consistent_all  = ifelse(consistent_wage & consistent_race & consistent_place & consistent_occ, TRUE, FALSE)
+    ) |>
+    filter(consistent_all == TRUE) |>
+    rename(
+      RACE = race_adj,
+      SEX  = sex_adj
+    ) |>
+    select(-c("RACE_1940", "RACE_1950", "SEX_1940", "SEX_1950"))
+}
+
+clean_mlp <- function(wide_df, internpr, countystats, ddi, inflator = 1.6) {
+  wide_df |>
+    left_join(
+      internpr,
+      by = c(
+        "RACE_1940"="RACE",
+        "STATEFIP_1940"="STATEFIP",
+        "COUNTYICP_1940"="COUNTYICP"
+      )
+    ) |>
+    clean_wide_vars(ddi = ddi, inflator = inflator) |>
+    mutate(
+      Earning_growth =
+        (INCWAGE_adj_1950 - INCWAGE_adj_1940) /
+        INCWAGE_adj_1940
+    ) |>
+    # pivot to longer and clean variables by year
+    clean_long_vars(ddi = ddi) |>
+    left_join(countystats, by = c("STATEFIP", "COUNTYICP")) |>
+    select(-c("n_census", "n_interned", "INCWAGE")) |>
+    rename(INCWAGE = INCWAGE_adj) |>
+    mutate(
+      age_adj = as.integer(YEAR) - birthyr_adj,
+      employed = as_factor(employed),
+      migrant = as_factor(migrate10)
+    ) 
+}
+
+collect_mlp <- function(db, table,
                            vars = c("RACE", "BIRTHYR", "INCWAGE",
                                     "STATEFIP", "COUNTYICP", "AGE",
                                     "SEX", "EDUCD", "CLASSWKR",
@@ -99,11 +148,7 @@ clean_wide_vars <- function(wide_df, ddi, inflator = 1.69) {
     # adjust dollar amounts for inflation and missing values
     adjust_dollar_vars(inflator = 1.69) |>
     # deal with inconsistencies in reported birthyear across censuses by averaging
-    mutate(
-      birthyr_adj = round( (BIRTHYR_1950 + BIRTHYR_1940) / 2 ),
-      age_adj_1940 = 1940 - birthyr_adj,
-      age_adj_1950 = 1950 - birthyr_adj
-    ) |>
+    mutate(birthyr_adj = round( (BIRTHYR_1950 + BIRTHYR_1940) / 2 )) |>
     # base time-invariant demographics on 1940 response
     mutate(
       sex_adj = ifelse(SEX_1940==1, "Male", "Female"),
@@ -116,6 +161,7 @@ clean_wide_vars <- function(wide_df, ddi, inflator = 1.69) {
       # create new individual-level id
       id = row_number()
     ) 
+  return(wide_df)
 }
 
 clean_long_vars <- function(wide_df, ddi) {
@@ -141,41 +187,18 @@ clean_long_vars <- function(wide_df, ddi) {
   return(long_df)
 }
 
-clean_mlp <- function(wide_df, internpr, ddi, inflator = 1.6) {
-  wide_df |>
-    left_join(
-      internpr,
-      by = c(
-        "RACE_1940"="RACE",
-        "STATEFIP_1940"="STATEFIP",
-        "COUNTYICP_1940"="COUNTYICP"
-      )
-    ) |>
-    clean_wide_vars(ddi = ddi, inflator = inflator) |>
-    filter(
-      !if_any(starts_with("RACE"),  ~ is.na(.x)),
-      !if_any(starts_with("SEX"), ~ is.na(.x))
-    ) |>
-    mutate(
-      Earning_growth =
-        (INCWAGE_adj_1950 - INCWAGE_adj_1940) /
-        INCWAGE_adj_1940
-    ) |>
-    # pivot to longer and clean variables by year
-    clean_long_vars(ddi = ddi)
-}
-
 collect_county_stats <- function(ddi, inflator = 1.69) {
   # callback function to calculate county summary stats
   countystat_cb <- function(x, pos) {
     x |>
       filter(YEAR == 1940) |>
-      mutate(
-        INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE * inflator)
-      ) |>
+      ## mutate(INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE * inflator)) |>
+      rename(INCWAGE_1940 = INCWAGE) |> # var name for adjust_dollar_vars formating
+      adjust_dollar_vars(inflator = inflator) |>
       group_by(STATEFIP, COUNTYICP) |>
       summarise(
-        county_med.salary   = median(INCWAGE, na.rm=T),
+        county_tot.salary   = sum(INCWAGE_adj_1940, na.rm=T),
+        county_haswage.n    = sum(!is.na(INCWAGE_adj_1940)),
         county_pop          = n(),
         county_pop.white    = sum(RACE==1),
         county_pop.chinese  = sum(RACE==4),
@@ -194,14 +217,16 @@ collect_county_stats <- function(ddi, inflator = 1.69) {
     group_by(STATEFIP, COUNTYICP) |>
     summarise(
       # hopefully mean of sample median is good aprx for median?
-      county_med.salary   = mean(county_med.salary, na.rm=T),
+      county_med.salary   = sum(county_tot.salary, na.rm=T) / sum(county_haswage.n, na.rm=T),
       county_pop          = sum(county_pop),
       county_pop.white    = sum(county_pop.white),
-      county_pct.white    = sum(county_pop.white) / n(),
+      county_pct.white    = sum(county_pop.white) / sum(county_pop, na.rm=T),
       county_pop.chinese  = sum(county_pop.chinese),
-      county_pct.chinese  = sum(county_pop.chinese) / n(),
+      county_pct.chinese  = sum(county_pop.chinese) / sum(county_pop, na.rm=T),
       county_pop.japanese = sum(county_pop.japanese),
-      county_pct.japanese = sum(county_pop.japanese) / n(),
+      county_pct.japanese = sum(county_pop.japanese) / sum(county_pop, na.rm=T),
       .groups = "drop"
     )
+
+  return(county_data)
 }

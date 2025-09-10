@@ -1,6 +1,8 @@
 # Load packages required to define the pipeline:
 library(targets)
 library(dplyr)
+library(ipumsr)
+library(fixest)
 # library(tarchetypes) # Load other packages as needed.
 
 # Set target options:
@@ -43,7 +45,10 @@ list(
                                  by = c("STATEFIP", "COUNTYICP", "RACE"),
                                  label = "internment_prob")),
 
-  tar_target(mlp_sample, collect_sample(mlp_db, mlp_tbl)),
-  tar_target(sample_long, clean_mlp(mlp_sample, internpr, ddi_mlp, 1.69))
+  tar_target(county_stats,
+             collect_county_stats(ddi_fullcount, inflator = 1.69)),
+  tar_target(mlp_raw, collect_mlp(mlp_db, mlp_tbl)),
+  tar_target(mlp_sample, clean_mlp(mlp_raw, internpr, county_stats, ddi_mlp, 1.69)),
+  tar_target(wage_sample, define_wage_sample(mlp_sample))
 
 )
