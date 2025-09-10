@@ -130,26 +130,22 @@ ggplot(
 
 ** Summary Statistics
 #+begin_src R :colnames yes
-linked_data_full |> 
-  group_by(race, YEAR) |>
+plt_data |> 
+  pivot_longer(
+  group_by(race_adj, YEAR) |>
   summarise(
     n = n(),
-    across(c(salary, SEX, OCCSCORE, age, employed, WKSWORK1),
+    across(c(INCWAGE_adj, SEX, OCCSCORE, age_adj, employed, WKSWORK1),
            ~round(mean(., na.rm=T), digits = 2)
            )
   )
 #+end_src
 
 #+RESULTS:
-| race     | YEAR |    n | salary |  SEX | OCCSCORE |   age | employed | WKSWORK1 |
-|----------+------+------+--------+------+----------+-------+----------+----------|
-| Chinese  | 1940 | 6448 |  589.5 | 1.33 |    10.42 | 26.99 |     0.37 |    17.88 |
-| Chinese  | 1950 | 6448 | 886.18 | 1.34 |     12.9 | 36.99 |      0.5 |      6.3 |
-| Japanese | 1940 | 4631 | 390.66 | 1.45 |        8 |  32.2 |     0.42 |    19.84 |
-| Japanese | 1950 | 4631 | 889.03 | 1.45 |     8.74 |  42.2 |     0.52 |     7.75 |
+|---|
 
 #+begin_src R :exports both :results output
-table_dt <- sampleline_sample |>
+table_dt <- sample_long |>
   select(race, salary_1940, salary_1950,
          employed_1940, employed_1950, income_tot, OCCSCORE_1940, OCCSCORE_1950, WKSWORK1_1940, WKSWORK1_1950, employed_1940, employed_1950, age_1950, migrate10, sex) 
 modelsummary::datasummary_balance(~race, table_dt)

@@ -72,14 +72,14 @@ assified as "U.S. outlying areas" in BPL are considered foreign."
 =FBPL=
 =MBPL= 
 *** =CITIZEN=: Citizenship status
-Label                                | Code |
--------------------------------------+------|
-N/A (born to american parents in US) |    0 |
-Born abroad of American parents      |    1 |
-Naturalized citizen                  |    2 |
-Not a citizen                        |    3 |
-Not a citizen, received first papers |    4 |
-Foreign born, status not reported    |    5 |
+| Label                                | Code |
+|--------------------------------------+------|
+| N/A (born to american parents in US) |    0 |
+| Born abroad of American parents      |    1 |
+| Naturalized citizen                  |    2 |
+| Not a citizen                        |    3 |
+| Not a citizen, received first papers |    4 |
+| Foreign born, status not reported    |    5 |
 
 ** Education and Literacy:
 =SCHOOL=: School Attendence

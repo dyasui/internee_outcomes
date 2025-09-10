@@ -36,12 +36,20 @@
 #+OPTIONS: toc:nil
 \begin{abstract}
 
-This is the abstract.
+# ABSTRACT GOES HERE
 
 \end{abstract}
 #+TOC: headlines 3
 
 * Introduction
+My research setting centers around the large-scale forced evacuation and incarceration of over one hundred thousand Japanese Americans away from the US West Coast during World War Two.
+
+
+Japanese Internment can be used as a natural experiment to test the the impacts of forced migration on the affected migrants themselves.
+My research analyses how interned Japanese Americans labor market outcomes, choice of occupation, and later migration after release from internment camps were affected relative to non-interned Japanese Americans and other similar immigrant groups.
+This research approaches this question with newly available linked panel data to follow the individual outcomes of thousands of internees between the 1940 and 1950 decennial census.
+
+
 ** Research Question
 What was the effect of internment on wage growth?
 ** Motivation
