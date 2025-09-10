@@ -1,6 +1,6 @@
 * Data Visualizations
 :PROPERTIES:
-:HEADER-ARGS:R: :tangle R/figures.R :session *R:figures*
+:HEADER-ARGS:R: :session *R:figures*
 :END:
 
 #+begin_src R :results silent
@@ -13,7 +13,7 @@ library(targets)
 tar_load(c(linked_data_full, ddi_path))
 #+end_src
 
-#+begin_src R
+#+begin_src R :tangle R/figures.R
 theme_internment <- function(){ 
   showtext::showtext_auto()
   font <- "Georgia"   #assign font family up front
