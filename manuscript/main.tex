@@ -1,0 +1,171 @@
+% \input{preamble}
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usepackage{amsmath,amsfonts,amsthm,amssymb}
+\usepackage[singlelinecheck=false]{caption}
+\captionsetup[subfigure]{singlelinecheck=on, labelfont=normalfont}
+\captionsetup[figure]{labelfont=it}
+\usepackage{graphicx}
+\usepackage{rotating}
+\usepackage{enumitem}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage[normalem]{ulem}
+\usepackage{hyperref}
+\hypersetup{
+colorlinks = true,
+linkcolor = blue,
+filecolor = magenta,
+urlcolor = cyan,
+citecolor = blue
+}
+
+\usepackage{tikz}
+
+% datasummary tables formatting
+\usepackage{tabularray}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage[normalem]{ulem}
+\UseTblrLibrary{booktabs}
+\UseTblrLibrary{siunitx}
+\newcommand{\tinytableTabularrayUnderline}[1]{\underline{#1}}
+\newcommand{\tinytableTabularrayStrikeout}[1]{\sout{#1}}
+\NewTableCommand{\tinytableDefineColor}[3]{\definecolor{#1}{#2}{#3}}
+
+% for rotating tables
+\usepackage{pdflscape}
+\usepackage{afterpage}
+\usepackage{capt-of}% or use the larger `caption` package
+
+\usepackage{natbib}
+\bibliographystyle{apalike}
+\setcounter{secnumdepth}{3}
+\author{Dante Yasui}
+\date{2025-06-19}
+\title{Forced Removal or Moved to Opportunity?\\\medskip
+\large Labor Market and Migration Effects of Japanese Internment}
+\hypersetup{
+ pdfauthor={Dante Yasui},
+ pdftitle={Forced Removal or Moved to Opportunity?},
+ pdfkeywords={migration, economic mobility, economic history},
+ pdfsubject={Job market paper manuscript},
+ pdfcreator={Emacs 29.1 (Org mode 9.6.6)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+
+\input{abstract}
+
+\section{Introduction}
+\input{introduction}
+
+\subsection{Historical Background}
+\input{history}
+
+\section{Data}
+\input{data}
+
+\section{Methods}
+\input{methods}
+
+\section{Results}
+\input{results}
+
+\section{Conclusion}
+\input{conclusion}
+
+\newpage
+\singlespacing
+\bibliography{main}
+
+\newpage
+
+\section*{Figures}
+
+\begin{figure}
+  \centering
+  \caption{Map of Exclusion Area, Assembly Centers, and WRA Camps}
+  \includegraphics[width=1.0\textwidth]{../figures/PioCrtInternmentMap.jpg}
+  \label{fig:internmentmap}
+  \caption*{Source: \href{https://pioneercourthouse.org/gallery-Japanese-American-Internment.html}{Pioneer Courthouse Galleries}}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \caption{Map of 1940 Japanese Population Distribution}
+  \includegraphics[width=1.0\textwidth]{../figures/1940_map.pdf}
+  \label{fig:1940JAmap}
+\end{figure}
+
+\begin{figure}
+  \caption{Counts of interned persons by age and WRA camp}
+  \includegraphics[width=0.6\textwidth]{../figures/internee-age_plot.pdf}
+  \footnotesize \\
+  Data from the WRA internment camp records on the ages of interned Japanese people in 1942
+  infered from their reported birth year. 
+  The counts of people in each of the ten internment camps created by the WRA are based on the initial camp they were placed in 
+  after being moved from the temporary assembly centers.
+  \label{fig:internee-ages}
+\end{figure}
+
+\begin{figure}
+  \label{fig:intern_map}
+  \centering
+  \caption{Proportion of 1940 Japanese population interned vs. `Evacuation areas' in 1942}
+  \includegraphics[width=\textwidth]{../figures/pr_interned_map.pdf} \\
+  \includegraphics[height=5cm]{../figures/WRAzonesmap.png} \\
+  \footnotesize
+  Interned proportions are calculated as the number of internees from the county divided by the county's Japanese population in the 1940 full-count census.
+  Counties in white had zero Japanese respondents in the 1940 census.
+  The map on the below comes from the 1942 Western Defense Command's Final Report \citep{dewittjohnl.FinalReportJapanese1943}
+  and shows in color the evacuation areas along the West Coast.
+\end{figure}
+
+\begin{figure}
+  \label{fig:pr_intern}
+  \caption{Counts of linked individuals by their estimated internment `probability'}
+  \includegraphics[width=.8\textwidth]{../figures/pr_intern_plot.pdf} \\
+  \footnotesize
+  This figure includes all Japanese and Chinese individuals who are linked across the 1940 and 1950 censuses
+  in version 1.2 of the IPUMS MLP project.
+  An individual's probability of being an internee is estimated as the ratio of interned people to the 
+  number of people in the 1940 full-count census who have the same county and demographics.
+  My cutoff for categorizing a person in the linked records as a likely internee is shown by the vertical line at 0.5.
+\end{figure}
+
+
+\begin{figure}
+  \label{fig:wageeffect}
+  \caption{Interned Japanese men experienced higher earnings growth than non-interned men.}
+  \centering
+  \includegraphics[width=\textwidth]{../figures/INCWAGE_plot.pdf} \\
+  \footnotesize
+  Interned proportions are calculated as the number of internees from the county divided by the county's Japanese population in the 1940 full-count census.
+  Counties in white had zero Japanese respondents in the 1940 census.
+  The map on the below comes from the 1942 Western Defense Command's Final Report \citep{dewittjohnl.FinalReportJapanese1943}
+  and shows in color the evacuation areas along the West Coast.
+\end{figure}
+
+\section*{Tables}
+
+\input{../tables/balance_stats.tex}\label{tbl:bal-stat}
+
+\input{../tables/cmp-cty_tbl}\label{tbl:cmp-cty}
+
+\input{../tables/reg1_tbl.tex}\label{tbl:reg1}
+
+\input{../tables/reg2_tbl.tex}\label{tbl:reg2}
+
+\end{document}

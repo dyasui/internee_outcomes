@@ -35,8 +35,6 @@ data/nhgis0038_shape.zip
 WRA-internees.org~
 
 **#
-*.tex
 *.html
-*.pdf
 data/mlp.duckdb
 notes/cleaning-functions.org
