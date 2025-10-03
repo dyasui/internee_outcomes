@@ -10,7 +10,8 @@ library(ggplot2)
 
 library(targets)
 
-tar_load(c(sample_long))
+tar_source()
+tar_load(c(wage_sample))
 #+end_src
 
 * MLP Linked Internees
@@ -118,7 +119,13 @@ wage_sample |>
   facet_wrap(~ as_factor(RACE) + as_factor(SEX)) +
   geom_smooth(method = "lm") +
   scale_y_log10() +
-  theme_internment()
+  labs(
+    x = "Internment Status",
+    fill = "Internment Status",
+    y = "% change in income 1940-1950"
+  ) +
+  theme_internment() +
+  theme(legend.position = "bottom")
 #+end_src
 
 #+RESULTS:
@@ -208,7 +215,7 @@ modelsummary::datasummary_balance(~RACE, table_dt, output = "latex")
 ** Regressions
 *** Relationship between internment status and 1950 salary
 
-#+begin_src R :session *R:internment* :colnames yes
+#+begin_src R :session *R:internment* :colnames yes :results output file :file tables/reg1_tbl.tex
 etable(
   feols(
     INCWAGE_1950 ~ internment_prob,
@@ -224,126 +231,30 @@ etable(
   ),
   feols(
     INCWAGE_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
+  vcov = "cluster",
     data = wage_sample
   ),
-  vcov = "hetero",
   se.below = TRUE,
-  keep = c("Internment Status", "Age", "Age square", "Male", "Japanese", "Income_1940"),
   dict = c(
     "reset", # to reset global dict 
     INCWAGE_1950="Income in 1950",
     internment_prob="Internment Status", age_adj_1950="Age", 
     SEXMale="Male", RACEJapanese="Japanese", INCWAGE_1940="Income in 1940",
-    EDUCD_1950="Years of Education", STATEFIP_1950="State of residence in 1950"
+    EDUCD_1950="Education", STATEFIP_1950="State"
   ),
+  keep = c("Internment Status", "Age", "Age square", "Male", "Japanese", "Income in 1940"),
   keepFactors = FALSE,
-  highlight = "Internment Status",
+  ## highlight = "Internment Status",
   style.tex = style.tex("aer"),
-  file = "tables/reg1_tbl.tex",
-  replace = TRUE
+  title = "Earning effects of internment",
+  tex = TRUE
 )
 #+end_src
 
 #+RESULTS:
-| x                                                                                                                                       |
-|-----------------------------------------------------------------------------------------------------------------------------------------|
-| \begingroup                                                                                                                             |
-| \definecolor{colzltmnw}{RGB}{200, 8, 21}                                                                                                |
-|                                                                                                                                         |
-| \newcommand\markNWvinipc[1]{%                                                                                                           |
-| \tikz[overlay,remember picture]                                                                                                         |
-| \node (marker-#1-a) at (0, .3em) {};%                                                                                                   |
-| }                                                                                                                                       |
-|                                                                                                                                         |
-| \newcommand\markSEvinipc[1]{%                                                                                                           |
-| \tikz[overlay,remember picture]                                                                                                         |
-| \node (marker-#1-b) at (0, .3em) {};%                                                                                                   |
-| \tikz[overlay,remember picture,inner sep=3pt, ultra thick]                                                                              |
-| \node[draw=colzltmnw,rounded corners, fit=(marker-#1-a.north west) (marker-#1-b.south east)] {};%                                       |
-| }                                                                                                                                       |
-| \centering                                                                                                                              |
-| \begin{tabular}{lcccc}                                                                                                                  |
-| \toprule                                                                                                                                |
-| & \multicolumn{4}{c}{Income in 1950}\\                                                                                                  |
-| & (1)                       & (2)             & (3)             & (4)\\                                                                 |
-| \midrule                                                                                                                                |
-| Internment Status                        & \markNWvinipc{f1} -42.07  & 232.4$^{***}$   & 250.7$^{***}$   & 170.2$^{**}$ \markSEvinipc{f1}\\ |
-| & (36.91)                   & (59.07)         & (57.99)         & (71.67)\\                                                             |
-| Age                                      &                           & 33.30$^{***}$   & 12.45$^{*}$     & 10.89\\                        |
-| &                           & (7.146)         & (7.503)         & (7.525)\\                                                             |
-| Age square                               &                           & -0.5353$^{***}$ & -0.3143$^{***}$ & -0.3000$^{***}$\\                  |
-| &                           & (0.0711)        & (0.0736)        & (0.0739)\\                                                            |
-| Male                                     &                           & 645.4$^{***}$   & 487.5$^{***}$   & 491.4$^{***}$\\                    |
-| &                           & (32.46)         & (34.80)         & (34.78)\\                                                             |
-| Japanese                                 &                           & -210.0$^{***}$  & -246.2$^{***}$  & -163.0$^{**}$\\                  |
-| &                           & (63.00)         & (64.00)         & (76.65)\\                                                             |
-| \\                                                                                                                                      |
-| Observations                             & 8,136                     & 8,136           & 8,136           & 8,136\\                      |
-| R$^2$                                    & 0.00017                   & 0.07616         & 0.10227         & 0.11736\\                    |
-| Within R$^2$                             &                           &                 & 0.08326         & 0.08013\\                    |
-| \\                                                                                                                                      |
-| Years of Education fixed effects         &                           &                 & $\checkmark$    & $\checkmark$\\               |
-| State of residence in 1950 fixed effects &                           &                 &                 & $\checkmark$\\               |
-| \bottomrule                                                                                                                             |
-| \end{tabular}                                                                                                                           |
-| \par\endgroup                                                                                                                           |
+[[file:tables/reg1_tbl.tex]]
 
-#+begin_src R :session *R:internment* :colnames yes
-etable(
-  feols(
-    INCWAGE_1950 ~ internment_prob + AGE_1950 + AGE_1950^2 + as_factor(RACE_1940) + as_factor(EDUCD_1950) + INCWAGE_1940,
-    data = reg_data |> filter(SEX_1950==1)
-  ),
-  feols(
-    INCWAGE_1950 ~ internment_prob + AGE_1950 + AGE_1950^2 + as_factor(RACE_1940) + as_factor(EDUCD_1950) + INCWAGE_1940,
-    data = reg_data |> filter(SEX_1950==2)
-  ),
-  feols(
-    INCWAGE_1950 ~ internment_prob + AGE_1950 + AGE_1950^2 + as_factor(SEX_1950) + as_factor(EDUCD_1950) + INCWAGE_1940,
-    data = reg_data |> filter(RACE_1940==5)
-  )
-  )
-#+end_src
-
-#+RESULTS:
-|                             | feols(INCWAGE_195.. | feols(INCWAGE_19.. | feols(INCWAGE_195.. |
-|-----------------------------+---------------------+--------------------+---------------------|
-| Dependent Var.:             | INCWAGE_1950        | INCWAGE_1950       | INCWAGE_1950        |
-|                             |                     |                    |                     |
-| Constant                    | 315.1 (270.3)       | 1,600.4*** (295.5) | 786.1*** (232.6)    |
-| internment_prob             | 234.9** (77.92)     | 205.7** (77.70)    | 229.5*** (55.47)    |
-| AGE_1950                    | 38.48*** (10.55)    | -39.03*** (11.76)  | 18.89* (9.268)      |
-| AGE_1950 square             | -0.5787*** (0.1057) | 0.2363. (0.1244)   | -0.3732*** (0.0947) |
-| as_factor(RACE_1940)Chinese | 276.6*** (81.50)    | 82.96 (86.44)      |                     |
-| as_factor(EDUCD_1950)2      | 71.46 (130.7)       | 137.2 (126.8)      | 104.5 (119.7)       |
-| as_factor(EDUCD_1950)12     | -78.58 (254.6)      | 733.8* (318.1)     | 385.0 (267.1)       |
-| as_factor(EDUCD_1950)14     | -50.53 (177.2)      | 5.313 (181.9)      | -49.56 (157.6)      |
-| as_factor(EDUCD_1950)15     | -29.73 (173.9)      | -102.1 (197.6)     | -96.85 (179.2)      |
-| as_factor(EDUCD_1950)16     | 364.4. (189.7)      | 73.64 (197.9)      | 228.8 (191.1)       |
-| as_factor(EDUCD_1950)17     | 209.5 (158.8)       | 51.91 (154.5)      | 101.6 (140.4)       |
-| as_factor(EDUCD_1950)22     | -24.74 (169.3)      | -7.884 (174.1)     | 83.22 (157.4)       |
-| as_factor(EDUCD_1950)23     | 187.0 (151.6)       | 136.3 (143.5)      | 176.6 (130.5)       |
-| as_factor(EDUCD_1950)25     | 98.48 (169.9)       | -5.717 (177.1)     | -25.77 (158.5)      |
-| as_factor(EDUCD_1950)26     | 63.82 (124.8)       | 134.9 (120.7)      | 70.29 (107.5)       |
-| as_factor(EDUCD_1950)30     | 372.4* (162.2)      | -149.6 (156.7)     | 199.0 (136.9)       |
-| as_factor(EDUCD_1950)40     | 93.71 (150.2)       | 4.718 (148.1)      | 47.12 (128.5)       |
-| as_factor(EDUCD_1950)50     | 257.2 (165.0)       | 49.39 (166.1)      | 109.5 (141.0)       |
-| as_factor(EDUCD_1950)60     | 291.4* (118.2)      | 152.3 (116.3)      | 198.5. (102.9)      |
-| as_factor(EDUCD_1950)70     | 416.5* (174.9)      | 180.4 (187.5)      | 500.5** (152.7)     |
-| as_factor(EDUCD_1950)80     | 287.9. (155.5)      | 177.5 (166.2)      | 283.6* (136.9)      |
-| as_factor(EDUCD_1950)90     | -54.20 (196.1)      | 271.6 (285.1)      | 28.93 (187.2)       |
-| as_factor(EDUCD_1950)100    | 324.6* (149.1)      | 794.3*** (175.5)   | 328.8* (133.6)      |
-| as_factor(EDUCD_1950)110    | 679.9*** (178.7)    | 1,012.7*** (270.3) | 567.6*** (171.5)    |
-| as_factor(EDUCD_1950)999    | 764.4 (778.3)       | -90.31 (1,237.8)   | 1,050.4 (710.1)     |
-| INCWAGE_1940                | 0.2196*** (0.0209)  | 0.3503*** (0.0472) | 0.2053*** (0.0219)  |
-| as_factor(SEX_1950)2        |                     |                    | -475.4*** (38.30)   |
-| ___________________________ | ___________________ | __________________ | ___________________ |
-| S.E. type                   | IID                 | IID                | IID                 |
-| Observations                | 5,387               | 3,605              | 6,558               |
-| R2                          | 0.07517             | 0.06889            | 0.09119             |
-| Adj. R2                     | 0.07086             | 0.06239            | 0.08772             |
-
-** Migration
+** Other outcomes
 #+begin_src R
 main_sample <- linked_data_full |>
   filter(birthyr < 1925) |>
@@ -367,39 +278,51 @@ main_sample <- linked_data_full |>
 #+end_src
 
 #+RESULTS:
-#+begin_src R :colnames yes
+#+begin_src R :results output file :file tables/reg2_tbl.tex
 etable(
   feols(
-  migrate10 ~ pr_intern + age_1950 + age_1950^2,
-  data = main_sample
+    as.numeric(employed_1950) ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
+    data = wage_sample
   ),
   feols(
-  migrate10 ~ pr_intern + age_1950 + age_1950^2,
-  cluster = ~ STATEFIP_1950,
-  data = main_sample
+    migrate10 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
+    data = wage_sample
   ),
   feols(
-  migrate10 ~ pr_intern + age_1950 + age_1950^2 + migrate5_1940,
-  data = main_sample
-  )
+    county_med.salary_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
+    data = wage_sample
+  ),
+  feols(
+   county_pop_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
+    data = wage_sample
+  ),
+  feols(
+   county_pop.japanese_1950/county_pop_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
+    data = wage_sample
+  ),
+  vcov = "cluster",
+  se.below = TRUE,
+  keep = c("Internment Status", "Age", "Age square", "Male", "Japanese", "Income in 1940"),
+  dict = c(
+    "reset", # to reset global dict 
+    migrate10="Migration", # as.numeric(employed_1950)="employment",
+    ## county_med.salary_1950="Med. County Earnings",
+    county_pop_1950="County Pop.",
+    ## county_pop.japanese_1950/county_pop_1950="County Pct. Japn.",
+    internment_prob="Internment Status", age_adj_1950="Age", 
+    SEXMale="Male", RACEJapanese="Japanese", INCWAGE_1940="Income in 1940",
+    EDUCD_1950="Education", STATEFIP_1950="State"
+  ),
+  keepFactors = FALSE,
+  title = "Employment and migration effects",
+  ## highlight = "Internment Status",
+  style.tex = style.tex("aer"),
+  tex = TRUE
 )
 #+end_src
 
 #+RESULTS:
-|                 | feols(migrate10 ~ .. | feols(migrate10 ~ r.. | feols(migrate10 ~ .. |
-|-----------------+----------------------+-----------------------+----------------------|
-| Dependent Var.: | migrate10            | migrate10             | migrate10            |
-|                 |                      |                       |                      |
-| Constant        | 0.0492 (0.0462)      | 0.0492 (0.0445)       | 0.0488 (0.0462)      |
-| raceJapanese    | 0.0326* (0.0132)     | 0.0326* (0.0158)      | 0.0330* (0.0133)     |
-| pr_intern       | 0.0409* (0.0169)     | 0.0409 (0.0378)       | 0.0405* (0.0170)     |
-| age_1950        | 0.0037. (0.0019)     | 0.0037* (0.0016)      | 0.0037. (0.0019)     |
-| age_1950 square | -5.12e-5** (1.85e-5) | -5.12e-5*** (1.41e-5) | -5.14e-5** (1.86e-5) |
-| _______________ | ____________________ | _____________________ | ____________________ |
-| S.E. type       | IID                  | by: STATEFIP_1950     | IID                  |
-| Observations    | 7,468                | 7,468                 | 7,462                |
-| R2              | 0.01066              | 0.01066               | 0.01068              |
-| Adj. R2         | 0.01013              | 0.01013               | 0.01014              |
+[[file:tables/reg2_tbl.tex]]
 
 ** Logit model of migration indicator
 #+begin_src R :colnames yes :results output
@@ -441,53 +364,58 @@ modelsummary::modelsummary(mig_logit)
 ** County characteristics as outcome
 #+begin_src R :colnames yes
 etable(feols(
-  c(county_med.salary_1950, county_pop_1950, county_pop.japanese_1950/county_pop_1950) ~  migrate10*pr_intern
-    +  age_1950 + age_1950^2,
+  c(county_med.salary_1950, county_pop_1950, county_pop.japanese_1950/county_pop_1950) ~
+    internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | STATEFIP_1950,
   cluster = ~STATEFIP_1950,
-  data = main_sample)
+  data = wage_sample)
   )
 #+end_src
 
 #+RESULTS:
-|                       | feols(c(county_med...1 | feols(c(county_med.s..2 | feols(c(county_med.salary_1950, count..3 |
-|-----------------------+------------------------+-------------------------+------------------------------------------|
-| Dependent Var.:       | county_med.salary_1950 | county_pop_1950         | county_pop.japanese_1950/county_pop_1950 |
-|                       |                        |                         |                                          |
-| Constant              | 159.8 (98.63)          | 595,721.4. (311,508.4)  | 0.0069** (0.0024)                        |
-| migrate10             | -82.31 (63.40)         | -262,720.0** (86,708.5) | 0.0009 (0.0008)                          |
-| pr_intern             | -285.4** (82.08)       | 316,832.1 (211,197.0)   | 0.0148*** (0.0029)                       |
-| age_1950              | 4.271* (1.613)         | 11,698.9 (11,120.7)     | 5.38e-5 (4.89e-5)                        |
-| age_1950 square       | -0.0419* (0.0166)      | -127.4 (105.0)          | -6.62e-7 (4.75e-7)                       |
-| migrate10 x pr_intern | 159.4. (85.56)         | -42,789.5 (138,270.8)   | -0.0077** (0.0024)                       |
-| _____________________ | ______________________ | _______________________ | ______________________________           |
-| S.E.: Clustered       | by: STATEFIP_1950      | by: STATEFIP_1950       | by: STATEFIP_1950                        |
-| Observations          | 7,465                  | 7,465                   | 7,465                                    |
-| R2                    | 0.15342                | 0.01975                 | 0.24314                                  |
-| Adj. R2               | 0.15286                | 0.01909                 | 0.24263                                  |
+|                     | feols(c(county_med...1 | feols(c(county_med...2 | feols(c(county_med.salary_1950, count..3 |
+|---------------------+------------------------+------------------------+------------------------------------------|
+| Dependent Var.:     | county_med.salary_1950 | county_pop_1950        | county_pop.japanese_1950/county_pop_1950 |
+|                     |                        |                        |                                          |
+| internment_prob     | -21.81 (55.63)         | -427,639.0 (479,833.5) | 0.0057 (0.0043)                          |
+| age_adj_1950        | -2.216. (1.162)        | 8,709.7** (3,104.1)    | -3.91e-5* (1.75e-5)                      |
+| age_adj_1950 square | 0.0197 (0.0118)        | -117.2** (38.66)       | 5.64e-7* (2.13e-7)                       |
+| SEXMale             | -13.03* (5.287)        | -7,896.9 (8,410.9)     | 0.0002* (9.33e-5)                        |
+| RACEJapanese        | -140.9*** (35.73)      | 824,057.7 (584,045.5)  | -0.0017 (0.0035)                         |
+| INCWAGE_1940        | 0.0149*** (0.0020)     | 15.85*** (4.459)       | -3.1e-7*** (8.61e-8)                     |
+| Fixed-Effects:      | ---------------------- | ---------------------- | ------------------------------           |
+| STATEFIP_1950       | Yes                    | Yes                    | Yes                                      |
+| ___________________   | ______________________   | ______________________   | ______________________________             |
+| S.E.: Clustered     | by: STATEFIP_1950      | by: STATEFIP_1950      | by: STATEFIP_1950                        |
+| Observations        | 8,109                  | 8,109                  | 8,109                                    |
+| R2                  | 0.37151                | 0.40159                | 0.38425                                  |
+| Within R2           | 0.1453                 | 0.04175                | 0.0456                                   |
 
 ** Occupations
 #+begin_src R :colnames yes
 etable(feols(
-  ag_occ_1950 ~ pr_intern + age_1950 + age_1950^2 + ag_occ_1940,
-  data =  main_sample)
+  as.numeric(employed_1950) ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | STATEFIP_1950,
+  data =  wage_sample)
   )
 #+end_src
 
 #+RESULTS:
-|                 | feols(ag_occ_195.. |
-|-----------------+--------------------|
-| Dependent Var.: | ag_occ_1950        |
-|                 |                    |
-| Constant        | 0.0885* (0.0400)   |
-| pr_intern       | 0.1054*** (0.0094) |
-| age_1950        | -0.0005 (0.0016)   |
-| age_1950 square | -1.3e-5 (1.61e-5)  |
-| ag_occ_1940TRUE | 0.4488*** (0.0100) |
-| _______________ | __________________ |
-| S.E. type       | IID                |
-| Observations    | 7,462              |
-| R2              | 0.29127            |
-| Adj. R2         | 0.29089            |
+|                     | feols(as.numeric(employ.. |
+|---------------------+---------------------------|
+| Dependent Var.:     | as.numeric(employed_1950) |
+|                     |                           |
+| internment_prob     | -0.0076 (0.0135)          |
+| age_adj_1950        | 0.0270*** (0.0027)        |
+| age_adj_1950 square | -0.0004*** (2.82e-5)      |
+| SEXMale             | 0.4163*** (0.0132)        |
+| RACEJapanese        | 0.0895*** (0.0174)        |
+| INCWAGE_1940        | 2.49e-5*** (4.97e-6)      |
+| Fixed-Effects:      | ------------------------- |
+| STATEFIP_1950       | Yes                       |
+| ___________________   | _________________________   |
+| S.E.: Clustered     | by: STATEFIP_1950         |
+| Observations        | 8,136                     |
+| R2                  | 0.2582                    |
+| Within R2           | 0.2509                    |
 
 
 ** Were internees moving out of the West Coast?

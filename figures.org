@@ -10,7 +10,7 @@ library(haven)
 library(ggridges)
 
 library(targets)
-tar_load(c(linked_data_full, ddi_path))
+tar_load(c(linked_data_full, ddi_path, wage_sample, county_stats, internpr_county))
 #+end_src
 
 #+begin_src R :tangle R/figures.R
@@ -237,13 +237,8 @@ At some point I think I was doing the linking wrong and I ended up with this rea
 ** Internment Proportion 
 *** For linked MLP sample
 #+begin_src R :exports results :results graphics file :file figures/pr_intern_plot.pdf
-linked_dat <- read_csv("data/linked_sample.csv") |>
-  mutate(YEAR = 1940,
-         Race = case_when(RACE==5~"Japanese", RACE==4~"Chinese"))
-
-ggplot(aes(x=p_ij, group=group, fill=group), data = linked_dat) +
+ggplot(aes(x=internment_prob, group=RACE, fill=RACE), data = wage_sample) +
   geom_histogram(binwidth = 0.1, center =0.05) +
-  geom_vline(xintercept = 0.5) +
   scale_x_continuous(breaks = c(0,0.5, 1)) +
   xlim(-0.1,2) +
   theme_internment() +
@@ -291,39 +286,36 @@ ggplot(aes(x=p_ij, fill = as_factor(YEAR)), data = census_prop) +
 #+begin_src R :results silent
 library(sf)
 
-census_dat <- read_csv("data/county_stats.csv") |>
-  filter(YEAR==1940) |> 
+map_data <- left_join(county_stats, internpr_county,
+                     by = c("STATEFIP", "COUNTYICP")) |>
   mutate(
     NHGISST = str_pad(string = STATEFIP*10, width = 3, side = "left", pad = "0"),
     NHGISCTY = str_pad(COUNTYICP, width = 4, side = "left", pad = "0")
-  )
-int_dat <- read_csv("data/county_internment.csv")
-
-map_dat <- left_join(census_dat, int_dat,
-                     by = c("NHGISST", "NHGISCTY")) |>
-  mutate(num_int = ifelse(is.na(n), 0, n))
+  ) |>
+  mutate(interned_ja_prop = n_interned / county_pop.japanese)
 
 # read shapefiles and append distances
 shp <- ipumsr::read_ipums_sf("data/nhgis0035_shape.zip", file_select = "nhgis0035_shape/nhgis0035_shapefile_tl2008_us_county_1950.zip") |>
   ## filter( STATENAM %in% c("Oregon", "Washington", "California", "Arizona") ) |>
   filter( ! STATENAM %in% c("Alaska Territory", "Hawaii Territory") ) |>
-  left_join(map_dat, by = c("NHGISST", "NHGISCTY")) |>
-  mutate(pr_interned = num_int / pop_jp) |>
-  mutate(pr_interned = ifelse(pr_interned > 1, 1, pr_interned))
+  left_join(map_data, by = c("NHGISST", "NHGISCTY"))
 
 county_map <- ggplot(data = shp, aes(geometry=geometry))
 #+end_src
 
 #+begin_src R :results graphics file :file figures/pr_interned_map.pdf :exports results
 county_map +
-  geom_sf(aes(fill=pr_interned)) +
+  geom_sf(aes(fill=interned_ja_prop)) +
   theme_void() +
   theme(
     legend.title = element_blank(),
-    legend.position = "inside",
+    legend.position = "bottom",
     ) +
-  labs(title="Internment Proportion of 1940 Japanese Population") +
-  scale_fill_continuous(na.value = "transparent", type = "viridis")
+  ## labs(title="Internment Proportion of 1940 Japanese Population") +
+  scale_fill_continuous(
+    limits = c(0,1), oob = scales::squish,
+    na.value = "transparent", type = "viridis"
+  )
 #+end_src
 
 #+RESULTS:
