@@ -1,5 +1,5 @@
 #+TITLE: Internee Outcomes: Data Analysis
-#+PROPERTY: header-args:R: :session *R:internment* :export both
+#+PROPERTY: header-args:R: :session *R:internment* :export both :colnames yes
 
 #+begin_src R :results silent :session *R:internment*
 library(tidyverse)
@@ -132,7 +132,7 @@ wage_sample |>
 [[file:figures/INCWAGE_plot.pdf]]
 
 ** Summary Statistics
-#+begin_src R :colnames yes
+#+begin_src R 
 wage_sample |>
   group_by(RACE) |>
   summarise(
@@ -215,7 +215,7 @@ modelsummary::datasummary_balance(~RACE, table_dt, output = "latex")
 ** Regressions
 *** Relationship between internment status and 1950 salary
 
-#+begin_src R :session *R:internment* :colnames yes :results output file :file tables/reg1_tbl.tex
+#+begin_src R :session *R:internment*  :results output file :file tables/reg1_tbl.tex
 etable(
   feols(
     INCWAGE_1950 ~ internment_prob,
@@ -255,66 +255,34 @@ etable(
 [[file:tables/reg1_tbl.tex]]
 
 ** Other outcomes
-#+begin_src R
-main_sample <- linked_data_full |>
-  filter(birthyr < 1925) |>
-  mutate(pr_intern = ifelse(RACE==4, 0, prI_county),
-         pr_intern2 = ifelse(RACE==4, 0, prI_full),
-         pr_intern3 = ifelse(RACE==4, 0, prI_AB),
-         across(c("STATEFIP", "BPL", "OCC1950", "MIGRATE5", "URBAN", "FARM", "IND1950"), as_factor),
-         ag_occ = str_detect(as_factor(OCC1950), "Farm"),
-         ag_ind = str_detect(as_factor(OCC1950), "Agriculture"),
-         migrate5 = ifelse(MIGRATE5 %in% c(2,3,4), 1, 0)
-         ) |>
-  pivot_wider(
-    id_cols = c("id", "race", "sex", "pr_intern", "pr_intern2", "pr_intern3", "migrate10", "income_tot"),
-    names_from = YEAR,
-    values_from = c("age", "salary", "employed", "OCC1950",
-                    "migrate5",
-                    "URBAN", "FARM", "IND1950", "ag_occ", "ag_ind",
-                    "OCCSCORE", "WKSWORK1", "yearsschool", "STATEFIP",
-                    "county_med.salary", "county_pop", "county_pop.japanese")
-  )
-#+end_src
 
-#+RESULTS:
 #+begin_src R :results output file :file tables/reg2_tbl.tex
 etable(
-  feols(
-    as.numeric(employed_1950) ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
+  feols(employed_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + as.numeric(employed_1940) | STATEFIP_1950,
+    data = wage_sample |> mutate(employed_1950 = as.numeric(employed_1950)),
+    family = "binomial"
+  ),
+  feols(HRSWORK1_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + HRSWORK1_1940 | STATEFIP_1950,
     data = wage_sample
   ),
-  feols(
-    migrate10 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
+  feols(WKSWORK1_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + WKSWORK1_1940 | STATEFIP_1950,
     data = wage_sample
   ),
-  feols(
-    county_med.salary_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
-    data = wage_sample
-  ),
-  feols(
-   county_pop_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
-    data = wage_sample
-  ),
-  feols(
-   county_pop.japanese_1950/county_pop_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
+  feols(OCCSCORE_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + OCCSCORE_1940 | STATEFIP_1950,
     data = wage_sample
   ),
   vcov = "cluster",
   se.below = TRUE,
-  keep = c("Internment Status", "Age", "Age square", "Male", "Japanese", "Income in 1940"),
+  ## keep = c("Internment Status", "Age", "Age square", "Male", "Japanese", "Income in 1940"),
   dict = c(
     "reset", # to reset global dict 
-    migrate10="Migration", # as.numeric(employed_1950)="employment",
-    ## county_med.salary_1950="Med. County Earnings",
-    county_pop_1950="County Pop.",
-    ## county_pop.japanese_1950/county_pop_1950="County Pct. Japn.",
+    HRSWORK1_1950="Hours worked", WKSWORK1_1950="Weeks worked",
     internment_prob="Internment Status", age_adj_1950="Age", 
     SEXMale="Male", RACEJapanese="Japanese", INCWAGE_1940="Income in 1940",
     EDUCD_1950="Education", STATEFIP_1950="State"
   ),
   keepFactors = FALSE,
-  title = "Employment and migration effects",
+  title = "Employment and occupation effects",
   ## highlight = "Internment Status",
   style.tex = style.tex("aer"),
   tex = TRUE
@@ -324,8 +292,56 @@ etable(
 #+RESULTS:
 [[file:tables/reg2_tbl.tex]]
 
+#+begin_src R :results output file :file tables/reg3_tbl.tex
+table_data <- wage_sample |>
+  mutate(
+    ctsal_1950 = county_med.salary_1950,
+    ctpctjpn_1950 = county_pop.japanese_1950/county_pop_1950
+  )
+         
+etable(
+  feols(
+    migrate10 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
+    data = table_data
+  ),
+  feols(
+    ctsal_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
+    data = table_data
+  ),
+  feols(
+   county_pop_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
+    data = table_data
+  ),
+  feols(
+   ctpctjpn_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
+    data = table_data
+  ),
+  vcov = "cluster",
+  se.below = TRUE,
+  keep = c("Internment Status", "Age", "Age square", "Male", "Japanese", "Income in 1940"),
+  dict = c(
+    "reset", # to reset global dict 
+    migrate10="Migration", # as.numeric(employed_1950)="employment",
+    ctsal_1950="Med. County Earnings",
+    county_pop_1950="County Pop.",
+    ctpctjpn_1950="County Pct. Japn.",
+    internment_prob="Internment Status", age_adj_1950="Age", 
+    SEXMale="Male", RACEJapanese="Japanese", INCWAGE_1940="Income in 1940",
+    EDUCD_1950="Education", STATEFIP_1950="State"
+  ),
+  keepFactors = FALSE,
+  title = "Migration effects",
+  ## highlight = "Internment Status",
+  style.tex = style.tex("aer"),
+  tex = TRUE
+)
+#+end_src
+
+#+RESULTS:
+[[file:tables/reg3_tbl.tex]]
+
 ** Logit model of migration indicator
-#+begin_src R :colnames yes :results output
+#+begin_src R  :results output
 mig_logit <- glm(migrate10 ~ pr_intern + age_1950 + age_1950^2 + migrate5_1940,
     data = main_sample, family = "binomial")
 modelsummary::modelsummary(mig_logit)
@@ -362,7 +378,7 @@ modelsummary::modelsummary(mig_logit)
 #+end_example
 
 ** County characteristics as outcome
-#+begin_src R :colnames yes
+#+begin_src R 
 etable(feols(
   c(county_med.salary_1950, county_pop_1950, county_pop.japanese_1950/county_pop_1950) ~
     internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | STATEFIP_1950,
@@ -391,7 +407,7 @@ etable(feols(
 | Within R2           | 0.1453                 | 0.04175                | 0.0456                                   |
 
 ** Occupations
-#+begin_src R :colnames yes
+#+begin_src R 
 etable(feols(
   as.numeric(employed_1950) ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | STATEFIP_1950,
   data =  wage_sample)
@@ -419,21 +435,93 @@ etable(feols(
 
 
 ** Were internees moving out of the West Coast?
-#+begin_src R :colnames yes
-df |>
+#+begin_src R 
+mlp_sample |>
+  select(YEAR, STATEFIP, COUNTYICP, race_adj, id) |>
+  pivot_wider(id_cols = c("race_adj", "id"), names_from = YEAR, values_from = c("STATEFIP","COUNTYICP"), names_sep = "_") |>
   filter(COUNTYICP_1940 != COUNTYICP_1950) |>
-  mutate(WC_1940 = ifelse(STATEFIP_1940 %in% c(4,6,41,53), "West Coast", "Other"),
-         WC_1950 = ifelse(STATEFIP_1950 %in% c(4,6,41,53), "West Coast", "Other"),
-         japanese = ifelse(japanese==1, "Japanese", "Chinese") ) |>
-  count(japanese, WC_1940, WC_1950) |>
-  arrange(japanese, desc(n)) |>
-  pivot_wider(names_from = japanese, values_from = n)
+  mutate(
+    WC_1940 = ifelse(STATEFIP_1940 %in% c(4,6,41,53), "West Coast", "Other"),
+    WC_1950 = ifelse(STATEFIP_1950 %in% c(4,6,41,53), "West Coast", "Other"),
+    ) |>
+  count(race_adj, WC_1940, WC_1950) |>
+  arrange(race_adj, desc(n)) |>
+  pivot_wider(names_from = c("WC_1940", "WC_1950"), values_from = n)
 #+end_src
 
 #+RESULTS:
-| WC_1940    | WC_1950    | Chinese | Japanese |
-|------------+------------+---------+----------|
-| West Coast | West Coast |     258 |      376 |
-| Other      | Other      |     109 |       57 |
-| Other      | West Coast |      47 |       14 |
-| West Coast | Other      |      26 |       76 |
+| Chinese  | 1195 | 785 | 259 |  201 |
+| Japanese | 6326 | 839 | 223 | 5472 |
+
+*** State Migrations
+#+begin_src R 
+mlp_sample |>
+  count(STATEFIP,YEAR) |>
+  pivot_wider(names_from = YEAR, values_from = n, names_prefix = "N_") |>
+  mutate(
+    pct_of_1940 = N_1950/N_1940,
+    state = as_factor(STATEFIP)
+  ) |>
+  print(n=52)
+#+end_src
+
+#+RESULTS:
+| STATEFIP | N_1940 | N_1950 |       pct_of_1940 | state                |
+|----------+--------+--------+-------------------+----------------------|
+|        1 |     35 |     33 | 0.942857142857143 | Alabama              |
+|        2 |        |      3 |                   | Alaska               |
+|        4 |    440 |    447 |  1.01590909090909 | Arizona              |
+|        5 |     56 |     59 |  1.05357142857143 | Arkansas             |
+|        6 |  34156 |  30355 | 0.888716477339267 | California           |
+|        8 |    923 |   1430 |  1.54929577464789 | Colorado             |
+|        9 |     51 |     63 |  1.23529411764706 | Connecticut          |
+|       10 |     16 |     15 |            0.9375 | Delaware             |
+|       11 |    107 |    182 |  1.70093457943925 | District of Columbia |
+|       12 |     75 |     94 |  1.25333333333333 | Florida              |
+|       13 |     71 |     68 | 0.957746478873239 | Georgia              |
+|       15 |        |    284 |                   | Hawaii               |
+|       16 |    407 |    608 |  1.49385749385749 | Idaho                |
+|       17 |    426 |   2588 |  6.07511737089202 | Illinois             |
+|       18 |     44 |     57 |  1.29545454545455 | Indiana              |
+|       19 |     20 |     33 |              1.65 | Iowa                 |
+|       20 |     26 |     29 |  1.11538461538462 | Kansas               |
+|       21 |     20 |     18 |               0.9 | Kentucky             |
+|       22 |     81 |     89 |  1.09876543209877 | Louisiana            |
+|       23 |     14 |      8 | 0.571428571428571 | Maine                |
+|       24 |     74 |    106 |  1.43243243243243 | Maryland             |
+|       25 |    374 |    392 |  1.04812834224599 | Massachusetts        |
+|       26 |    202 |    433 |  2.14356435643564 | Michigan             |
+|       27 |    119 |    305 |  2.56302521008403 | Minnesota            |
+|       28 |    119 |     92 | 0.773109243697479 | Mississippi          |
+|       29 |     69 |    120 |  1.73913043478261 | Missouri             |
+|       30 |    150 |    146 | 0.973333333333333 | Montana              |
+|       31 |    171 |    194 |  1.13450292397661 | Nebraska             |
+|       32 |    143 |    128 | 0.895104895104895 | Nevada               |
+|       33 |      5 |      5 |                 1 | New Hampshire        |
+|       34 |    220 |    522 |  2.37272727272727 | New Jersey           |
+|       35 |     60 |     70 |  1.16666666666667 | New Mexico           |
+|       36 |   1939 |   2118 |  1.09231562661166 | New York             |
+|       37 |     41 |     42 |  1.02439024390244 | North Carolina       |
+|       38 |     32 |     25 |           0.78125 | North Dakota         |
+|       39 |    197 |    555 |  2.81725888324873 | Ohio                 |
+|       40 |     42 |     35 | 0.833333333333333 | Oklahoma             |
+|       41 |   1900 |   1657 | 0.872105263157895 | Oregon               |
+|       42 |    246 |    346 |  1.40650406504065 | Pennsylvania         |
+|       44 |     50 |     49 |              0.98 | Rhode Island         |
+|       45 |     27 |     26 | 0.962962962962963 | South Carolina       |
+|       46 |     15 |     12 |               0.8 | South Dakota         |
+|       47 |     24 |     29 |  1.20833333333333 | Tennessee            |
+|       48 |    287 |    353 |  1.22996515679443 | Texas                |
+|       49 |    719 |   1109 |  1.54242002781641 | Utah                 |
+|       50 |        |      2 |                   | Vermont              |
+|       51 |     35 |     52 |  1.48571428571429 | Virginia             |
+|       53 |   5054 |   3709 | 0.733874159081915 | Washington           |
+|       54 |     12 |      7 | 0.583333333333333 | West Virginia        |
+|       55 |     48 |    115 |  2.39583333333333 | Wisconsin            |
+|       56 |    170 |    131 | 0.770588235294118 | Wyoming              |
+|          |    337 |    501 |    1.486646884273 |                      |
+
+*** County Migrations
+#+begin_src R 
+
+#+end_src

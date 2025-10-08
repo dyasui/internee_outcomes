@@ -11,6 +11,10 @@
 **.snm
 **.tex~
 **.toc
+**.bbl
+**.blg
+**.dvi
+**.synctex.gz
 
 **.dat.gz
 data/mlp_1940_1950_v1_2_csv/*csv

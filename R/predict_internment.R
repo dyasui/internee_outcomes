@@ -61,3 +61,99 @@ calc_int_proportion <- function(wra_data, ddi,
 
   return(proportions)
 }
+
+predict_internment <- function(data,
+                               wra_data, ddi,
+                               methods = c("main", "county", "AB"),
+                               state_var = "STATEFIP_1940",
+                               county_var = "COUNTYICP_1940",
+                               race_var = "RACE_1940",
+                               sex_var = "SEX_1940",
+                               bpl_var = "BPL_1940",
+                               byr_var = "BIRTHYR_1940"
+                               ) {
+  library(tidyverse)
+
+  print(paste("Looking for columns:", race_var, state_var, county_var))
+  print(paste("Available columns:", paste(names(data), collapse = ", ")))
+
+  mutate_vars <- list()
+
+  # Internment probability based on county and race
+  if ("main" %in% methods) {
+    int_prob_dt <- calc_int_proportion(
+      wra_data, ddi,
+      by = c("STATEFIP", "COUNTYICP", "RACE"),
+      label = "int_prob"
+    )
+    # join probabilities with main dataset
+    data <- data |>
+      left_join(
+        int_prob_dt,
+        by = setNames(
+          c("RACE", "STATEFIP", "COUNTYICP"),
+          c(race_var, state_var, county_var)
+        )
+      )
+  }
+
+  # rate of Japanese internees in individual's 1940 county origin
+  if ("county" %in% methods) {
+    ct_int_dt <- calc_int_proportion(
+      wra_data, ddi,
+      by = c("STATEFIP", "COUNTYICP"),
+      label = "county_intprop"
+    )
+    # join probabilities with main dataset
+    data <- data |>
+      left_join(
+        ct_int_dt,
+        by = setNames(
+          c("STATEFIP", "COUNTYICP"),
+          c(state_var, county_var)
+        )
+      )
+  }
+
+  # Jaime Arellano-Bover's method:
+  # group by state, race, birthyr, bpl
+  if ("AB" %in% methods) {
+    int_AB_dt <- calc_int_proportion(
+      wra_data, ddi,
+      by = c("STATEFIP", "RACE", "BIRTHYR", "BPL"),
+      label = "intprob_AB"
+    )
+    # join probabilities with main dataset
+    data <- data |>
+      mutate(bpl_grp = group_bpl(BPL_1940), byr_grp = group_birthyr(BIRTHYR_1940)) |>
+      left_join(
+        int_AB_dt,
+        by = setNames(
+          c("STATEFIP", "RACE", "bpl_grp", "byr_grp"),
+          c(state_var, race_var, bpl_var, byr_var)
+        )
+      )
+  }
+
+  # group by all demographics at county level
+  if ("full" %in% methods) {
+    int_full_dt <- calc_int_proportion(
+      wra_data, ddi,
+      by = c("STATEFIP", "COUNTYICP", "SEX", "RACE", "BIRTHYR", "BPL"),
+      label = "intprob_full"
+    )
+    # join probabilities with main dataset
+    data <- data |>
+      mutate(bpl_grp = group_bpl(BPL_1940), byr_grp = group_birthyr(BIRTHYR_1940)) |>
+      left_join(
+        int_full_dt,
+        by = setNames(
+          c("STATEFIP", "COUNTYICP", "SEX", "RACE", "bpl_grp", "byr_grp"),
+          c(state_var, county_var, sex_var, race_var, "bpl_grp", "byr_var")
+        )
+      )
+  }
+    
+  return(data)
+
+}

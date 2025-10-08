@@ -65,7 +65,7 @@ data/fullcount_census/
 
 *** Linking Crosswalks
 
-I utilise version 1.2 of the 1940-1950 census linkages created by the [[https://usa.ipums.org/usa/mlp/mlp_data_description.shtml][Multigenerational Longitudinal Panel]] (MLP) project at IPUMS.
+I utilise version 2.0 of the 1940-1950 census linkages created by the [[https://usa.ipums.org/usa/mlp/mlp_data_description.shtml][Multigenerational Longitudinal Panel]] (MLP) project at IPUMS.
 The linkages for this version are only available as a crosswalk file which can be downloaded from https://usa.ipums.org/usa/mlp/mlp_data_description.shtml
 
 I use the 10-year 1940-1950 CSV file to create the linked microdata sample of internees.
@@ -74,7 +74,7 @@ I use the 10-year 1940-1950 CSV file to create the linked microdata sample of in
 
 As part of the terms of using IPUMS data, I have copied their provided citations below:
 
-Jonas Helgertz, Nesile Ozder, Steven Ruggles, John Robert Warren, Catherine A. Fitch, J. David Hacker, Matt A. Nelson, Joseph P. Price, Evan Roberts, and Matthew Sobek. IPUMS Multigenerational Longitudinal Panel: Version 1.2 [dataset]. Minneapolis, MN: IPUMS, 2024. https://doi.org/10.18128/D016.V1.2
+Steven Ruggles, Nesile Ozder, Catherine A. Fitch, Matthew Sobek, Julia A. Rivera Drew, J. David Hacker, Jonas Helgertz, Cheyenne Lonobile, Matt A. Nelson, Evan Roberts, and John Robert Warren. IPUMS Multigenerational Longitudinal Panel: Version 2.0 [dataset]. Minneapolis, MN: IPUMS, 2025. https://doi.org/10.18128/D016.V2.0 
 
 Steven Ruggles, Matt A. Nelson, Matthew Sobek, Catherine A. Fitch, Ronald Goeken, J. David Hacker, Evan Roberts, and J. Robert Warren. IPUMS Ancestry Full Count Data: Version 4.0 [dataset]. Minneapolis, MN: IPUMS, 2024. https://doi.org/10.18128/D014.V4.0 
 

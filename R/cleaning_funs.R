@@ -19,16 +19,8 @@ define_wage_sample <- function(mlp_sample) {
     select(-c("RACE_1940", "RACE_1950", "SEX_1940", "SEX_1950"))
 }
 
-clean_mlp <- function(wide_df, internpr, countystats, ddi, inflator = 1.6) {
+clean_mlp <- function(wide_df, countystats, ddi, inflator = 1.6) {
   wide_df |>
-    left_join(
-      internpr,
-      by = c(
-        "RACE_1940"="RACE",
-        "STATEFIP_1940"="STATEFIP",
-        "COUNTYICP_1940"="COUNTYICP"
-      )
-    ) |>
     clean_wide_vars(ddi = ddi, inflator = inflator) |>
     mutate(
       Earning_growth =
@@ -38,8 +30,8 @@ clean_mlp <- function(wide_df, internpr, countystats, ddi, inflator = 1.6) {
     # pivot to longer and clean variables by year
     clean_long_vars(ddi = ddi) |>
     left_join(countystats, by = c("STATEFIP", "COUNTYICP")) |>
-    select(-c("n_census", "n_interned", "INCWAGE")) |>
-    rename(INCWAGE = INCWAGE_adj) |>
+    ## select(-c("n_census", "n_interned", "INCWAGE")) |>
+    ## rename(INCWAGE = INCWAGE_adj) |>
     mutate(
       age_adj = as.integer(YEAR) - birthyr_adj,
       employed = as_factor(employed),
@@ -48,10 +40,14 @@ clean_mlp <- function(wide_df, internpr, countystats, ddi, inflator = 1.6) {
 }
 
 collect_mlp <- function(db, table,
-                           vars = c("RACE", "BIRTHYR", "INCWAGE",
-                                    "STATEFIP", "COUNTYICP", "AGE",
-                                    "SEX", "EDUCD", "CLASSWKR",
-                                    "WKSWORK1", "OCC1950", "OCCSCORE",
+                           vars = c("RACE", "BIRTHYR", "BPL",
+                                    "INCWAGE", "INCTOT", "INCBUSFM", "INCOTHER",
+                                    "STATEFIP", "COUNTYICP", 
+                                    "AGE", "SEX", "EDUCD",
+                                    "CLASSWKR", "EMPSTAT", "LABFORCE",
+                                    "FARM", "IND1950",
+                                    "HRSWORK1", "WKSWORK1",
+                                    "OCC1950", "OCCSCORE",
                                     "EMPSTAT")) {
   # connect to database on file
   con <- dbConnect(duckdb(), db)
@@ -181,7 +177,10 @@ clean_long_vars <- function(wide_df, ddi) {
       across(any_of("EMPSTAT"), ~ifelse(. == 1, 1, 0), .names = "employed"),
       ## across(any_of("OCC1950"), ~ifelse(. %in% 979:999, NA), .names = "occupation"),
       OCC1950 = as_factor(OCC1950),
-      across(any_of(c("OCC1950", "RACE", "SEX", "EDUCD", "CLASSWKR", "EMPSTAT")), as_factor)
+      across(
+        any_of(c("OCC1950", "IND1950", "RACE", "SEX", "EDUCD", "CLASSWKR", "EMPSTAT", "FARM")),
+        as_factor
+        )
     )
 
   return(long_df)

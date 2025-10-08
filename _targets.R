@@ -30,25 +30,17 @@ list(
       download_dir = "data/fullcount_census/"
     )
   ),
-
   tar_target(ddi_fullcount, extract_ready, format = "file"),
   tar_target(ddi_mlp, "data/mlp_v2_0/usa_00131.xml", format = "file"),
   tar_target(mlp_db, "data/mlp.duckdb", format = "file"),
   tar_target(mlp_tbl, write_ipums_db(ddi_mlp, mlp_db, "mlp_1940_1950", debug = TRUE, chunk_size = 1e7)),
 
-  tar_target(internpr_county,
-             calc_int_proportion(wra_data, ddi = ddi_fullcount,
-                                 by = c("STATEFIP", "COUNTYICP"),
-                                 label = "internment_county")),
-  tar_target(internpr,
-             calc_int_proportion(wra_data, ddi = ddi_fullcount,
-                                 by = c("STATEFIP", "COUNTYICP", "RACE"),
-                                 label = "internment_prob")),
 
   tar_target(county_stats,
              collect_county_stats(ddi_fullcount, inflator = 1.69)),
   tar_target(mlp_raw, collect_mlp(mlp_db, mlp_tbl)),
-  tar_target(mlp_sample, clean_mlp(mlp_raw, internpr, county_stats, ddi_mlp, 1.69)),
+  tar_target(mlp_sample, predict_internment(mlp_raw, wra_data, ddi_mlp, methods = c("main", "county", "AB"))),
+  tar_target(mlp_cleaned, clean_mlp(mlp_raw, county_stats, ddi_mlp, 1.69)),
   tar_target(wage_sample, define_wage_sample(mlp_sample))
 
 )

@@ -45,25 +45,17 @@ list(
       download_dir = "data/fullcount_census/"
     )
   ),
-
   tar_target(ddi_fullcount, extract_ready, format = "file"),
   tar_target(ddi_mlp, "data/mlp_v2_0/usa_00131.xml", format = "file"),
   tar_target(mlp_db, "data/mlp.duckdb", format = "file"),
   tar_target(mlp_tbl, write_ipums_db(ddi_mlp, mlp_db, "mlp_1940_1950", debug = TRUE, chunk_size = 1e7)),
 
-  tar_target(internpr_county,
-             calc_int_proportion(wra_data, ddi = ddi_fullcount,
-                                 by = c("STATEFIP", "COUNTYICP"),
-                                 label = "internment_county")),
-  tar_target(internpr,
-             calc_int_proportion(wra_data, ddi = ddi_fullcount,
-                                 by = c("STATEFIP", "COUNTYICP", "RACE"),
-                                 label = "internment_prob")),
 
   tar_target(county_stats,
              collect_county_stats(ddi_fullcount, inflator = 1.69)),
   tar_target(mlp_raw, collect_mlp(mlp_db, mlp_tbl)),
-  tar_target(mlp_sample, clean_mlp(mlp_raw, internpr, county_stats, ddi_mlp, 1.69)),
+  tar_target(mlp_sample, predict_internment(mlp_raw, wra_data, ddi_mlp, methods = c("main", "county", "AB"))),
+  tar_target(mlp_cleaned, clean_mlp(mlp_raw, county_stats, ddi_mlp, 1.69)),
   tar_target(wage_sample, define_wage_sample(mlp_sample))
 
 )
@@ -220,6 +212,7 @@ group_birthyr <- function(birthyr, from = 1860, to = 1942, width = 3) {
 #+end_src
 
 Birthplace groups also come from Arellano-Bover:
+#+NAME: group_blp
 #+begin_src R :tangle R/helper_functions.R :session *R:internment* :colnames yes
 group_bpl <- function(bpl) {
   grp_num <- case_when(
@@ -1180,16 +1173,8 @@ write_ipums_db <- function(ddi, dbdir, tbl_name,
 
 ** Clean IPUMS Variables
 #+begin_src R :tangle R/cleaning_funs.R
-clean_mlp <- function(wide_df, internpr, countystats, ddi, inflator = 1.6) {
+clean_mlp <- function(wide_df, countystats, ddi, inflator = 1.6) {
   wide_df |>
-    left_join(
-      internpr,
-      by = c(
-        "RACE_1940"="RACE",
-        "STATEFIP_1940"="STATEFIP",
-        "COUNTYICP_1940"="COUNTYICP"
-      )
-    ) |>
     clean_wide_vars(ddi = ddi, inflator = inflator) |>
     mutate(
       Earning_growth =
@@ -1199,8 +1184,8 @@ clean_mlp <- function(wide_df, internpr, countystats, ddi, inflator = 1.6) {
     # pivot to longer and clean variables by year
     clean_long_vars(ddi = ddi) |>
     left_join(countystats, by = c("STATEFIP", "COUNTYICP")) |>
-    select(-c("n_census", "n_interned", "INCWAGE")) |>
-    rename(INCWAGE = INCWAGE_adj) |>
+    ## select(-c("n_census", "n_interned", "INCWAGE")) |>
+    ## rename(INCWAGE = INCWAGE_adj) |>
     mutate(
       age_adj = as.integer(YEAR) - birthyr_adj,
       employed = as_factor(employed),
@@ -1211,10 +1196,14 @@ clean_mlp <- function(wide_df, internpr, countystats, ddi, inflator = 1.6) {
 *** Cleaning sub-functions
 #+begin_src R :tangle R/cleaning_funs.R
 collect_mlp <- function(db, table,
-                           vars = c("RACE", "BIRTHYR", "INCWAGE",
-                                    "STATEFIP", "COUNTYICP", "AGE",
-                                    "SEX", "EDUCD", "CLASSWKR",
-                                    "WKSWORK1", "OCC1950", "OCCSCORE",
+                           vars = c("RACE", "BIRTHYR", "BPL",
+                                    "INCWAGE", "INCTOT", "INCBUSFM", "INCOTHER",
+                                    "STATEFIP", "COUNTYICP", 
+                                    "AGE", "SEX", "EDUCD",
+                                    "CLASSWKR", "EMPSTAT", "LABFORCE",
+                                    "FARM", "IND1950",
+                                    "HRSWORK1", "WKSWORK1",
+                                    "OCC1950", "OCCSCORE",
                                     "EMPSTAT")) {
   # connect to database on file
   con <- dbConnect(duckdb(), db)
@@ -1386,7 +1375,10 @@ clean_long_vars <- function(wide_df, ddi) {
       across(any_of("EMPSTAT"), ~ifelse(. == 1, 1, 0), .names = "employed"),
       ## across(any_of("OCC1950"), ~ifelse(. %in% 979:999, NA), .names = "occupation"),
       OCC1950 = as_factor(OCC1950),
-      across(any_of(c("OCC1950", "RACE", "SEX", "EDUCD", "CLASSWKR", "EMPSTAT")), as_factor)
+      across(
+        any_of(c("OCC1950", "IND1950", "RACE", "SEX", "EDUCD", "CLASSWKR", "EMPSTAT", "FARM")),
+        as_factor
+        )
     )
 
   return(long_df)
@@ -1465,6 +1457,106 @@ calc_int_proportion <- function(wra_data, ddi,
     rename(!!label := pr_interned)
 
   return(proportions)
+}
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :tangle R/predict_internment.R
+predict_internment <- function(data,
+                               wra_data, ddi,
+                               methods = c("main", "county", "AB"),
+                               state_var = "STATEFIP_1940",
+                               county_var = "COUNTYICP_1940",
+                               race_var = "RACE_1940",
+                               sex_var = "SEX_1940",
+                               bpl_var = "BPL_1940",
+                               byr_var = "BIRTHYR_1940"
+                               ) {
+  library(tidyverse)
+
+  print(paste("Looking for columns:", race_var, state_var, county_var))
+  print(paste("Available columns:", paste(names(data), collapse = ", ")))
+
+  mutate_vars <- list()
+
+  # Internment probability based on county and race
+  if ("main" %in% methods) {
+    int_prob_dt <- calc_int_proportion(
+      wra_data, ddi,
+      by = c("STATEFIP", "COUNTYICP", "RACE"),
+      label = "int_prob"
+    )
+    # join probabilities with main dataset
+    data <- data |>
+      left_join(
+        int_prob_dt,
+        by = setNames(
+          c("RACE", "STATEFIP", "COUNTYICP"),
+          c(race_var, state_var, county_var)
+        )
+      )
+  }
+
+  # rate of Japanese internees in individual's 1940 county origin
+  if ("county" %in% methods) {
+    ct_int_dt <- calc_int_proportion(
+      wra_data, ddi,
+      by = c("STATEFIP", "COUNTYICP"),
+      label = "county_intprop"
+    )
+    # join probabilities with main dataset
+    data <- data |>
+      left_join(
+        ct_int_dt,
+        by = setNames(
+          c("STATEFIP", "COUNTYICP"),
+          c(state_var, county_var)
+        )
+      )
+  }
+
+  # Jaime Arellano-Bover's method:
+  # group by state, race, birthyr, bpl
+  if ("AB" %in% methods) {
+    int_AB_dt <- calc_int_proportion(
+      wra_data, ddi,
+      by = c("STATEFIP", "RACE", "BIRTHYR", "BPL"),
+      label = "intprob_AB"
+    )
+    # join probabilities with main dataset
+    data <- data |>
+      mutate(bpl_grp = group_bpl(BPL_1940), byr_grp = group_birthyr(BIRTHYR_1940)) |>
+      left_join(
+        int_AB_dt,
+        by = setNames(
+          c("STATEFIP", "RACE", "bpl_grp", "byr_grp"),
+          c(state_var, race_var, bpl_var, byr_var)
+        )
+      )
+  }
+
+  # group by all demographics at county level
+  if ("full" %in% methods) {
+    int_full_dt <- calc_int_proportion(
+      wra_data, ddi,
+      by = c("STATEFIP", "COUNTYICP", "SEX", "RACE", "BIRTHYR", "BPL"),
+      label = "intprob_full"
+    )
+    # join probabilities with main dataset
+    data <- data |>
+      mutate(bpl_grp = group_bpl(BPL_1940), byr_grp = group_birthyr(BIRTHYR_1940)) |>
+      left_join(
+        int_full_dt,
+        by = setNames(
+          c("STATEFIP", "COUNTYICP", "SEX", "RACE", "bpl_grp", "byr_grp"),
+          c(state_var, county_var, sex_var, race_var, "bpl_grp", "byr_var")
+        )
+      )
+  }
+    
+  return(data)
+
 }
 #+end_src
 
