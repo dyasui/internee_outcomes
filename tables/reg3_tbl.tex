@@ -1,0 +1,32 @@
+\begin{table}[htbp]
+   \caption{\label{tbl:reg3} Migration effects}
+   \bigskip
+   \centering
+   \begin{adjustbox}{width = \textwidth, center}
+      \begin{tabular}{lcccc}
+         \toprule
+                             & Migration               & Log county income             & Log county pop.         & County pct. Japn.\\  
+                             & (1)                     & (2)                           & (3)                     & (4)\\  
+                             &  Logit                  & OLS                           & OLS                     & OLS\\  
+         \midrule 
+         Internment Status   & 0.2779                  & 0.2508$^{***}$                & 1.291$^{***}$           & 0.0129$^{***}$\\   
+                             & (0.5710)                & (0.0822)                      & (0.4143)                & (0.0010)\\   
+         Age                 & -0.0104                 & 0.0038$^{*}$                  & 0.0493$^{***}$          & $-9.39\times 10^{-5}$\\    
+                             & (0.0096)                & (0.0023)                      & (0.0114)                & (0.0002)\\   
+         Age square          & $-3.25\times 10^{-5}$   & $-3.55\times 10^{-5}$         & -0.0005$^{***}$         & $9\times 10^{-7}$\\    
+                             & ($9.08\times 10^{-5}$)  & ($2.32\times 10^{-5}$)        & (0.0001)                & ($1.46\times 10^{-6}$)\\    
+         Male                & -0.0593                 & -0.0253$^{**}$                & -0.0648                 & $9.83\times 10^{-5}$\\    
+                             & (0.0377)                & (0.0096)                      & (0.0585)                & (0.0004)\\   
+         Japanese            & 0.7287$^{***}$          & -0.3197$^{***}$               & -1.427$^{***}$          & -0.0030\\   
+                             & (0.1841)                & (0.0728)                      & (0.3310)                & (0.0020)\\   
+         Income in 1940      & $4.24\times 10^{-5}$    & $4.38\times 10^{-5}$$^{***}$  & 0.0002$^{***}$          & $-3.11\times 10^{-7}$\\    
+                             & ($4.24\times 10^{-5}$)  & ($5.75\times 10^{-6}$)        & ($4.01\times 10^{-5}$)  & ($2.02\times 10^{-7}$)\\    
+          \\
+         Observations        & 8,109                   & 2,454                         & 2,454                   & 2,454\\  
+         Squared Correlation & 0.03739                 & 0.10723                       & 0.06435                 & 0.14051\\  
+         Pseudo R$^2$        & 0.03245                 & 0.67766                       & 0.01738                 & -0.02534\\  
+         BIC                 & 9,683.1                 & 187.04                        & 9,284.4                 & -14,981.2\\  
+         \bottomrule
+      \end{tabular}
+   \end{adjustbox}
+\end{table}

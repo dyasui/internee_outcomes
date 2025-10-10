@@ -6,7 +6,6 @@
 \usepackage{longtable}
 \usepackage{wrapfig}
 \usepackage{rotating}
-\usepackage[normalem]{ulem}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{capt-of}
@@ -15,12 +14,11 @@
 \usepackage[singlelinecheck=false]{caption}
 \captionsetup[subfigure]{singlelinecheck=on, labelfont=normalfont}
 \captionsetup[figure]{labelfont=it}
-\usepackage{graphicx}
-\usepackage{rotating}
 \usepackage{enumitem}
 \usepackage{setspace}
-\onehalfspacing
+% \onehalfspacing
 \usepackage[normalem]{ulem}
+% \usepackage[inner=1.0in, outer=1.0in, top=1.0in, bottom=1.0in]{geometry}
 \usepackage{hyperref}
 \hypersetup{
 colorlinks = true,
@@ -50,6 +48,9 @@ citecolor = blue
 
 \usepackage{natbib}
 \bibliographystyle{apalike}
+
+\usepackage{adjustbox}
+
 \setcounter{secnumdepth}{3}
 \author{Dante Yasui}
 \date{2025-06-19}
@@ -69,30 +70,430 @@ citecolor = blue
 \input{abstract}
 
 \section{Introduction}
-\input{introduction}
+In this paper, I explore the long-term migration patterns of Japanese Americans
+who were forcibly relocated during World War II.
+Specifically, I investigate whether geographic proximity to the internment camps
+established by the War Relocation Authority (WRA)
+influenced migration rates among the Japanese American population
+in the decades following internment.
+The central research question is
+whether counties closer to these internment camps experienced a disproportionately higher rate of Japanese American migration compared to more distant counties.
+
+The US government's internment policy displaced more than 100,000 Japanese Americans from their homes, 
+primarily on the West Coast,
+and placed them in camps scattered across remote areas of the Western US and Arkansas.
+Following the war, 
+efforts were made to disperse the Japanese American population more widely across the US,
+often discouraging their return to prewar enclaves.
+These policies highlight the need to examine the ways in which
+forced relocation altered traditional patterns of settlement
+and migration within this population.
+
+To answer some of these questions, 
+I examine how the proximity of a county to a WRA internment camp correlates with the migration rates of Japanese Americans 
+relative to the total migration rates in the county.
+My analysis draws on decennial census data from 1940 to 1990,
+a period in which the effects of internment
+can be observed in the migration choices of Japanese Americans.
+
+In addition to proximity to internment camps,
+this paper considers whether the effects of proximity to internment camps on migration rates 
+differed for counties located within the "Evacuation Zone"
+—the areas from which Japanese Americans were originally forced to leave.
+Did counties that were themselves part of the evacuation orders 
+exhibit different migration dynamics compared to those that were outside the zone?
+By addressing these questions, I aim to provide insight into how the legacy of internment shaped not only immediate resettlement 
+but also longer-term demographic shifts within the Japanese American community.
+
+I aim to understand whether forced displacement left lasting scars on the geography of the Japanese American population,
+and whether the government’s efforts to disperse internees resulted in a permanent reshaping of settlement patterns.
+The findings from this analysis could help shed light on the broader implications of forced migration policies 
+and provide lessons for understanding the long-term effects of similar interventions in other contexts.
+
+
+\subsection{Motivating Literature}\label{motivation}
+
+Several existing studies have tried to quantify the causal effect of Japanese internment on 
+long-term earnings
+\citep{chinLongRunLaborMarket2005}, 
+childhood health
+(\cite{saavedraEarlyChildhoodConditions2013}, \cite{grossmanIntergenerationalHealthEffects2025}),
+and educational attainment 
+\citep{saavedraSchoolQualityEducational2015}. 
+
+On the other hand, other studies have identified surprising ways in which internees did better than their counterparts.
+\cite{shoagCausalEffectPlace2016} examine the persistant pattern of internees' tendency to settle closer to their assigned camp,
+and as a result find that differential exposure to more affluent areas lead to some internees experiencing more long-term upward mobility than others.
+\cite{arellano-boverDisplacementDiversityMobility2022} finds that overall, interned Japanese men experienced 9-22\% higher incomes than similar Chinese and non-interned Japanese men.
+He attributes this effect to a combination of information and skills transfers among those living in camps together,
+migration to new labor markets, and career switching that would not have happened if internees had remained in their original homes on the West Coast.
+
+Aside from the importance of understanding the losses to internees, Japanese
+Internment can also serve as an interesting natural experiment through the
+involuntary nature of the experiences of internees. 
+A key question in previous economic literature is the extent to which 
+geographic location influences economic outcomes, such as upward mobility or earnings.
+It is difficult to provide an unbiased causal estimate because households usually
+have a large degree of choice in where they live. Previous studies have used a
+variety of empirical strategies to separate out this causal effect including
+controlling for observable characteristics like education
+\cite{glaeserCitiesSkills2001}, worker fixed-effects \citep{cardLocationLocationLocation2021}, or
+through leveraging other exogenous placements of households like the Moving to
+Opportunity Experiment (\cite{ludwigLongTermNeighborhoodEffects2013},
+\cite{chettyEffectsExposureBetter2016}, \cite{bergmanCreatingMovesOpportunity2019}, etc). 
 
 \subsection{Historical Background}
-\input{history}
+\href{https://www.archives.gov/milestone-documents/executive-order-9066}{Executive Order 9066} 
+was signed on February 19, 1942 and granted the Secretary of War the authority
+to designate military areas from which civilians could be prevented access. This
+order was used to target all persons of Japanese descent living in the so-called
+`Evacuation Zone' which included all of California, and large areas of
+Washington, Oregon, and Arizona shown in blue in Figure \ref{fig:internmentmap}.
+At first, the Secretary of War Henry Stimson encouraged some families to relocate voluntarily from the West Coast,
+but starting at the end of March 1942, 
+the Wartime Civil Control Administration (WCCA) and War Relocation Authority (WRA)
+were established to remove all remaining Japanese Americans to temporary
+Assembly Centers which were makeshift shelters in close proximity to the
+population centers where these people were living. As the more permanent WRA
+Relocation Centers reached completion in May 1942, all Japanese Americans left
+in the West Coast were moved from Assembly Centers to Relocation Centers by
+train. This process lasted until November of 1942
+\citep{commissiononwartimerelocationPersonalJusticeDenied1983}.
+
+After two years of WRA camp operations, the government began to debate how to
+end the evacuation orders towards the end of 1944. One statement issued on
+December 9 illustrates that one of the initial goals of interment was actually
+to cause a permanent shift in the Japanese American population away from the
+West Coast as part of a wide-scale program of `deghettoization':
+\begin{quote}
+  ``One of the major WRA aims, from the beginning, has been to encourage the widest possible dispersal of evacuees throughout the Nation, and this will continue as a prime objective during the final phase of the program.''
+  \hfill \cite[p.~234]{commissiononwartimerelocationPersonalJusticeDenied1983}
+\end{quote}
+
+As seen in Figure \ref{fig:1940JAmap}, over 90\% of the 1940 Japanese American
+population lived in areas which would become subject to relocation orders.
+This population was overwhelmingly concentrated along the West Coast, particularly in California,
+which was home to large, well-established Japanese American communities,
+many of whom were engaged in farming and small businesses.
+The geographic concentration of this population in economically vital areas near major cities and military installations heightened the perceived security threat,
+prompting their forced relocation.
 
 \section{Data}
-\input{data}
+\subsection{Linked Census Microdata}\label{sec:data-IPUMS}
+
+I collect economic and demographic data on the populations of interest from the full count decenial censuses taken in 1940 and 1950
+\citep{rugglesIPUMSAncestryFull2024}.
+These censuses asked about the wages and salary income earned by respondents
+which I use as the main labor market outcome in my analysis of the impact of internment and forced removal on internees.
+The censuses also provide information on the employment status of respondents;
+demographic variables such as age, sex, race, etc;
+and the county of residence when the census survey was administered.
+
+
+\subsection{War Relcation Authority Records}
+
+The WRA kept detailed records of the process of relocating and incarcerating the West Coast Japanese population.
+I use the dataset from WRA Form 26: Evacuee Summary Data in the collection of Records About Japanese Americans Interned During World War II in the National Archives.
+The original paper form from which this digitized version is coded included each internee's name, previous address in 1942, the assembly center and internment camp they were assigned to,
+their educational attainment, occupation, and demographics including sex, birth year, and birthplace.
+
+Table \ref{tbl:bal-stat} reports a summary of the main demographic variables of internees compared to the full 1940 Japanese population.
+Internees represented a large majority (86\%) of the Japanese population in the US in 1940.
+Internees were representative of the population in terms of their education, gender composition, and country of birth.
+The 65\% of internees born in the US represent the generation known as the ``Nisei'', or second generation after their parents, 
+the ``Issei'', who make up most of the remaining 35\% of internees.
+The average Issei was born in 1890, and would have been in their early 50s during internment,
+while the average Nisei was born in 1927 and would have been teenagers when they were interned.
+
+Figure \ref{fig:internee-ages} shows the distribution of the age of internees at the time of the evacutation order in 1942.
+This figure reveals that there was a large variation in the ages of internees and that the ten camps were fairly balanced on their age composition.
+The most prominant age range in this figure is made up of young adults between the ages of 15-25. 
+
+The WRA records also provide a matching between the county of residence of all internees to the first camp they were placed.
+Table \ref{tbl:cmp-cty} groups all internees into categories of their previous address to their assigned camp.
+The largest 20 counties with more than 1000 interned residents are shown broken down by each of the ten camps.
+
+Among the main internment counties, the major West Coast urban areas of Los Angeles, Seattle, Sacramento, San Franciso, and Portland.
+However, there are also a large number of internees from more rural counties in California including Fresno, San Joaquin, Placer, and Tulare.
+Interned Japanese came from a variety of backgrounds shown here by the range of urban and rural counties,
+and also reflected in the range of occupations held by internees.
 
 \section{Methods}
-\input{methods}
+To estimate the effect that wartime relocation and internment had on wages, I need to compare the outcomes of likely internees before and after 1942 against a reasonable control group.
+The vast number of Japanese Americans in the US at the time were interned, so the size of the potential control group of Japanese living outside of the West Coast is quite small.
+For this reason, I follow \citeauthor{arellano-boverDisplacementDiversityMobility2022} by including Chinese Americans in my main sample.
+
+Chinese immigrants entered the US West Coast at a similar period as the major wave of Japanese immigration.
+Japanese workers were also seen as a substitute for the cheap Chinese labor for work on the transcontinental railroads and in agriculture 
+\citep{chenImpactSkillBasedImmigration2015}.
+Chinese Americans were not included in any of the relocation or internment orders following Executive Order 9066,
+but in the absence of internment, their wages and employment would likely have continued to evolve similarly to the West Coast Japanese population.
+For these reasons, Chinese make a natural comparison group to recreate the counterfactual earnings outcomes interned Japanese would have had if they had never been interned.
+
+Although all persons of Japanese descent living on the West Coast were ordered to evacuate outside of the Exclusion Area
+(and no Chinese persons ordered to evacuate),
+the ability of some Japanese to self-evacuate means some were able to avoid being sent to any of the ten internment camps.
+The \cite{dewittjohnl.FinalReportJapanese1943} puts the number of voluntary evacuees at 4,889.
+Other studies which treat all Japanese living on the West Coast in 1940 as the treatment group
+ignore this number as well as any voluntary emigration by Japanese out of the West Coast to other states.
+In order to estimate a more accurate probability of the actual probability that any individual Japanese census respondent was a true internee,
+I create a measure of predicted internee status.
+
+\subsection{Predicted Internment Status}\label{sec:data-intern}
+
+The WRA records give a complete list of all individuals who were interned during World War II.
+
+To determine the probability that someone who appears in the 1940 census would go on to be interned in 1942, I use the method of \cite{arellano-boverDisplacementDiversityMobility2022}.
+Per his application of Bayes' Rule, the probability that an individual $i$ in the demographic group $z$ who lived in county $c$ in 1942 was interned ($Pr(I_{i}=1|z_i,c_{i})$
+could be determined from the proportion of the whole population who were interned ($Pr(I_{i}=1)$,
+the proportion of the population with demographics $z$ who lived in county $c$ in 1942 ($Pr(z_i,c_{i}^{1942}$),
+and the probability of a known internee having the same demographics and county in 1942 ($Pr(z_i,c_i^{42}|I_i=1)$).
+
+$$Pr(I_i=1|z_i,c_i^{42}) = \frac{Pr(z_i,c_i^{42}|I_i=1) \cdot Pr(I_i=1)}{Pr(z_i,c_i^{42})}$$
+
+However, because my target sample of census respondents were only asked about their county of residence in the year of the census and not in 1942, $c_i^{1940}$ is used as a proxy for census respondents' 1942 locations.
+
+The estimator for the true internment status of a census respondent is:
+
+\begin{equation}\label{eq:predint}
+\hat{E}[I]_{zc} =
+\frac{n(i | z_i=z, ~ c_{i}^{42}=c)}{n(j | z_j=z, ~ c_{j}^{40}=c)}
+\end{equation}
+
+This will produce a biased estimate of true internment status if there were unobserved changes in population in each county between 1940 and 1942. For example, for a county that experienced a net outflow of residents, then the ratio of residents in 1940 vs 1942 would be greater than 1 and we would have an estimated internment probability that overstates the likelihood of anyone who lived in that county in 1940 would be interned.
+
+One source of differences between the number of 1940 residents and the number of internees who came from each county is that the Army initially allowed Japanese persons to choose to move out of the exclusion areas before they gathered the remaining people into assembly centers.
+
+\subsection{Internment's Effect on Earnings}\label{sec:wage-reg}
+
+To measure the effect of internment on earnings, my main analysis follows the following specification.
+
+\begin{equation}\label{eq:mainreg}
+  Y_i = \alpha_i + \beta Pr(I)_i + \mathbb{X}_i \Gamma + \epsilon_i
+\end{equation}
+
+The main outcome of interest which I use for $Y_i$ is the reported dollar earnings of individual $i$ in the 1950 census.
+$\alpha_i$ represent the state fixed effects for the state in which individual $i$ is living in 1950.
+The vector of individual-level controls in $\mathbb{X}$ include age, sex, and individual $i$'s earnings from the 1940 census,
+adjusted to 1950 dollars.
+
+The probability of individual $i$ being an internee, $Pr(I)_i$,
+is replaced by my estimated version from equation \ref{eq:predint}
+using individual $i$'s reported race in 1940 as the only demographic $z$.
+The main causal effect of interest is represented by the estimator $\beta$,
+which represents the number of dollars of income which an individual is estimated to have gained (or lost)
+when going from a non-internee to a likely internee.
 
 \section{Results}
-\input{results}
+In this section I report the outcomes from the main linked sample
+described in section \ref{sec:data-IPUMS} 
+on estimated coefficients from section \ref{sec:wage-reg}.
+
+\input{../tables/reg1_tbl.tex}
+
+Table \ref{tbl:reg1} presents the correlation between my predicted internment status and income in 1950.
+All income amounts are reported in 1950 dollars.
+Column (1) shows that on average, internees incomes were 42 dollars lower than non-internees 
+but that this effect is not statitstically significant at the 10\% confidence level.
+However, there is reason to believe that this estimate does not reflect the true causal effect of internment on later earnings.
+For example, the Japanese living outside of the West Coast may have already been a group that was self-selected for higher income mobility.
+Additionally, if Japanese experienced higher post-war descrimination than Chinese during this period,
+then this correlation will be a downward-biased estimate of the true effect of internment status itself when comparing to the 
+mostly Chinese control group.
+
+To address these concerns, columns (2) through (4) 
+add in additional controls from equation \ref{eq:mainreg}.
+When I include demographic controls in column (2) 
+including respondent's sex, race, and a quadratic in age,
+the coefficient on the predicted internment status increases 
+to a statistically significant positive effect of \$234.
+At the average 1950 wage for Japanese of \$1,004, 
+this represents about a 20\% increase in wages by internees,
+relative to their counterfactual outcomes.
+Because Japanese and Chinse populations were similar in age and sex
+distributions at this time,
+this seems to provide evidence that the differences in labor market 
+discrimination between Japanese and Chinese in 1950
+is causing a difference in the correlation in column (1) 
+and the coefficient on internment status in column (2).
+
+Column (3) includes additional controls for an individual's 
+pre-internmnet income and their level of education.
+While the main coefficient on internment status remains similar,
+a Wald test rejects the null hypothesis
+that the coefficient on 1940 income is zero
+at the 95\% confidence level.
+By controlling for an individual census respondent's level of income
+prior to any internment policies,
+this specification helps to address potential concerns
+that higher-earning Japanese who were living on the West Coast in 1940
+may have had an easier time escaping internment through voluntary migration
+but would appear as treated based on their original 1940 county of residence.
+
+Within the West Coast states, 
+the majority of the Japanese population lived in California in 1940.
+It is possible that due to selection or ethnic enclave effects 
+\citep{edinEthnicEnclavesEconomic2003},
+Californian internees may have experienced higher income growth
+compared to internees from Arizona, Oregon, or Washington.
+Column (4) adds in fixed-effects to account for internees' wage effects to
+differ by their state of residence in 1950.
+After allowing for internees coming from different states
+to have different intercepts in equation \ref{eq:mainreg},
+I can no longer reject the null hypothesis that 
+internees from with higher internment proportions within the same state
+experienced any significantly higher wages in 1950 
+than those from less intensively interned counties.
+
+\subsection{Mechanisms}
+
+Due to the surprising nature of the result above 
+that interned Japanese experienced higher incomes in 1950,
+in the following sections I examine some of the potential mechanisms
+that might have contributed to the main finding.
+
+\subsubsection{Occupation and employment}
+
+One explanation for internment having a seemingly positive effect on income
+is that Japanese internees who lost saving or property may have adapted
+by increasing their participation in formal labor that paid wages
+(instead of earnings from working their own farms, businesses, etc).
+
+Table \ref{tbl:reg2} reports the estimated effects of internment status
+on an indicator of whether an individual was employed in 1950,
+the number of hours they reported working last week,
+the number of weeks worked in last year,
+an occupational ranking based on the median earnings in their reported occupation category,
+and an indicator for whether or not they reported a different occupation from their 1940 one.
+
+\input{../tables/reg2_tbl.tex}
+
+Despite their higher earnings, 
+internees in this sample were less likely to be employed,
+and worked fewer hours and fewer weeks than their non-interned comparison group.
+Conditional on demographics and 1940 levels of these outcomes,
+the coefficients in tablt \ref{tbl:reg2} are not significantly different than zero.
+However, the direction of these coefficients 
+does not help to explain the positive result in incomes.
+
+Another potential explanation for the higher incomes of internees
+could be that Japanese experienced labor market frictions
+that kept them in lower earning occupations or labor markets,
+which they were able to overcome after they had been
+forcibly displaced.
+
+Despite previous evidence from \cite{arellano-boverDisplacementDiversityMobility2022}
+showing that by 1960 internees were more likely to have changed occupations,
+the results for the linked census data shown in \ref{tbl:reg2}
+indicate that instead internees were less likely to have changed occupations
+between 1940 and 1950.
+This may be due to differences in the self-reported nature of the 1960 JARP data,
+or because internees took longer than 5-6 years after their release
+to actually find those new occupations.
+
+Column (4) reports the results from the regression of the OCCSCORE variable,
+constructed by IPUMS to measure the median income of census respondents
+in the same occupation category.
+For those internees who did have a different occupation in 1950 than in 1940,
+column (5) shows that their new occupations tended to be categorized
+as lower-earning based on this OCCSCORE variable.
+
+While the linked census data do not show evidence of internees
+adapting through new individual labor market choices,
+the next section show results that highlight the potential importance of the
+specific counties that internees relocated to after internment
+towards explaining their higher earnings.
+
+\subsubsection{Migration}
+
+Besides the incarceration of West Coast Japanese in the WRA camps,
+a major effect of the policy of internment was the relocation of these people
+away from their previous homes on the West Coast and to new counties
+where they otherwise would not have chosen to move.
+
+\input{../tables/reg3_tbl.tex}
+
+Table \ref{tbl:reg3} reports the results for migration outcomes within the
+linked sample,
+controlling for demographics and 1940 levels of income.
+Likely internees were about 16\% more likely than non-internees
+to be living in a different county than their residence in 1940.
+Column (1) shows that internment status is a statistically significant predictor 
+in a logistic regression
+of the probability that someone has experienced a change in county
+when conditioning on demographics and 1940 income.
+
+Columns (2) through (4) further restrict the sample to only those whose
+1950 county is different than their 1940 county and report results on various
+outcomes of the county that each migrants 1950 destination county.
+All county-level measures are estimated using 1940 levels 
+to avoid simultanaeity bias caused by the migrants in this sample affecting
+the labor markets of their destinations.
+
+Column (2) estimates the effect of internment status on the 
+In this subsample, migrant internees move to counties 
+with 25\% higher median incomes than non-internee migrants.
+This translates to a difference of about \$140 in the median county income
+measured in 1950 dollar amounts.
+
+Column (3) estimates the effect of internment status on the log of population
+of each linked migrant's destination county.
+Based on this estimate, internees moved to larger population centers
+than their non-interned counterparts.
+The dependent variable of column (4) is the ratio of each county's 1940
+population who were Japanese.
+This estimate indicates that the counties which internees moved to 
+had 1.3\% larger pre-existing Japanese populations 
+than the counties which non-internees moved to.
+Considering the fact that the average county in 1940 
+had less than 1\% of its population as Japanese implies that
+despite the Army's attempts at breaking up the Japanese population
+\citep{commissiononwartimerelocationPersonalJusticeDenied1983},
+internees still had the tendency to settle 
+in the some of the same ethnic enclaves that had existed prior to the war.
+
+\subsection{Heterogeneous outcomes by sex}
+
+\input{../tables/reghet_tbl.tex}
+
+% Move this section to data?
+Figure \ref{fig:wageeffect} shows the scatterplot of the percentage change in
+dollar earnings from 1940 to 1950 among the main analysis sample against the
+predicted internment status measure from equation \ref{eq:predint}.
+While there does not seem to be any differential changes between Japanese women
+who are more likely to be interned, 
+Japanese men who are more likely to be interned on
+average experienced higher wage growth than those who were not interned.
+
+% wage growth vs int prob figure
+\begin{figure}
+  \caption{Interned Japanese men experienced higher earnings growth than non-interned men.}
+  \centering
+  \label{fig:wageeffect}
+  \includegraphics[width=\textwidth]{../figures/INCWAGE_plot.pdf} \\
+  \footnotesize
+  Interned proportions are calculated as the number of internees from the county divided by the county's Japanese population in the 1940 full-count census.
+  Counties in white had zero Japanese respondents in the 1940 census.
+  The map on the below comes from the 1942 Western Defense Command's Final Report 
+  % \citep{dewittjohnl.FinalReportJapanese1943}
+  and shows in color the evacuation areas along the West Coast.
+\end{figure}
+
+What is not 
 
 \section{Conclusion}
-\input{conclusion}
+Thanks to newly available linked census data, we can track the outcomes of Japanese internees in more detail.
+Similarly to the findings of \cite{arellano-boverDisplacementDiversityMobility2022}, 
+I find that internment seems to have caused Japanese men to earn higher incomes several years after their release from camps.
+While these internees were more likely to have resettled by 1950, it does not seem like this change in their incomes is attributable to the quality of their new location as measured by median county salaries.
 
 \newpage
 \singlespacing
-\bibliography{main}
+\bibliography{internment_refs}
 
 \newpage
 
-\section*{Figures}
+\appendix
 
 \begin{figure}
   \centering
@@ -145,27 +546,8 @@ citecolor = blue
   My cutoff for categorizing a person in the linked records as a likely internee is shown by the vertical line at 0.5.
 \end{figure}
 
-
-\begin{figure}
-  \label{fig:wageeffect}
-  \caption{Interned Japanese men experienced higher earnings growth than non-interned men.}
-  \centering
-  \includegraphics[width=\textwidth]{../figures/INCWAGE_plot.pdf} \\
-  \footnotesize
-  Interned proportions are calculated as the number of internees from the county divided by the county's Japanese population in the 1940 full-count census.
-  Counties in white had zero Japanese respondents in the 1940 census.
-  The map on the below comes from the 1942 Western Defense Command's Final Report \citep{dewittjohnl.FinalReportJapanese1943}
-  and shows in color the evacuation areas along the West Coast.
-\end{figure}
-
-\section*{Tables}
-
 \input{../tables/balance_stats.tex}\label{tbl:bal-stat}
 
 \input{../tables/cmp-cty_tbl}\label{tbl:cmp-cty}
-
-\input{../tables/reg1_tbl.tex}\label{tbl:reg1}
-
-\input{../tables/reg2_tbl.tex}\label{tbl:reg2}
 
 \end{document}

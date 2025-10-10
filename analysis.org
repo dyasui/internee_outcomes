@@ -215,6 +215,29 @@ modelsummary::datasummary_balance(~RACE, table_dt, output = "latex")
 ** Regressions
 *** Relationship between internment status and 1950 salary
 
+#+begin_src R :results silent
+setFixest_etable(
+  style.tex = style.tex("aer"),
+  postprocess.tex = NULL
+)
+
+etable_dict <- c(
+  "reset", # to reset global dict 
+  INCWAGE_1950="Income in 1950", INCWAGE_1940="Income in 1940",
+  INCTOT_1950="Total Income", INCBUSFM_1950="Bus./Farm Income", INCOTHER_1950="Other Income",
+  internment_prob="Internment Status", age_adj_1950="Age", 
+  SEXMale="Male", RACEJapanese="Japanese", 
+  EDUCD_1950="Education",
+  STATEFIP="State", STATEFIP_1950="State$_{1950}$", STATEFIP_1940="State$_{1940}$",
+  COUNTYICP="County", COUNTYICP_1950="County$_{1950}$", COUNTYICP_1940="County$_{1940}$",
+  HRSWORK1_1950="Hours worked", HRSWORK1_1940="Hours worked$_{1940}$",
+  WKSWORK1_1950="Weeks worked", WKSWORK1_1940="Weeks worked$_{1940}$",
+  OCCSCORE_1950="Occ. score", 
+  employed_1950="Employed",
+  change_occ="Occ. change"
+)
+#+end_src
+
 #+begin_src R :session *R:internment*  :results output file :file tables/reg1_tbl.tex
 etable(
   feols(
@@ -227,26 +250,21 @@ etable(
   ),
   feols(
     INCWAGE_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950,
+    vcov = "IID",
     data = wage_sample
   ),
   feols(
-    INCWAGE_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
-  vcov = "cluster",
+    INCWAGE_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1940,
+    cluster = ~STATEFIP_1940,
     data = wage_sample
   ),
   se.below = TRUE,
-  dict = c(
-    "reset", # to reset global dict 
-    INCWAGE_1950="Income in 1950",
-    internment_prob="Internment Status", age_adj_1950="Age", 
-    SEXMale="Male", RACEJapanese="Japanese", INCWAGE_1940="Income in 1940",
-    EDUCD_1950="Education", STATEFIP_1950="State"
-  ),
+  dict = etable_dict,
   keep = c("Internment Status", "Age", "Age square", "Male", "Japanese", "Income in 1940"),
   keepFactors = FALSE,
   ## highlight = "Internment Status",
-  style.tex = style.tex("aer"),
   title = "Earning effects of internment",
+  label = "tbl:reg1",
   tex = TRUE
 )
 #+end_src
@@ -254,37 +272,175 @@ etable(
 #+RESULTS:
 [[file:tables/reg1_tbl.tex]]
 
+F-Test of the null hypothesis that 1940 incomes and 1950 education levels jointly have coefficients equal to zero:
+#+begin_src R :colnames yes
+reg_wageint <- INCWAGE_1950 ~ internment_prob +
+    age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 |
+    EDUCD_1950 + STATEFIP_1950
+
+wald(feols(reg_wageint, data = wage_sample),
+     "INCWAGE_1940|EDUCD_1950", cluster = "STATEFIP_1950")
+#+end_src
+
+#+RESULTS:
+|             stat |                    p | df1 |  df2 | vcov                      |
+|------------------+----------------------+-----+------+---------------------------|
+| 145.228925130862 | 3.68515919967158e-33 |   1 | 8062 | Clustered (STATEFIP_1950) |
+
+*** Other specifications
+#+begin_src R :results output file :file tables/reghet_tbl.tex
+reg_wagehet <- INCWAGE_1950 ~ internment_prob +
+    age_adj_1950 + age_adj_1950^2 + INCWAGE_1940 |
+    EDUCD_1950 + STATEFIP_1940
+
+etable(
+  feols(reg_wagehet,
+        data = wage_sample),
+  feols(reg_wagehet,
+        data = wage_sample |>
+          filter(SEX == "Male")),
+  feols(reg_wagehet,
+        data = wage_sample |>
+          filter(SEX == "Female")),
+  feols(reg_wagehet,
+        data = wage_sample |>
+          filter(RACE == "Japanese", SEX == "Male")),
+  feols(reg_wagehet,
+        data = wage_sample |>
+          filter(RACE == "Japanese", SEX == "Female")),
+  se.below = TRUE,
+  ## vcov = "hetero",
+  cluster = ~STATEFIP_1940,
+  dict = etable_dict,
+  keep = c("Internment Status", "Age", "Age square", "Male", "Japanese", "Income in 1940"),
+  keepFactors = FALSE,
+  ## highlight = "Internment Status",
+  style.tex = style.tex("aer"),
+  headers = c("All", "Male", "Female", "JM", "JF"),
+  title = "Internment income effect heterogeneities",
+  label = "tbl:reghet",
+  notes = "This table reports the estimates of internment status on 1950 wages across different subsamples of the main linked sample. Column (1) includes Japanese and Chinese men and women, column (2) includes only Japanese and Chinese men, column (3) includes only Japanese and Chinese women, and column (4) includes only Japanese men.",
+  tex = TRUE
+)
+#+end_src
+
+#+RESULTS:
+[[file:tables/reghet_tbl.tex]]
+
+**** Arellano-Bover DiD
+
+#+begin_src R
+wage_sample_did <- wage_sample |>
+  pivot_longer(
+    cols = ends_with(c("_1940","_1950")),
+    names_pattern = "(.*)_(.*)",
+    names_to = c(".value", "YEAR")
+  ) |>
+  mutate(YEAR = as_factor(YEAR))
+
+etable(
+  feols(
+    INCWAGE ~ YEAR + internment_prob + YEAR:internment_prob + age_adj + age_adj^2 | EDUCD + STATEFIP,
+    data = wage_sample_did
+  ),
+  feols(
+    INCWAGE ~ YEAR + internment_prob + YEAR:internment_prob + age_adj + age_adj^2 | EDUCD + STATEFIP,
+    data = wage_sample_did |>
+      filter(SEX == "Male")
+  ),
+  feols(
+    INCWAGE ~ YEAR + internment_prob + YEAR:internment_prob + age_adj + age_adj^2 | EDUCD + STATEFIP,
+    data = wage_sample_did |>
+      filter(SEX == "Female")
+  ),
+  feols(
+    INCWAGE ~ YEAR + internment_prob + YEAR:internment_prob + age_adj + age_adj^2 | EDUCD + STATEFIP,
+    data = wage_sample_did |>
+      filter(RACE == "Japanese", SEX == "Male")
+  ),
+  se.below = TRUE,
+  vcov = "hetero",
+  dict = c(
+    "reset", # to reset global dict 
+    INCWAGE="Income (1950 dollars)",
+    internment_prob="Internment Status", age_adj="Age", 
+    SEXMale="Male", RACEJapanese="Japanese",
+    EDUCD ="Education", STATEFIP="State"
+  ),
+  ## keep = c("Internment Status", "Age", "Age square", "Male", "Japanese", "Income in 1940"),
+  keepFactors = FALSE,
+  ## highlight = "Internment Status",
+  style.tex = style.tex("aer")
+  ## title = "Earning effects of internment"
+)
+
+#+end_src
+
+#+RESULTS:
+| Dependent Var.:              | Income (1950 dollars) | Income (1950 dollars) | Income (1950 dollars) | Income (1950 dollars) |
+|                              |                       |                       |                       |                       |
+| YEAR1950                     | 500.9***              | 505.2***              | 493.6***              | 354.9***              |
+|                              | (35.98)               | (45.93)               | (46.69)               | (89.82)               |
+| Internment Status            | -175.5***             | -114.6**              | 2.094                 | -125.0                |
+|                              | (26.11)               | (35.16)               | (28.74)               | (83.81)               |
+| Age                          | 55.47***              | 101.8***              | 12.36***              | 103.7***              |
+|                              | (2.638)               | (3.725)               | (3.283)               | (4.474)               |
+| Age square                   | -0.6810***            | -1.184***             | -0.2640***            | -1.201***             |
+|                              | (0.0306)              | (0.0427)              | (0.0404)              | (0.0519)              |
+| YEAR1950 x Internment Status | 96.70*                | 73.2                  | 153.8**               | 201.2*                |
+|                              | (42.31)               | (55.99)               | (54.43)               | (96.37)               |
+| Fixed-Effects:               | --------------------- | --------------------- | --------------------- | --------------------- |
+| Education                    | Yes                   | Yes                   | Yes                   | Yes                   |
+| State                        | Yes                   | Yes                   | Yes                   | Yes                   |
+| ____________________________   | _____________________   | _____________________   | _____________________   | _____________________   |
+| S.E. type                    | Heteroskedastic.-rob. | Heteroskedastic.-rob. | Heteroskedastic.-rob. | Heteroskedastic.-rob. |
+| Observations                 | 16,272                | 9,842                 | 6,430                 | 6,854                 |
+| R2                           | 0.11189               | 0.13935               | 0.1315                | 0.15164               |
+| Within R2                    | 0.06778               | 0.09515               | 0.08545               | 0.09556               |
+
+***** TODO add AB internment predicitons to dataset
+#+begin_src R
+tar_load(ddi_fullcount)
+calc_int_proportion(wra_data, ddi = ddi_fullcount,
+                    by = c("STATEFIP", "COUNTYICP", "RACE", "BIRTHYR", "BPL"),
+                    label = "internment_AB")
+#+end_src
+
+#+RESULTS:
+
 ** Other outcomes
 
 #+begin_src R :results output file :file tables/reg2_tbl.tex
 etable(
-  feols(employed_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + as.numeric(employed_1940) | STATEFIP_1950,
-    data = wage_sample |> mutate(employed_1950 = as.numeric(employed_1950)),
-    family = "binomial"
+  feglm(employed_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE ,
+    data = wage_sample |> 
+      mutate(employed_1950 = as.numeric(as.character(employed_1950))),
+    family = binomial(link = "logit")
   ),
-  feols(HRSWORK1_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + HRSWORK1_1940 | STATEFIP_1950,
+  feols(HRSWORK1_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + HRSWORK1_1940,
     data = wage_sample
   ),
-  feols(WKSWORK1_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + WKSWORK1_1940 | STATEFIP_1950,
+  feols(WKSWORK1_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + WKSWORK1_1940,
     data = wage_sample
   ),
-  feols(OCCSCORE_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + OCCSCORE_1940 | STATEFIP_1950,
+  feols(OCCSCORE_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + OCCSCORE_1940,
     data = wage_sample
   ),
-  vcov = "cluster",
+  feglm(change_occ ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE,
+    data = wage_sample |>
+      mutate(change_occ = (OCC1950_1950 == OCC1950_1940)),
+    family = binomial(link = "logit")
+  ),
+  cluster = "STATEFIP_1940",
   se.below = TRUE,
   ## keep = c("Internment Status", "Age", "Age square", "Male", "Japanese", "Income in 1940"),
-  dict = c(
-    "reset", # to reset global dict 
-    HRSWORK1_1950="Hours worked", WKSWORK1_1950="Weeks worked",
-    internment_prob="Internment Status", age_adj_1950="Age", 
-    SEXMale="Male", RACEJapanese="Japanese", INCWAGE_1940="Income in 1940",
-    EDUCD_1950="Education", STATEFIP_1950="State"
-  ),
+  dict = etable_dict,
   keepFactors = FALSE,
   title = "Employment and occupation effects",
   ## highlight = "Internment Status",
-  style.tex = style.tex("aer"),
+  label = "tbl:reg2",
+  ## postprocess.tex = set_rules,
+  adjustbox = TRUE,
   tex = TRUE
 )
 #+end_src
@@ -296,43 +452,61 @@ etable(
 table_data <- wage_sample |>
   mutate(
     ctsal_1950 = county_med.salary_1950,
-    ctpctjpn_1950 = county_pop.japanese_1950/county_pop_1950
+    ctsal_1940 = county_med.salary_1940,
+    lnctsal_1950 = log(county_med.salary_1950),
+    lnctsal_1940 = log(county_med.salary_1940),
+    lnpop_1940 = log(county_pop_1940),
+    ctpctjpn_1950 = county_pop.japanese_1950/county_pop_1950,
+    ctpctjpn_1940 = county_pop.japanese_1940/county_pop_1940
+  ) |>
+  filter(
+    !is.na(migrate10),
+    !is.na(lnctsal_1950),
+    !is.na(county_pop_1950),
+    !is.na(ctpctjpn_1950)
   )
          
 etable(
-  feols(
-    migrate10 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
-    data = table_data
+  feglm(
+    migrate10 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940,
+    data = table_data,
+    family = binomial(link = "logit")
   ),
   feols(
-    ctsal_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
-    data = table_data
+    lnctsal_1940 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940,
+    data = table_data |>
+      filter(migrate10==1)
   ),
   feols(
-   county_pop_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
-    data = table_data
+   lnpop_1940 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940,
+    data = table_data |>
+      filter(migrate10==1)
   ),
   feols(
-   ctpctjpn_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1950,
-    data = table_data
+   ctpctjpn_1940 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940,
+    data = table_data |>
+      filter(migrate10==1)
   ),
-  vcov = "cluster",
+  cluster = "STATEFIP_1950",
   se.below = TRUE,
   keep = c("Internment Status", "Age", "Age square", "Male", "Japanese", "Income in 1940"),
   dict = c(
     "reset", # to reset global dict 
     migrate10="Migration", # as.numeric(employed_1950)="employment",
-    ctsal_1950="Med. County Earnings",
-    county_pop_1950="County Pop.",
-    ctpctjpn_1950="County Pct. Japn.",
+    lnctsal_1940="Log county income",
+    county_pop_1950="County pop.",
+    county_pop_1940="County pop.",
+    lnpop_1940="Log county pop.",
+    ctpctjpn_1950="County pct. Japn.",
+    ctpctjpn_1940="County pct. Japn.",
     internment_prob="Internment Status", age_adj_1950="Age", 
     SEXMale="Male", RACEJapanese="Japanese", INCWAGE_1940="Income in 1940",
     EDUCD_1950="Education", STATEFIP_1950="State"
   ),
   keepFactors = FALSE,
   title = "Migration effects",
-  ## highlight = "Internment Status",
-  style.tex = style.tex("aer"),
+  label = "tbl:reg3",
+  adjustbox = TRUE,
   tex = TRUE
 )
 #+end_src
@@ -342,39 +516,41 @@ etable(
 
 ** Logit model of migration indicator
 #+begin_src R  :results output
-mig_logit <- glm(migrate10 ~ pr_intern + age_1950 + age_1950^2 + migrate5_1940,
-    data = main_sample, family = "binomial")
+mig_logit <- glm(migrate10 ~ internment_prob + AGE_1950 + AGE_1950^2,
+    data = wage_sample, family = "binomial")
 modelsummary::modelsummary(mig_logit)
 #+end_src
 
 #+RESULTS:
 #+begin_example
 
-+-------------+-----------+
-|             | (1)       |
-+=============+===========+
-| (Intercept) | -1.529    |
-+-------------+-----------+
-|             | (0.139)   |
-+-------------+-----------+
-| pr_intern   | 0.657     |
-+-------------+-----------+
-|             | (0.089)   |
-+-------------+-----------+
-| age_1950    | -0.013    |
-+-------------+-----------+
-|             | (0.003)   |
-+-------------+-----------+
-| Num.Obs.    | 7462      |
-+-------------+-----------+
-| AIC         | 5470.6    |
-+-------------+-----------+
-| BIC         | 5491.3    |
-+-------------+-----------+
-| Log.Lik.    | -2732.298 |
-+-------------+-----------+
-| RMSE        | 0.33      |
-+-------------+-----------+
++-----------------+-----------+
+|                 | (1)       |
++=================+===========+
+| (Intercept)     | -0.788    |
++-----------------+-----------+
+|                 | (0.090)   |
++-----------------+-----------+
+| internment_prob | 0.793     |
++-----------------+-----------+
+|                 | (0.057)   |
++-----------------+-----------+
+| AGE_1950        | -0.013    |
++-----------------+-----------+
+|                 | (0.002)   |
++-----------------+-----------+
+| Num.Obs.        | 8136      |
++-----------------+-----------+
+| AIC             | 9750.1    |
++-----------------+-----------+
+| BIC             | 9771.1    |
++-----------------+-----------+
+| Log.Lik.        | -4872.031 |
++-----------------+-----------+
+| F               | 123.705   |
++-----------------+-----------+
+| RMSE            | 0.45      |
++-----------------+-----------+
 #+end_example
 
 ** County characteristics as outcome
@@ -433,6 +609,99 @@ etable(feols(
 | R2                  | 0.2582                    |
 | Within R2           | 0.2509                    |
 
+
+For those who had listed occupations in 1940 and 1950,
+and for which their occupation changed,
+here is the breakdown of the most common occupation changes:
+#+begin_src R :colnames yes
+mlp_cleaned |>
+  filter(OCC1950 != "N/A (blank)") |>
+  pivot_wider(id_cols = "id", names_from = YEAR, values_from = OCC1950, names_prefix = "OCC_") |>
+  count(OCC_1940, OCC_1950) |>
+  filter(
+    !is.na(OCC_1940),
+    !is.na(OCC_1950),
+    OCC_1940 != OCC_1950
+    ) |>
+  arrange(desc(n)) |>
+  head(n=25)
+    #+end_src
+
+#+RESULTS:
+| OCC_1940                                   | OCC_1950                                   |   n |
+|--------------------------------------------+--------------------------------------------+-----|
+| Farmers (owners and tenants)               | Farm laborers, wage workers                | 594 |
+| Farm laborers, unpaid family workers       | Farmers (owners and tenants)               | 486 |
+| Farm laborers, wage workers                | Farmers (owners and tenants)               | 481 |
+| Salesmen and sales clerks (nec)            | Managers, officials, and proprietors (nec) | 350 |
+| Farm laborers, unpaid family workers       | Farm laborers, wage workers                | 265 |
+| Farmers (owners and tenants)               | Gardeners, except farm and groundskeepers  | 249 |
+| Managers, officials, and proprietors (nec) | Salesmen and sales clerks (nec)            | 234 |
+| Managers, officials, and proprietors (nec) | Not yet classified                         | 232 |
+| Farmers (owners and tenants)               | Farm laborers, unpaid family workers       | 222 |
+| Farmers (owners and tenants)               | Not yet classified                         | 194 |
+| Salesmen and sales clerks (nec)            | Operative and kindred workers (nec)        | 170 |
+| Managers, officials, and proprietors (nec) | Gardeners, except farm and groundskeepers  | 165 |
+| Laundry and dry cleaning Operatives        | Managers, officials, and proprietors (nec) | 164 |
+| Salesmen and sales clerks (nec)            | Not yet classified                         | 163 |
+| Managers, officials, and proprietors (nec) | Cooks, except private household            | 158 |
+| Managers, officials, and proprietors (nec) | Farmers (owners and tenants)               | 149 |
+| Farm laborers, wage workers                | Gardeners, except farm and groundskeepers  | 144 |
+| Cooks, except private household            | Managers, officials, and proprietors (nec) | 139 |
+| Farmers (owners and tenants)               | Managers, officials, and proprietors (nec) | 134 |
+| Waiters and waitresses                     | Managers, officials, and proprietors (nec) | 126 |
+| Gardeners, except farm and groundskeepers  | Farmers (owners and tenants)               | 126 |
+| Farm laborers, wage workers                | Not yet classified                         | 124 |
+| Managers, officials, and proprietors (nec) | Operative and kindred workers (nec)        | 123 |
+| Farm laborers, unpaid family workers       | Operative and kindred workers (nec)        | 121 |
+| Farm laborers, unpaid family workers       | Not yet classified                         | 109 |
+
+In the main analysis sample:
+#+begin_src R :colnames yes
+wage_sample |>
+  filter(
+    !is.na(OCC1950_1940),
+    !is.na(OCC1950_1950),
+    OCC1950_1940 != "N/A (blank)",
+    ! OCC1950_1950 %in% c("N/A (blank)", "Not yet classified"),
+    internment_prob > 0.5
+  ) |>
+  group_by(OCC1950_1940, OCC1950_1950) |>
+  summarise(n = n()) |>
+  ungroup() |>
+  mutate(p = round(n / sum(n), 2)) |>
+  arrange(desc(n)) |>
+  head(25)
+#+end_src
+
+#+RESULTS:
+| OCC1950_1940                               | OCC1950_1950                               |   n |    p |
+|--------------------------------------------+--------------------------------------------+-----+------|
+| Farmers (owners and tenants)               | Farmers (owners and tenants)               | 169 | 0.07 |
+| Farm laborers, wage workers                | Farm laborers, wage workers                |  94 | 0.04 |
+| Managers, officials, and proprietors (nec) | Managers, officials, and proprietors (nec) |  88 | 0.04 |
+| Farm laborers, wage workers                | Farmers (owners and tenants)               |  80 | 0.03 |
+| Farmers (owners and tenants)               | Farm laborers, wage workers                |  78 | 0.03 |
+| Gardeners, except farm and groundskeepers  | Gardeners, except farm and groundskeepers  |  77 | 0.03 |
+| Farm laborers, unpaid family workers       | Farmers (owners and tenants)               |  60 | 0.02 |
+| Farmers (owners and tenants)               | Gardeners, except farm and groundskeepers  |  48 | 0.02 |
+| Salesmen and sales clerks (nec)            | Salesmen and sales clerks (nec)            |  44 | 0.02 |
+| Farmers (owners and tenants)               | Farm laborers, unpaid family workers       |  39 | 0.02 |
+| Farm laborers, unpaid family workers       | Farm laborers, wage workers                |  39 | 0.02 |
+| Private household workers (nec)            | Private household workers (nec)            |  34 | 0.01 |
+| Managers, officials, and proprietors (nec) | Salesmen and sales clerks (nec)            |  33 | 0.01 |
+| Farm laborers, unpaid family workers       | Farm laborers, unpaid family workers       |  30 | 0.01 |
+| Salesmen and sales clerks (nec)            | Operative and kindred workers (nec)        |  29 | 0.01 |
+| Salesmen and sales clerks (nec)            | Managers, officials, and proprietors (nec) |  28 | 0.01 |
+| Farm laborers, unpaid family workers       | Operative and kindred workers (nec)        |  27 | 0.01 |
+| Managers, officials, and proprietors (nec) | Gardeners, except farm and groundskeepers  |  26 | 0.01 |
+| Gardeners, except farm and groundskeepers  | Farmers (owners and tenants)               |  26 | 0.01 |
+| Farm laborers, wage workers                | Farm laborers, unpaid family workers       |  24 | 0.01 |
+| Farm laborers, wage workers                | Gardeners, except farm and groundskeepers  |  23 | 0.01 |
+| Managers, officials, and proprietors (nec) | Farmers (owners and tenants)               |  20 | 0.01 |
+| Managers, officials, and proprietors (nec) | Operative and kindred workers (nec)        |  20 | 0.01 |
+| Operative and kindred workers (nec)        | Operative and kindred workers (nec)        |  20 | 0.01 |
+| Salesmen and sales clerks (nec)            | Gardeners, except farm and groundskeepers  |  19 | 0.01 |
 
 ** Were internees moving out of the West Coast?
 #+begin_src R 
