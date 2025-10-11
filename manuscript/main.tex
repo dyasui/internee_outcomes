@@ -53,7 +53,7 @@ citecolor = blue
 
 \setcounter{secnumdepth}{3}
 \author{Dante Yasui}
-\date{2025-06-19}
+\date{\today}
 \title{Forced Removal or Moved to Opportunity?\\\medskip
 \large Labor Market and Migration Effects of Japanese Internment}
 \hypersetup{
@@ -181,23 +181,94 @@ prompting their forced relocation.
 \section{Data}
 \subsection{Linked Census Microdata}\label{sec:data-IPUMS}
 
-I collect economic and demographic data on the populations of interest from the full count decenial censuses taken in 1940 and 1950
+I collect economic and demographic data on the populations of interest 
+from the full count decenial censuses taken in 1940 and 1950
 \citep{rugglesIPUMSAncestryFull2024}.
-These censuses asked about the wages and salary income earned by respondents
-which I use as the main labor market outcome in my analysis of the impact of internment and forced removal on internees.
-The censuses also provide information on the employment status of respondents;
-demographic variables such as age, sex, race, etc;
-and the county of residence when the census survey was administered.
+IPUMS also provides linked individual census data up until 1950
+through their Multigenerational Longitudinal Panel (MLP) project
+\citep{helgertzIPUMSMultigenerationalLongitudinal2024}.
+I use the links between the 1940 and 1950 full-count censuses
+from version 2.0 of the MLP data provided by IPUMS.
+For my main analysis sample,
+I select all individuals 
+whose reported race in 1940 is either Japanese or Chinese,
+born before 1926 (so that they would have been of working age by World War II),
+and who are not missing income or employment data in either census.
+This leaves me with a linked sample of 8,136 individuals,
+of which about three quarters of whom are Japanese
+and one quarter are Chinese.
 
+\input{../tables/mlp_sumstats.tex}
+
+Table \ref{tbl:mlp_sumstats} reports summary statistics for this sample,
+broken down by race.
+Japanese and Chinese are similar in age,
+with both groups having an average year of birth of 1904.
+Within the Chinese population, men are overrepresented compared to women
+with 72\% being male compared to 58\% male in the Japanese population.
+The 1940 census only asked about income earned through wages and employment
+in the previous year.
+However, the 1950 census added additional questions about other forms of income
+including income earned by respondents who earned their own businesses or farms.
+OCCSCORE is a variable provided by IPUMS 
+which ranks the occupations of census respondents 
+by the median wage that was earned for persons with the same occupation.
+Both censused asked about the number of weeks each person reported working
+in the previous year,
+as well as the number of hours they worked in the previous week.
+Employment status for this working-age sample
+is equal to one if the person reported being employed,
+and equal to zero if they were unemployed or not in the labor force.
+I categorize unemployed persons 
+together with those who are not in the labor force
+to acknowledge the fact that internees may have been discouraged from
+participating in the formal labor force due to trauma or discrimination.
+% insert citations here to back up this story.
+Farm status in either year depends on whether the respondent's family
+lived on a farm or not.
+I take the county of residence reported by each linked respondent
+and categorize them as a migrant over this period
+if the county they report in 1940 is different from their county in 1950.
+
+In terms of economic characteristics,
+the Japanese sample started with lower wages, fewer weeks and hours worked,
+lower employment rates,
+and lower ranked occupations in the 1940 census compared to the Chinese sample.
+However, the gap in wage income seems to decreased by 1950.
+In the section \ref{sec:results}, I show evidence that 
+internment itself may have caused the Japanese population to earn higher wages
+over this period than they would have otherwise.
+The gap in weeks worked seems to also close between these two populations,
+altough the difference in hours worked and occupation score
+do not seem to change between 1940 and 1950.
+
+Migration rates for Japanese are much higher than for Chinese over this period
+(35\% vs 17\%).
+Most of this is likely because the majority of the Japanese population 
+were interned and forcibly removed from their original 1940 counties.
+However, some may be due to voluntary migration
+before internment orders went into effect
+or after their release from the WRA camps.
+
+In order to determine internment status at a more granular level,
+I use the distribution of internees' original counties of residence
+from the 1940s camp records which I describe in the following section.
 
 \subsection{War Relcation Authority Records}
 
-The WRA kept detailed records of the process of relocating and incarcerating the West Coast Japanese population.
-I use the dataset from WRA Form 26: Evacuee Summary Data in the collection of Records About Japanese Americans Interned During World War II in the National Archives.
-The original paper form from which this digitized version is coded included each internee's name, previous address in 1942, the assembly center and internment camp they were assigned to,
-their educational attainment, occupation, and demographics including sex, birth year, and birthplace.
+The WRA kept detailed records of the process of relocating and incarcerating 
+the West Coast Japanese population.
+I use the dataset from WRA Form 26: Evacuee Summary Data in the collection of 
+Records About Japanese Americans Interned During World War II 
+in the National Archives.
+The original paper form from which this digitized version is coded 
+included each internee's name, previous address in 1942, 
+the assembly center and internment camp they were assigned to,
+their educational attainment, occupation, 
+and demographics including sex, birth year, and birthplace.
 
-Table \ref{tbl:bal-stat} reports a summary of the main demographic variables of internees compared to the full 1940 Japanese population.
+Table \ref{tbl:wra_demog} reports a summary of the main demographic variables 
+of internees compared to the full 1940 Japanese population.
 Internees represented a large majority (86\%) of the Japanese population in the US in 1940.
 Internees were representative of the population in terms of their education, gender composition, and country of birth.
 The 65\% of internees born in the US represent the generation known as the ``Nisei'', or second generation after their parents, 
@@ -217,6 +288,8 @@ Among the main internment counties, the major West Coast urban areas of Los Ange
 However, there are also a large number of internees from more rural counties in California including Fresno, San Joaquin, Placer, and Tulare.
 Interned Japanese came from a variety of backgrounds shown here by the range of urban and rural counties,
 and also reflected in the range of occupations held by internees.
+
+\input{../tables/wra_demog.tex}\label{tbl:wra_demog}
 
 \section{Methods}
 To estimate the effect that wartime relocation and internment had on wages, I need to compare the outcomes of likely internees before and after 1942 against a reasonable control group.
@@ -284,7 +357,7 @@ The main causal effect of interest is represented by the estimator $\beta$,
 which represents the number of dollars of income which an individual is estimated to have gained (or lost)
 when going from a non-internee to a likely internee.
 
-\section{Results}
+\section{Results}\label{sec:results}
 In this section I report the outcomes from the main linked sample
 described in section \ref{sec:data-IPUMS} 
 on estimated coefficients from section \ref{sec:wage-reg}.
@@ -372,7 +445,7 @@ Despite their higher earnings,
 internees in this sample were less likely to be employed,
 and worked fewer hours and fewer weeks than their non-interned comparison group.
 Conditional on demographics and 1940 levels of these outcomes,
-the coefficients in tablt \ref{tbl:reg2} are not significantly different than zero.
+the coefficients in table \ref{tbl:reg2} are not significantly different than zero.
 However, the direction of these coefficients 
 does not help to explain the positive result in incomes.
 
@@ -454,16 +527,24 @@ in the some of the same ethnic enclaves that had existed prior to the war.
 
 \subsection{Heterogeneous outcomes by sex}
 
-\input{../tables/reghet_tbl.tex}
+In this section, I examine the ways in which the consequences of internment
+were experienced differently by men vs women.
 
 % Move this section to data?
-Figure \ref{fig:wageeffect} shows the scatterplot of the percentage change in
-dollar earnings from 1940 to 1950 among the main analysis sample against the
-predicted internment status measure from equation \ref{eq:predint}.
-While there does not seem to be any differential changes between Japanese women
-who are more likely to be interned, 
-Japanese men who are more likely to be interned on
-average experienced higher wage growth than those who were not interned.
+Figure \ref{fig:wageeffect} shows the scatterplot of the wage incomes
+in both census years by different sub-samples.
+Each dot in each panel is one observation from an individual in the main sample.
+Individuals are categorized by their race and sex,
+with the first row including all Japanese and the second row all Chinese.
+The first column includes all women and the second column all men.
+Income is reported for each group across the two census years 1940 and 1950.
+The y-axis is in log scale.
+Darker dots in the Japanese panels represent those individuals
+with a higher predicted probability of internment.
+
+Overall, wages increase for all groups between 1940 and 1950.
+However, wages seem to increase by more for the Japanese men and women than
+the Chinese men and women in this sample.
 
 % wage growth vs int prob figure
 \begin{figure}
@@ -479,13 +560,62 @@ average experienced higher wage growth than those who were not interned.
   and shows in color the evacuation areas along the West Coast.
 \end{figure}
 
-What is not 
+Table \ref{tbl:reghet} shows the results of \ref{eq:mainreg}
+broken down into separate subsamples.
+Without accounting for sex at all in the original sample,
+the effect of internment appears negative and statistically insignificant.
+Columns (2) and (3) separate out this sample into men and women, respectively.
+In the sample with only Japanese and Chinese men, 
+there does not appear to be a significant effect of internment status on 1950 income.
+However, for the sample with Japanese and Chinese women,
+this effect is positive and significant at the 1\% significance level.
+
+These results seem to suggest that even though my earlier regressions
+controlled for sex on the right-hand side,
+it may be that internee women were driving the earlier results.
+This is surprising, but as shown in figure \ref{fig:wageeffect},
+both Japanese and Chinese women seem to have experienced increases in earnings
+over this period.
+This is potentially because of increased labor force participation by women
+during World War II carrying over to 1950.
+Even considering this broad pattern,
+Japanese internee women still seem to do better than other women in this sample.
+
+Columns (4) and (5) further restrict the sample to only Japanese men
+and Japanese women.
+The internment status coefficient for men remains insignificant,
+but the coefficient for women is even larger.
+Because this sample is smaller than the overall sample,
+there are fewer observations with which to estimate the main coefficient.
+Despite the lower power, the positive estimated effect for Japanese women remains higher.
+
+If Japanese experienced different levels of discrimination 
+than Chinese after the war,
+then it might be possible that in the regressions 
+which include them in the control group,
+the coefficient on internment status is biased downwards.
+By only including Japanese in columns (4) and (5),
+the control group is only those Japanese 
+who lived in counties unaffected by internment
+and who would have experienced arguably similar levels of discrimination
+as the interned Japanese.
+
+\input{../tables/reghet_tbl.tex}
 
 \section{Conclusion}
-Thanks to newly available linked census data, we can track the outcomes of Japanese internees in more detail.
+
+Thanks to newly available linked census data, 
+we can track the outcomes of Japanese internees in more detail.
 Similarly to the findings of \cite{arellano-boverDisplacementDiversityMobility2022}, 
-I find that internment seems to have caused Japanese men to earn higher incomes several years after their release from camps.
-While these internees were more likely to have resettled by 1950, it does not seem like this change in their incomes is attributable to the quality of their new location as measured by median county salaries.
+I find that internment seems to have caused internees to earn higher incomes 
+several years after their release from camps.
+However, I expand the analysis to the case of Japanese women
+for whom I find that internees experienced higher gains in income than interned men.
+
+While these internees were more likely to have resettled by 1950,
+it does not seem like this change in their incomes 
+is attributable to the quality of their new location 
+as measured by median county salaries.
 
 \newpage
 \singlespacing
@@ -546,8 +676,6 @@ While these internees were more likely to have resettled by 1950, it does not se
   My cutoff for categorizing a person in the linked records as a likely internee is shown by the vertical line at 0.5.
 \end{figure}
 
-\input{../tables/balance_stats.tex}\label{tbl:bal-stat}
-
-\input{../tables/cmp-cty_tbl}\label{tbl:cmp-cty}
+\input{../tables/cmp-cty_tbl}
 
 \end{document}
