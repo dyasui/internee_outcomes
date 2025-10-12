@@ -65,19 +65,15 @@ calc_int_proportion <- function(wra_data, ddi,
 predict_internment <- function(data,
                                wra_data, ddi,
                                methods = c("main", "county", "AB"),
-                               state_var = "STATEFIP_1940",
-                               county_var = "COUNTYICP_1940",
-                               race_var = "RACE_1940",
-                               sex_var = "SEX_1940",
-                               bpl_var = "BPL_1940",
-                               byr_var = "BIRTHYR_1940"
+                               # variable names from data
+                               lvars = c("STATEFIP_1940", "COUNTYICP_1940",
+                                         "RACE_1940", "SEX_1940", "bpl_grp",
+                                         "byr_grp"),
+                               rvars = c("STATEFIP", "COUNTYICP", "RACE", "SEX", "bpl_grp", "byr_grp")
                                ) {
   library(tidyverse)
 
-  print(paste("Looking for columns:", race_var, state_var, county_var))
-  print(paste("Available columns:", paste(names(data), collapse = ", ")))
-
-  mutate_vars <- list()
+  join_vars <- setNames(rvars, lvars)
 
   # Internment probability based on county and race
   if ("main" %in% methods) {
@@ -86,15 +82,14 @@ predict_internment <- function(data,
       by = c("STATEFIP", "COUNTYICP", "RACE"),
       label = "int_prob"
     )
+    print(join_vars[1:3])
     # join probabilities with main dataset
     data <- data |>
       left_join(
         int_prob_dt,
-        by = setNames(
-          c("RACE", "STATEFIP", "COUNTYICP"),
-          c(race_var, state_var, county_var)
-        )
+        by = join_vars[1:3]
       )
+    print("county internment successfully joined")
   }
 
   # rate of Japanese internees in individual's 1940 county origin
@@ -104,15 +99,14 @@ predict_internment <- function(data,
       by = c("STATEFIP", "COUNTYICP"),
       label = "county_intprop"
     )
+    print(join_vars[1:2])
     # join probabilities with main dataset
     data <- data |>
       left_join(
         ct_int_dt,
-        by = setNames(
-          c("STATEFIP", "COUNTYICP"),
-          c(state_var, county_var)
-        )
+        by = join_vars[1:2]
       )
+    print("county proportions successfully joined")
   }
 
   # Jaime Arellano-Bover's method:
@@ -123,16 +117,15 @@ predict_internment <- function(data,
       by = c("STATEFIP", "RACE", "BIRTHYR", "BPL"),
       label = "intprob_AB"
     )
+    print(c(join_vars[1], join_vars[3], join_vars[5:6]))
     # join probabilities with main dataset
     data <- data |>
       mutate(bpl_grp = group_bpl(BPL_1940), byr_grp = group_birthyr(BIRTHYR_1940)) |>
       left_join(
         int_AB_dt,
-        by = setNames(
-          c("STATEFIP", "RACE", "bpl_grp", "byr_grp"),
-          c(state_var, race_var, bpl_var, byr_var)
-        )
+        by = c(join_vars[1], join_vars[3], join_vars[5:6])
       )
+    print("Arellano-Bover internment successfully joined")
   }
 
   # group by all demographics at county level
@@ -142,16 +135,15 @@ predict_internment <- function(data,
       by = c("STATEFIP", "COUNTYICP", "SEX", "RACE", "BIRTHYR", "BPL"),
       label = "intprob_full"
     )
+    print(join_vars)
     # join probabilities with main dataset
     data <- data |>
       mutate(bpl_grp = group_bpl(BPL_1940), byr_grp = group_birthyr(BIRTHYR_1940)) |>
       left_join(
         int_full_dt,
-        by = setNames(
-          c("STATEFIP", "COUNTYICP", "SEX", "RACE", "bpl_grp", "byr_grp"),
-          c(state_var, county_var, sex_var, race_var, "bpl_grp", "byr_var")
-        )
+        by = join_vars
       )
+    print("Full demographic internment successfully joined")
   }
     
   return(data)

@@ -42,3 +42,4 @@ WRA-internees.org~
 *.html
 data/mlp.duckdb
 notes/cleaning-functions.org
+.vscode

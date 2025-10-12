@@ -39,8 +39,7 @@ list(
   tar_target(county_stats,
              collect_county_stats(ddi_fullcount, inflator = 1.69)),
   tar_target(mlp_raw, collect_mlp(mlp_db, mlp_tbl)),
-  tar_target(mlp_sample, predict_internment(mlp_raw, wra_data, ddi_mlp, methods = c("main", "county", "AB"))),
-  tar_target(mlp_cleaned, clean_mlp(mlp_raw, county_stats, ddi_mlp, 1.69)),
+  tar_target(mlp_sample, clean_mlp(mlp_raw, county_stats, wra_data, ddi_mlp, 1.69)),
   tar_target(wage_sample, define_wage_sample(mlp_sample))
 
 )

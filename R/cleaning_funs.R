@@ -19,9 +19,10 @@ define_wage_sample <- function(mlp_sample) {
     select(-c("RACE_1940", "RACE_1950", "SEX_1940", "SEX_1950"))
 }
 
-clean_mlp <- function(wide_df, countystats, ddi, inflator = 1.6) {
+clean_mlp <- function(wide_df, countystats, wra_data, ddi, inflator = 1.6) {
   wide_df |>
     clean_wide_vars(ddi = ddi, inflator = inflator) |>
+    predict_internment(wra_data, ddi, methods = c("main", "county", "AB", "full")) |>
     mutate(
       Earning_growth =
         (INCWAGE_adj_1950 - INCWAGE_adj_1940) /
@@ -89,6 +90,7 @@ adjust_dollar_vars <- function(df, inflator = 1.69,
   cols <- grep("^(INCWAGE|INCTOT|INCBUSFM|INCOTHER)_(1940|1950)$", names(df), value = TRUE)
   if (!length(cols)) return(df)
 
+  # adjust topcode for 1950 incwage to match 1940 incwage if present
   have_incwage_1940 <- "INCWAGE_1940" %in% names(df)
   incwage_1950_top <- if (harmonize_incwage && have_incwage_1940) 5001 * inflator else 10000
 
@@ -156,8 +158,27 @@ clean_wide_vars <- function(wide_df, ddi, inflator = 1.69) {
       migrate10 = ifelse(COUNTYICP_1940!=COUNTYICP_1950, 1, 0),
       # create new individual-level id
       id = row_number()
-    ) 
+    ) |>
+  mutate(
+    bpl_grp = group_bpl(BPL_1940),
+    byr_grp = group_birthyr(BIRTHYR_1940)
+  )
+
   return(wide_df)
+}
+
+occ_category <- function(OCC1950) {
+  occ_grp <- case_when(
+    OCC1950 %in% 000:099 ~ "Professional, Technical",
+    OCC1950 == 100 ~ "Farmers (owners and tenants)",
+    OCC1950 == 123 ~ "Farmer managers",
+    OCC1950 %in% 200:290 ~ "administration, management",
+    OCC1950 %in% 300:490 ~ "clerical, sales",
+    OCC1950 %in% 500:690 ~ "craftsmen, operatives",
+    OCC1950 %in% 700:790 ~ "Service Workers",
+    OCC1950 %in% 800:840 ~ "Farm laborers",
+    OCC1950 %in% 910:970 ~ "Laborers"
+  )
 }
 
 clean_long_vars <- function(wide_df, ddi) {
@@ -176,6 +197,7 @@ clean_long_vars <- function(wide_df, ddi) {
       across(any_of("EDUC"), ~ifelse(. %in% 7:11, 1, 0), .names = "college"),
       across(any_of("EMPSTAT"), ~ifelse(. == 1, 1, 0), .names = "employed"),
       ## across(any_of("OCC1950"), ~ifelse(. %in% 979:999, NA), .names = "occupation"),
+      occ_grp = occ_category(OCC1950),
       OCC1950 = as_factor(OCC1950),
       across(
         any_of(c("OCC1950", "IND1950", "RACE", "SEX", "EDUCD", "CLASSWKR", "EMPSTAT", "FARM")),
