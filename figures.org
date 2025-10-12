@@ -370,3 +370,36 @@ read_dta(file="data/all_internees.dta") |>
 #+RESULTS:
 [[file:figures/internee-age_plot.pdf]]
 
+
+** Earning distribution in MLP sample
+#+begin_src R :results graphics file :file figures/group-incwage-dist.pdf
+grp_incwage_grps <- wage_sample |>
+  group_by
+wage_sample |>
+  mutate(
+    group = case_when(
+      RACE == "Chinese" ~ "Chinese",
+      RACE == "Japanese" & internment_prob == 0 ~ "Non-interned Japanese",
+      RACE == "Japanese" & internment_prob > 0.75 ~ "Interned Japanese",
+      RACE == "Japanese" & internment_prob %in% 0:0.75 ~ "(Dropped)"
+    )
+  ) |>
+  filter(!is.na(group)) |>
+  pivot_longer(
+    cols = starts_with("INCWAGE"),
+    names_to = "YEAR",
+    values_to = "INCWAGE"
+  ) |>
+  ggplot(aes(x = log(INCWAGE), fill = group)) +
+  geom_histogram() +
+  facet_wrap(~YEAR + group, nrow = 2) +
+  theme_internment() +
+  theme(
+    ## legend.title = element_blank(),
+    legend.position = "bottom"
+  ) +
+  scale_fill_paletteer_d("MetBrewer::Juarez")
+#+end_src
+
+#+RESULTS:
+[[file:figures/group-incwage-dist.pdf]]
