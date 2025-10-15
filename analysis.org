@@ -12,6 +12,30 @@ library(targets)
 
 tar_source()
 tar_load(c(wage_sample))
+
+setFixest_etable(
+  style.tex = style.tex("aer"),
+  postprocess.tex = NULL
+)
+
+etable_dict <- c(
+  "reset", # to reset global dict 
+  INCWAGE_1950="Income in 1950", INCWAGE_1940="Income in 1940",
+  INCTOT_1950="Total Income", INCBUSFM_1950="Bus./Farm Income", INCOTHER_1950="Other Income",
+  int_prob="$\\hat{E}[I|county,race]$", age_adj_1950="Age", 
+  sex_adjMale="Male", race_adjJapanese="Japanese", 
+  EDUCD_1950="Education",
+  STATEFIP="State", STATEFIP_1950="State$_{1950}$", STATEFIP_1940="State$_{1940}$",
+  COUNTYICP="County", COUNTYICP_1950="County$_{1950}$", COUNTYICP_1940="County$_{1940}$",
+  HRSWORK1_1950="Hours worked", HRSWORK1_1940="Hours worked$_{1940}$",
+  WKSWORK1_1950="Weeks worked", WKSWORK1_1940="Weeks worked$_{1940}$",
+  OCCSCORE_1950="Occ. score", 
+  employed_1950="Employed",
+  change_occ="Occ. change",
+  county_intprop="$\\hat{E}[I|county]$", intprob_AB="$\\hat{E}[I_i|state, bpl, byr, race]$",
+  intprob_full="$\\hat{E}[I|county, sex, bpl, byr, race]$"
+)
+
 #+end_src
 
 * MLP Linked Internees
@@ -93,7 +117,7 @@ as well as a state and county across both years?
 tar_load(wage_sample)
 
 wage_sample |>
-  count(RACE)
+  count(race_adj)
 #+end_src
 
 #+RESULTS:
@@ -107,7 +131,7 @@ So there should be 8,136 observations in my main analysis sample.
 #+begin_src R :results graphics file :file figures/INCWAGE_plot.pdf
 wage_sample |>
   filter(
-    internment_prob == 0 | internment_prob > 0.5
+    int_prob == 0 | int_prob > 0.5
     ) |>
   pivot_longer(
     cols = INCWAGE_1940:INCWAGE_1950,
@@ -115,10 +139,10 @@ wage_sample |>
     names_to = "YEAR"
   ) |>
   ggplot(
-    aes(x = YEAR, y = INCWAGE, color = internment_prob)
+    aes(x = YEAR, y = INCWAGE, color = int_prob)
   ) +
   geom_point() +
-  facet_wrap(~ as_factor(RACE) + as_factor(SEX)) +
+  facet_wrap(~ as_factor(race_adj) + as_factor(sex_adj)) +
   geom_smooth(method = "lm") +
   scale_y_log10() +
   labs(
@@ -135,37 +159,20 @@ wage_sample |>
 
 ** Summary Statistics
 #+begin_src R 
-wage_sample |>
-  group_by(RACE) |>
-  summarise(
-    n = n(),
-    across(c(INCWAGE_1940, INCWAGE_1950, OCCSCORE_1940, OCCSCORE_1950, age_adj_1940, employed_1940, employed_1950, WKSWORK1_1940, WKSWORK1_1950),
-           ~round(mean(., na.rm=T), digits = 2)
-           )
-  )
-#+end_src
-
-#+RESULTS:
-| RACE     |    n | INCWAGE_1940 | INCWAGE_1950 | OCCSCORE_1940 | OCCSCORE_1950 | age_adj_1940 | employed_1940 | employed_1950 | WKSWORK1_1940 | WKSWORK1_1950 |
-|----------+------+--------------+--------------+---------------+---------------+--------------+---------------+---------------+---------------+---------------|
-| Chinese  | 2069 |       625.23 |      1151.07 |         15.38 |         17.55 |        35.74 |          0.59 |          0.65 |         27.78 |         30.47 |
-| Japanese | 6067 |       407.45 |      1004.15 |         11.41 |         12.71 |        35.99 |          0.58 |          0.65 |         26.68 |         30.56 |
-
-#+begin_src R :exports both :results output 
 table_dt <- wage_sample |>
   mutate(
     employed_1940 = as_factor(employed_1940),
     employed_1950 = as_factor(employed_1950),
     migrant = as_factor(migrate10)
   ) |>
-  select(`Race` = RACE, `Internment probability` = internment_prob, `Year of birth` = birthyr_adj,
+  select(`Race` = race_adj, `Internment probability` = int_prob, `Year of birth` = birthyr_adj,
          `Farm status 1940`=FARM_1940, `Farm status 1950`=FARM_1950,
          `Wage income 1939`=INCWAGE_1940, `Wage income 1949`=INCWAGE_1950, 
          `Business/farm income 1949`=INCBUSFM_1950, `Other income 1949`=INCOTHER_1950,
          `OCCSCORE 1940`=OCCSCORE_1940, `OCCSCORE in 1950`=OCCSCORE_1950,
          `Weeks worked in 1939`=WKSWORK1_1940, `Weeks worked in 1949`=WKSWORK1_1950,
          `Hours worked last week (1940)`=HRSWORK1_1940, `Hours worked last week (1950)`=HRSWORK1_1950,
-         `Sex`=SEX,
+         `Sex`=sex_adj,
          `Was employed 1940`=employed_1940, `Was employed 1950`=employed_1950,
          `Moved counties 1940-1950`=migrant) 
 
@@ -173,71 +180,6 @@ modelsummary::datasummary_balance(~Race, table_dt)
 #+end_src
 
 #+RESULTS:
-#+begin_example
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-|                                               | Chinese (N=2069)   | Japanese (N=6067)  |                             |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-|                               |               | Mean   | Std. Dev. | Mean   | Std. Dev. | Diff. in Means | Std. Error |
-+===============================+===============+========+===========+========+===========+================+============+
-| Internment probability        |               | 0.0    | 0.0       | 0.9    | 0.3       | 0.9            | 0.0        |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Year of birth                 |               | 1904.3 | 12.7      | 1904.0 | 14.9      | -0.3           | 0.3        |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Wage income 1939              |               | 625.2  | 1027.5    | 407.5  | 845.2     | -217.8         | 25.1       |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Wage income 1949              |               | 1151.1 | 1578.1    | 1004.2 | 1452.0    | -146.9         | 39.4       |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Business/farm income 1949     |               | 1637.7 | 10288.2   | 1452.7 | 9432.9    | -185.0         | 256.6      |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Other income 1949             |               | 1383.7 | 10504.3   | 1424.0 | 10769.1   | 40.3           | 269.2      |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| OCCSCORE 1940                 |               | 15.4   | 15.1      | 11.4   | 13.1      | -4.0           | 0.4        |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| OCCSCORE in 1950              |               | 17.6   | 16.7      | 12.7   | 13.1      | -4.8           | 0.4        |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Weeks worked in 1939          |               | 27.8   | 24.0      | 26.7   | 24.2      | -1.1           | 0.6        |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Weeks worked in 1949          |               | 30.5   | 23.1      | 30.6   | 22.4      | 0.1            | 0.6        |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Hours worked last week (1940) |               | 28.1   | 27.5      | 26.4   | 27.0      | -1.7           | 0.7        |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Hours worked last week (1950) |               | 29.0   | 25.9      | 28.0   | 25.4      | -1.0           | 0.7        |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-|                               |               | N      | Pct.      | N      | Pct.      |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Farm status 1940              | N/A           | 0      | 0.0       | 0      | 0.0       |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-|                               | Non-Farm      | 2016   | 97.4      | 3553   | 58.6      |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-|                               | Farm          | 53     | 2.6       | 2514   | 41.4      |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-|                               | Blank/missing | 0      | 0.0       | 0      | 0.0       |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Farm status 1950              | N/A           | 0      | 0.0       | 0      | 0.0       |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-|                               | Non-Farm      | 2031   | 98.2      | 4617   | 76.1      |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-|                               | Farm          | 38     | 1.8       | 1450   | 23.9      |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-|                               | Blank/missing | 0      | 0.0       | 0      | 0.0       |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Sex                           | Female        | 575    | 27.8      | 2640   | 43.5      |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-|                               | Male          | 1494   | 72.2      | 3427   | 56.5      |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Was employed 1940             | 0             | 849    | 41.0      | 2558   | 42.2      |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-|                               | 1             | 1220   | 59.0      | 3509   | 57.8      |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Was employed 1950             | 0             | 720    | 34.8      | 2150   | 35.4      |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-|                               | 1             | 1349   | 65.2      | 3917   | 64.6      |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-| Moved counties 1940-1950      | 0             | 1713   | 82.8      | 3942   | 65.0      |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-|                               | 1             | 356    | 17.2      | 2125   | 35.0      |                |            |
-+-------------------------------+---------------+--------+-----------+--------+-----------+----------------+------------+
-#+end_example
 
 #+begin_src R :results output file :file tables/mlp_sumstats.tex
 modelsummary::datasummary_balance(~Race, table_dt, output = "latex")
@@ -249,46 +191,23 @@ modelsummary::datasummary_balance(~Race, table_dt, output = "latex")
 ** Regressions
 *** Relationship between internment status and 1950 salary
 
-#+begin_src R :results silent
-setFixest_etable(
-  style.tex = style.tex("aer"),
-  postprocess.tex = NULL
-)
-
-etable_dict <- c(
-  "reset", # to reset global dict 
-  INCWAGE_1950="Income in 1950", INCWAGE_1940="Income in 1940",
-  INCTOT_1950="Total Income", INCBUSFM_1950="Bus./Farm Income", INCOTHER_1950="Other Income",
-  internment_prob="Internment Status", age_adj_1950="Age", 
-  SEXMale="Male", RACEJapanese="Japanese", 
-  EDUCD_1950="Education",
-  STATEFIP="State", STATEFIP_1950="State$_{1950}$", STATEFIP_1940="State$_{1940}$",
-  COUNTYICP="County", COUNTYICP_1950="County$_{1950}$", COUNTYICP_1940="County$_{1940}$",
-  HRSWORK1_1950="Hours worked", HRSWORK1_1940="Hours worked$_{1940}$",
-  WKSWORK1_1950="Weeks worked", WKSWORK1_1940="Weeks worked$_{1940}$",
-  OCCSCORE_1950="Occ. score", 
-  employed_1950="Employed",
-  change_occ="Occ. change"
-)
-#+end_src
-
 #+begin_src R :session *R:internment*  :results output file :file tables/reg1_tbl.tex
 etable(
   feols(
-    INCWAGE_1950 ~ internment_prob,
+    INCWAGE_1950 ~ int_prob,
     data = wage_sample
   ),
   feols(
-    INCWAGE_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE ,
+    INCWAGE_1950 ~ int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj ,
     data = wage_sample
   ),
   feols(
-    INCWAGE_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950,
+    INCWAGE_1950 ~ int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + INCWAGE_1940 | EDUCD_1950,
     vcov = "IID",
     data = wage_sample
   ),
   feols(
-    INCWAGE_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1940,
+    INCWAGE_1950 ~ int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + INCWAGE_1940 | EDUCD_1950 + STATEFIP_1940,
     cluster = ~STATEFIP_1940,
     data = wage_sample
   ),
@@ -308,8 +227,8 @@ etable(
 
 F-Test of the null hypothesis that 1940 incomes and 1950 education levels jointly have coefficients equal to zero:
 #+begin_src R :colnames yes
-reg_wageint <- INCWAGE_1950 ~ internment_prob +
-    age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 |
+reg_wageint <- INCWAGE_1950 ~ int_prob +
+    age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + INCWAGE_1940 |
     EDUCD_1950 + STATEFIP_1950
 
 wald(feols(reg_wageint, data = wage_sample),
@@ -317,31 +236,31 @@ wald(feols(reg_wageint, data = wage_sample),
 #+end_src
 
 #+RESULTS:
-|             stat |                    p | df1 |  df2 | vcov                      |
-|------------------+----------------------+-----+------+---------------------------|
-| 145.228925130862 | 3.68515919967158e-33 |   1 | 8062 | Clustered (STATEFIP_1950) |
+|             stat |                   p | df1 |  df2 | vcov                      |
+|------------------+---------------------+-----+------+---------------------------|
+| 147.534201619195 | 1.1789224050631e-33 |   1 | 8062 | Clustered (STATEFIP_1950) |
 
 *** Other specifications
 #+begin_src R :results output file :file tables/reghet_tbl.tex
-reg_wagehet <- INCWAGE_1950 ~ internment_prob +
+reg_wagehet <- INCWAGE_1950 ~ int_prob +
     age_adj_1950 + age_adj_1950^2 + INCWAGE_1940 |
-    EDUCD_1950 + STATEFIP_1940
+    EDUCD_1950
 
 etable(
   feols(reg_wagehet,
         data = wage_sample),
   feols(reg_wagehet,
         data = wage_sample |>
-          filter(SEX == "Male")),
+          filter(sex_adj == "Male")),
   feols(reg_wagehet,
         data = wage_sample |>
-          filter(SEX == "Female")),
+          filter(sex_adj == "Female")),
   feols(reg_wagehet,
         data = wage_sample |>
-          filter(RACE == "Japanese", SEX == "Male")),
+          filter(race_adj == "Japanese", sex_adj == "Male")),
   feols(reg_wagehet,
         data = wage_sample |>
-          filter(RACE == "Japanese", SEX == "Female")),
+          filter(race_adj == "Japanese", sex_adj == "Female")),
   se.below = TRUE,
   ## vcov = "hetero",
   cluster = ~STATEFIP_1940,
@@ -363,7 +282,7 @@ etable(
 
 **** Arellano-Bover DiD
 
-#+begin_src R
+#+begin_src R :results output file :file tables/regAB.tex
 wage_sample_did <- wage_sample |>
   pivot_longer(
     cols = ends_with(c("_1940","_1950")),
@@ -372,95 +291,92 @@ wage_sample_did <- wage_sample |>
   ) |>
   mutate(YEAR = as_factor(YEAR))
 
+AB_formula <- INCWAGE ~ YEAR:intprob_AB + age_adj + age_adj^2 | EDUCD
+
 etable(
   feols(
-    INCWAGE ~ YEAR + internment_prob + YEAR:internment_prob + age_adj + age_adj^2 | EDUCD + STATEFIP,
+     INCWAGE ~ YEAR:int_prob + age_adj + age_adj^2 | EDUCD,
     data = wage_sample_did
   ),
   feols(
-    INCWAGE ~ YEAR + internment_prob + YEAR:internment_prob + age_adj + age_adj^2 | EDUCD + STATEFIP,
-    data = wage_sample_did |>
-      filter(SEX == "Male")
+     INCWAGE ~ YEAR:intprob_AB + age_adj + age_adj^2 | EDUCD,
+    data = wage_sample_did
   ),
   feols(
-    INCWAGE ~ YEAR + internment_prob + YEAR:internment_prob + age_adj + age_adj^2 | EDUCD + STATEFIP,
-    data = wage_sample_did |>
-      filter(SEX == "Female")
-  ),
-  feols(
-    INCWAGE ~ YEAR + internment_prob + YEAR:internment_prob + age_adj + age_adj^2 | EDUCD + STATEFIP,
-    data = wage_sample_did |>
-      filter(RACE == "Japanese", SEX == "Male")
+    INCWAGE ~ YEAR:intprob_full + age_adj + age_adj^2 | EDUCD + STATEFIP + COUNTYICP,
+    data = wage_sample_did
   ),
   se.below = TRUE,
-  vcov = "hetero",
-  dict = c(
-    "reset", # to reset global dict 
-    INCWAGE="Income (1950 dollars)",
-    internment_prob="Internment Status", age_adj="Age", 
-    SEXMale="Male", RACEJapanese="Japanese",
-    EDUCD ="Education", STATEFIP="State"
-  ),
-  ## keep = c("Internment Status", "Age", "Age square", "Male", "Japanese", "Income in 1940"),
+  tex = TRUE,
+  adjustbox = TRUE,
+  cluster = "COUNTYICP",
+  dict = etable_dict,
   keepFactors = FALSE,
-  ## highlight = "Internment Status",
-  style.tex = style.tex("aer")
-  ## title = "Earning effects of internment"
+  title = "Difference-in-difference regression estimates",
+  label = "tbl:regdid"
+  ## notes = ""
 )
 
 #+end_src
 
 #+RESULTS:
-| Dependent Var.:              | Income (1950 dollars) | Income (1950 dollars) | Income (1950 dollars) | Income (1950 dollars) |
-|                              |                       |                       |                       |                       |
-| YEAR1950                     | 500.9***              | 505.2***              | 493.6***              | 354.9***              |
-|                              | (35.98)               | (45.93)               | (46.69)               | (89.82)               |
-| Internment Status            | -175.5***             | -114.6**              | 2.094                 | -125.0                |
-|                              | (26.11)               | (35.16)               | (28.74)               | (83.81)               |
-| Age                          | 55.47***              | 101.8***              | 12.36***              | 103.7***              |
-|                              | (2.638)               | (3.725)               | (3.283)               | (4.474)               |
-| Age square                   | -0.6810***            | -1.184***             | -0.2640***            | -1.201***             |
-|                              | (0.0306)              | (0.0427)              | (0.0404)              | (0.0519)              |
-| YEAR1950 x Internment Status | 96.70*                | 73.2                  | 153.8**               | 201.2*                |
-|                              | (42.31)               | (55.99)               | (54.43)               | (96.37)               |
-| Fixed-Effects:               | --------------------- | --------------------- | --------------------- | --------------------- |
-| Education                    | Yes                   | Yes                   | Yes                   | Yes                   |
-| State                        | Yes                   | Yes                   | Yes                   | Yes                   |
-| ____________________________   | _____________________   | _____________________   | _____________________   | _____________________   |
-| S.E. type                    | Heteroskedastic.-rob. | Heteroskedastic.-rob. | Heteroskedastic.-rob. | Heteroskedastic.-rob. |
-| Observations                 | 16,272                | 9,842                 | 6,430                 | 6,854                 |
-| R2                           | 0.11189               | 0.13935               | 0.1315                | 0.15164               |
-| Within R2                    | 0.06778               | 0.09515               | 0.08545               | 0.09556               |
+[[file:tables/regAB.tex]]
 
-***** TODO add AB internment predicitons to dataset
-#+begin_src R
-tar_load(ddi_fullcount)
-calc_int_proportion(wra_data, ddi = ddi_fullcount,
-                    by = c("STATEFIP", "COUNTYICP", "RACE", "BIRTHYR", "BPL"),
-                    label = "internment_AB")
+*** Alternative Internment statuses
+
+#+begin_src R :results output file :file tables/reg_altint.tex
+etable(
+  feols(
+    INCWAGE_1950 ~ int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + INCWAGE_1940 | EDUCD_1950,
+    vcov = "IID",
+    data = wage_sample
+  ),
+  feols(
+    INCWAGE_1950 ~ county_intprop + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + INCWAGE_1940 | EDUCD_1950,
+    vcov = "IID",
+    data = wage_sample
+  ),
+  feols(
+    INCWAGE_1950 ~ intprob_AB + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + INCWAGE_1940 | EDUCD_1950,
+    vcov = "IID",
+    data = wage_sample
+  ),
+  feols(
+    INCWAGE_1950 ~ intprob_full + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + INCWAGE_1940 | EDUCD_1950,
+    vcov = "IID",
+    data = wage_sample
+  ),
+  tex = TRUE,
+  se.below = TRUE,
+  dict = etable_dict,
+  keepFactors = FALSE,
+  title = "Estimated effects using alternate internment prediction methods",
+  label = "tbl:reg_altint"
+)
 #+end_src
 
 #+RESULTS:
+[[file:tables/reg_altint.tex]]
 
 ** Other outcomes
 
 #+begin_src R :results output file :file tables/reg2_tbl.tex
 etable(
-  feglm(employed_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE ,
+  feglm(employed_1950 ~ int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj ,
     data = wage_sample |> 
       mutate(employed_1950 = as.numeric(as.character(employed_1950))),
     family = binomial(link = "logit")
   ),
-  feols(HRSWORK1_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + HRSWORK1_1940,
+  feols(HRSWORK1_1950 ~ int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + HRSWORK1_1940,
     data = wage_sample
   ),
-  feols(WKSWORK1_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + WKSWORK1_1940,
+  feols(WKSWORK1_1950 ~ int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + WKSWORK1_1940,
     data = wage_sample
   ),
-  feols(OCCSCORE_1950 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + OCCSCORE_1940,
+  feols(OCCSCORE_1950 ~ int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + OCCSCORE_1940,
     data = wage_sample
   ),
-  feglm(change_occ ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE,
+  feglm(change_occ ~ int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj,
     data = wage_sample |>
       mutate(change_occ = (OCC1950_1950 == OCC1950_1940)),
     family = binomial(link = "logit")
@@ -474,8 +390,8 @@ etable(
   ## highlight = "Internment Status",
   label = "tbl:reg2",
   ## postprocess.tex = set_rules,
-  adjustbox = TRUE,
-  tex = TRUE
+  tex = TRUE,
+  adjustbox = TRUE
 )
 #+end_src
 
@@ -502,22 +418,22 @@ table_data <- wage_sample |>
          
 etable(
   feglm(
-    migrate10 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940,
+    migrate10 ~ int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + INCWAGE_1940,
     data = table_data,
     family = binomial(link = "logit")
   ),
   feols(
-    lnctsal_1940 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940,
+    lnctsal_1940 ~ int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + INCWAGE_1940,
     data = table_data |>
       filter(migrate10==1)
   ),
   feols(
-   lnpop_1940 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940,
+   lnpop_1940 ~ int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + INCWAGE_1940,
     data = table_data |>
       filter(migrate10==1)
   ),
   feols(
-   ctpctjpn_1940 ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940,
+   ctpctjpn_1940 ~ int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + INCWAGE_1940,
     data = table_data |>
       filter(migrate10==1)
   ),
@@ -533,8 +449,8 @@ etable(
     lnpop_1940="Log county pop.",
     ctpctjpn_1950="County pct. Japn.",
     ctpctjpn_1940="County pct. Japn.",
-    internment_prob="Internment Status", age_adj_1950="Age", 
-    SEXMale="Male", RACEJapanese="Japanese", INCWAGE_1940="Income in 1940",
+    int_prob="Internment Status", age_adj_1950="Age", 
+    sex_adjMale="Male", race_adjJapanese="Japanese", INCWAGE_1940="Income in 1940",
     EDUCD_1950="Education", STATEFIP_1950="State"
   ),
   keepFactors = FALSE,
@@ -550,7 +466,7 @@ etable(
 
 ** Logit model of migration indicator
 #+begin_src R  :results output
-mig_logit <- glm(migrate10 ~ internment_prob + AGE_1950 + AGE_1950^2,
+mig_logit <- glm(migrate10 ~ int_prob + AGE_1950 + AGE_1950^2,
     data = wage_sample, family = "binomial")
 modelsummary::modelsummary(mig_logit)
 #+end_src
@@ -565,7 +481,7 @@ modelsummary::modelsummary(mig_logit)
 +-----------------+-----------+
 |                 | (0.090)   |
 +-----------------+-----------+
-| internment_prob | 0.793     |
+| int_prob | 0.793     |
 +-----------------+-----------+
 |                 | (0.057)   |
 +-----------------+-----------+
@@ -591,7 +507,7 @@ modelsummary::modelsummary(mig_logit)
 #+begin_src R 
 etable(feols(
   c(county_med.salary_1950, county_pop_1950, county_pop.japanese_1950/county_pop_1950) ~
-    internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | STATEFIP_1950,
+    int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + INCWAGE_1940 | STATEFIP_1950,
   cluster = ~STATEFIP_1950,
   data = wage_sample)
   )
@@ -602,11 +518,11 @@ etable(feols(
 |---------------------+------------------------+------------------------+------------------------------------------|
 | Dependent Var.:     | county_med.salary_1950 | county_pop_1950        | county_pop.japanese_1950/county_pop_1950 |
 |                     |                        |                        |                                          |
-| internment_prob     | -21.81 (55.63)         | -427,639.0 (479,833.5) | 0.0057 (0.0043)                          |
+| int_prob     | -21.81 (55.63)         | -427,639.0 (479,833.5) | 0.0057 (0.0043)                          |
 | age_adj_1950        | -2.216. (1.162)        | 8,709.7** (3,104.1)    | -3.91e-5* (1.75e-5)                      |
 | age_adj_1950 square | 0.0197 (0.0118)        | -117.2** (38.66)       | 5.64e-7* (2.13e-7)                       |
-| SEXMale             | -13.03* (5.287)        | -7,896.9 (8,410.9)     | 0.0002* (9.33e-5)                        |
-| RACEJapanese        | -140.9*** (35.73)      | 824,057.7 (584,045.5)  | -0.0017 (0.0035)                         |
+| sex_adjMale             | -13.03* (5.287)        | -7,896.9 (8,410.9)     | 0.0002* (9.33e-5)                        |
+| race_adjJapanese        | -140.9*** (35.73)      | 824,057.7 (584,045.5)  | -0.0017 (0.0035)                         |
 | INCWAGE_1940        | 0.0149*** (0.0020)     | 15.85*** (4.459)       | -3.1e-7*** (8.61e-8)                     |
 | Fixed-Effects:      | ---------------------- | ---------------------- | ------------------------------           |
 | STATEFIP_1950       | Yes                    | Yes                    | Yes                                      |
@@ -619,7 +535,7 @@ etable(feols(
 ** Occupations
 #+begin_src R 
 etable(feols(
-  as.numeric(employed_1950) ~ internment_prob + age_adj_1950 + age_adj_1950^2 + SEX + RACE + INCWAGE_1940 | STATEFIP_1950,
+  as.numeric(employed_1950) ~ int_prob + age_adj_1950 + age_adj_1950^2 + sex_adj + race_adj + INCWAGE_1940 | STATEFIP_1950,
   data =  wage_sample)
   )
 #+end_src
@@ -629,11 +545,11 @@ etable(feols(
 |---------------------+---------------------------|
 | Dependent Var.:     | as.numeric(employed_1950) |
 |                     |                           |
-| internment_prob     | -0.0076 (0.0135)          |
+| int_prob     | -0.0076 (0.0135)          |
 | age_adj_1950        | 0.0270*** (0.0027)        |
 | age_adj_1950 square | -0.0004*** (2.82e-5)      |
 | SEXMale             | 0.4163*** (0.0132)        |
-| RACEJapanese        | 0.0895*** (0.0174)        |
+| race_adjJapanese        | 0.0895*** (0.0174)        |
 | INCWAGE_1940        | 2.49e-5*** (4.97e-6)      |
 | Fixed-Effects:      | ------------------------- |
 | STATEFIP_1950       | Yes                       |
@@ -698,7 +614,7 @@ wage_sample |>
     !is.na(OCC1950_1950),
     OCC1950_1940 != "N/A (blank)",
     ! OCC1950_1950 %in% c("N/A (blank)", "Not yet classified"),
-    internment_prob > 0.5
+    int_prob > 0.5
   ) |>
   group_by(OCC1950_1940, OCC1950_1950) |>
   summarise(n = n()) |>

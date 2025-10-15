@@ -1,0 +1,38 @@
+\begin{table}[htbp]
+   \caption{\label{tbl:regdid} Difference-in-difference regression estimates}
+   \bigskip
+   \centering
+   \begin{adjustbox}{width = \textwidth, center}
+      \begin{tabular}{lccc}
+         \toprule
+          & \multicolumn{3}{c}{INCWAGE}\\
+                                                                      & (1)             & (2)             & (3)\\  
+         \midrule 
+         age\_adj                                                     & 63.13$^{***}$   & 64.15$^{***}$   & 61.45$^{***}$\\   
+                                                                      & (4.828)         & (4.719)         & (4.291)\\   
+         age\_adj square                                              & -0.7427$^{***}$ & -0.7534$^{***}$ & -0.7186$^{***}$\\   
+                                                                      & (0.0494)        & (0.0486)        & (0.0461)\\   
+         YEAR1940 $\times$ $\hat{E}[I|county,race]$                   & -404.2$^{***}$  &                 &   \\   
+                                                                      & (46.48)         &                 &   \\   
+         YEAR1950 $\times$ $\hat{E}[I|county,race]$                   & 193.6$^{***}$   &                 &   \\   
+                                                                      & (59.50)         &                 &   \\   
+         YEAR1940 $\times$ $\hat{E}[I_i|state, bpl, byr, race]$       &                 & -395.8$^{***}$  &   \\   
+                                                                      &                 & (49.82)         &   \\   
+         YEAR1950 $\times$ $\hat{E}[I_i|state, bpl, byr, race]$       &                 & 210.9$^{***}$   &   \\   
+                                                                      &                 & (60.80)         &   \\   
+         YEAR1940 $\times$ $\hat{E}[I|county, sex, bpl, byr, race]$   &                 &                 & -348.3$^{***}$\\   
+                                                                      &                 &                 & (39.67)\\   
+         YEAR1950 $\times$ $\hat{E}[I|county, sex, bpl, byr, race]$   &                 &                 & 191.6$^{***}$\\   
+                                                                      &                 &                 & (35.00)\\   
+          \\
+         Observations                                                 & 16,272          & 16,272          & 16,272\\  
+         R$^2$                                                        & 0.08263         & 0.08187         & 0.10987\\  
+         Within R$^2$                                                 & 0.05989         & 0.05911         & 0.05029\\  
+          \\
+         EDUCD fixed effects                                          & $\checkmark$    & $\checkmark$    & $\checkmark$\\   
+         State fixed effects                                          &                 &                 & $\checkmark$\\   
+         County fixed effects                                         &                 &                 & $\checkmark$\\   
+         \bottomrule
+      \end{tabular}
+   \end{adjustbox}
+\end{table}

@@ -282,6 +282,25 @@ ggplot(aes(x=p_ij, fill = as_factor(YEAR)), data = census_prop) +
 
 #+RESULTS:
 [[file:figures/printern-fullct_plot.pdf]]
+
+*** Comparing alternate internment prediction methods
+#+begin_src R :sesion *R:internment* :results graphics file :file figures/printern-alternates.pdf
+wage_sample |>
+  filter(RACE=="Japanese") |>
+  select(
+    c("int_prob", "county_intprop", "intprob_AB", "intprob_full")
+  ) |>
+  pivot_longer(
+    names_to = "method",
+    values_to = `Internment Status`
+  ) |>
+  ggplot(aes(x = `Internment Status`, fill = method)) +
+  geom_density(alpha = 0.5)
+#+end_src
+
+#+RESULTS:
+[[file:figure/printern-alternates.pdf]]
+
 ** Internee County of Origin vs 1940 Japanese Population
 #+begin_src R :results silent
 library(sf)

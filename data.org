@@ -54,7 +54,7 @@ list(
   tar_target(county_stats,
              collect_county_stats(ddi_fullcount, inflator = 1.69)),
   tar_target(mlp_raw, collect_mlp(mlp_db, mlp_tbl)),
-  tar_target(mlp_sample, clean_mlp(mlp_raw, county_stats, wra_data, ddi_mlp, 1.69)),
+  tar_target(mlp_sample, clean_mlp(mlp_raw, county_stats, wra_data, ddi_fullcount, 1.69)),
   tar_target(wage_sample, define_wage_sample(mlp_sample))
 
 )
@@ -114,8 +114,19 @@ mlp_sample |>
 define_wage_sample <- function(mlp_sample) {
   mlp_sample |>
     pivot_wider(
+      id_cols = any_of(c(
+        "HIK", "id", "bypl_grp", "bpl_grp", "migrate10", "migrant", "sex_adj", "race_adj", "birthyr_adj",
+        "internment_prob", "int_prob", "county_intprop", "intprob_AB", "intprob_full",
+        "Earning_growth"
+        )), 
       names_from = YEAR,
-      values_from = RACE:age_adj
+      values_from = any_of(c(
+        "RACE", "BIRTHYR", "BPL", "SEX", "AGE", "EDUCD", "age_adj",
+        "INCWAGE", "INCTOT", "INCBUSFM", "INCOTHER", "OCCSCORE", "OCC1950", "OCC",
+        "EMPSTAT", "CLASSWKR", "LABFORCE", "employed", "selfemp", "wagewrk", "occ_grp",
+        "IND1950", "FARM", "STATEFIP", "COUNTYICP", "HRSWORK1", "WKSWORK1",
+        "county_pop", "county_med.salary", "county_pop.japanese", "county_pct.japanese"
+      ))
     ) |>
     mutate(
       consistent_wage = ifelse((is.na(INCWAGE_1940) | is.na(INCWAGE_1950)), FALSE, TRUE),
@@ -124,12 +135,12 @@ define_wage_sample <- function(mlp_sample) {
       consistent_occ  = ifelse(is.na(OCC1950_1940) | is.na(OCC1950_1950), FALSE, TRUE),
       consistent_all  = ifelse(consistent_wage & consistent_race & consistent_place & consistent_occ, TRUE, FALSE)
     ) |>
-    filter(consistent_all == TRUE) |>
-    rename(
-      RACE = race_adj,
-      SEX  = sex_adj
-    ) |>
-    select(-c("RACE_1940", "RACE_1950", "SEX_1940", "SEX_1950"))
+    filter(consistent_all == TRUE) 
+    ## mutate(
+    ##   RACE = race_adj,
+    ##   SEX  = sex_adj
+    ## ) 
+    ## ## select(-c("RACE_1940", "RACE_1950", "SEX_1940", "SEX_1950"))
 }
 #+end_src
 
@@ -1172,20 +1183,20 @@ write_ipums_db <- function(ddi, dbdir, tbl_name,
 
 ** Clean IPUMS Variables
 #+begin_src R :tangle R/cleaning_funs.R
-clean_mlp <- function(wide_df, countystats, wra_data, ddi, inflator = 1.6) {
+clean_mlp <- function(wide_df, countystats, wra_data, ddi,
+                      inflator = 1.6, methods = c("main", "county", "AB", "full")) {
   wide_df |>
     clean_wide_vars(ddi = ddi, inflator = inflator) |>
-    predict_internment(wra_data, ddi, methods = c("main", "county", "AB", "full")) |>
+    predict_internment(wra_data, ddi, method = methods) |>
     mutate(
       Earning_growth =
-        (INCWAGE_adj_1950 - INCWAGE_adj_1940) /
-        INCWAGE_adj_1940
+        (INCWAGE_1950 - INCWAGE_1940) /
+        INCWAGE_1940
     ) |>
     # pivot to longer and clean variables by year
     clean_long_vars(ddi = ddi) |>
     left_join(countystats, by = c("STATEFIP", "COUNTYICP")) |>
     ## select(-c("n_census", "n_interned", "INCWAGE")) |>
-    ## rename(INCWAGE = INCWAGE_adj) |>
     mutate(
       age_adj = as.integer(YEAR) - birthyr_adj,
       employed = as_factor(employed),
@@ -1336,7 +1347,7 @@ clean_wide_vars <- function(wide_df, ddi, inflator = 1.69) {
   # ten-year inflation rate from bls.gov/data/inflation_calculator.htm
   wide_df <- wide_df |>
     # adjust dollar amounts for inflation and missing values
-    adjust_dollar_vars(inflator = 1.69) |>
+    adjust_dollar_vars(inflator = 1.69, replace = TRUE) |>
     # deal with inconsistencies in reported birthyear across censuses by averaging
     mutate(birthyr_adj = round( (BIRTHYR_1950 + BIRTHYR_1940) / 2 )) |>
     # base time-invariant demographics on 1940 response
@@ -1395,8 +1406,12 @@ clean_long_vars <- function(wide_df, ddi) {
       across(any_of("YEAR"), ~ as.integer(.)),
       across(any_of("MARST"), ~ifelse(. %in% 1:2, 1, 0), .names = "married"),
       across(any_of("NATIVITY"), ~ifelse(. == 5, 1, 0), .names = "foreign"),
-      across(any_of("EDUC"), ~ifelse(. %in% 7:11, 1, 0), .names = "college"),
+      across(any_of("EDUC"), ~ifelse(. %in% 7:11, 1, 0), .names = "edu_college"),
+      across(any_of("EDUC"), ~ifelse(. %in% 6:11, 1, 0), .names = "edu_hs"),
       across(any_of("EMPSTAT"), ~ifelse(. == 1, 1, 0), .names = "employed"),
+      across(any_of("CLASSWKR"), ~ifelse(. == 1, 1, 0), .names = "selfemp"),
+      across(any_of("CLASSWKR"), ~ifelse(. == 1, 2, 0), .names = "wagewrk"),
+      across(any_of("CLASSWKRD"), ~ifelse(. == 29, 2, 0), .names = "familywrk"),
       ## across(any_of("OCC1950"), ~ifelse(. %in% 979:999, NA), .names = "occupation"),
       occ_grp = occ_category(OCC1950),
       OCC1950 = as_factor(OCC1950),
