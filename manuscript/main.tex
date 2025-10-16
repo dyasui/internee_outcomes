@@ -51,7 +51,7 @@ citecolor = blue
 
 \usepackage{natbib}
 \bibliographystyle{apalike}
-\defcitealias{commissiononwartimerelocationPersonalJusticeDenied1983}{\textit{Personal Justice Denied}}
+\defcitealias{commissiononwartimerelocationPersonalJusticeDenied1983}{(\textit{Personal Justice Denied})}
 
 \usepackage{adjustbox}
 
@@ -90,14 +90,13 @@ presents a more complex and surprising picture.
 Despite losses of property, job opportunities, and livelihoods,
 some evidence suggests that for a subset of the internee population
 this forced displacement paradoxically led to upward economic mobility 
-in the decades following the war 
+in the decades following the war
 \citep{arellano-boverDisplacementDiversityMobility2022},
 \citep{shoagCausalEffectPlace2016}.
 This finding presents a central puzzle: 
 How could a policy of forced removal and incarceration 
 have created economic \textit{opportunity}? 
-In this paper I this question 
-by examining the mechanisms through which 
+In this paper I examine the mechanisms through which 
 internment reshaped the labor market outcomes of Japanese Americans 
 and, crucially, for whom these effects were most pronounced.
 
@@ -115,7 +114,7 @@ creating new labor market prospects that would have otherwise been inaccessible
 
 To test this hypothesis, 
 I use newly available linked census data from IPUMS 
-to track individuals from 1940 to 1950
+to track individuals from 1940 to 1950.
 I combinine these census records with detailed War Relocation Authority (WRA) 
 records on internee origins and camp assignments. 
 My empirical strategy leverages the intensity of internment at the county level 
@@ -134,7 +133,7 @@ even after controlling for pre-war characteristics.
 Second, this effect was not uniform across the population; 
 it was driven almost entirely by women. 
 Japanese American women who were likely internees 
-saw substantially larger wage gains than their non-interned peers
+saw substantially larger wage gains than their non-interned peers.
 This result highlights a critical intersection between forced migration 
 and gender dynamics. 
 Third, I find that these gains are linked to migration; 
@@ -195,20 +194,20 @@ voluntary migrants may have been an economically selected group.
 Some Japanese living in the West Coast were permitted to leave the Exclusion Zone
 if they had a sponsor living in another state who was able to prove that
 they had a job or educational program in that state.
-Some Japanese families were able to rely on business connections
+Some Japanese families were able to rely on business connections.
 For example, in an interview with the 
 \href{https://ddr.densho.org/media/ddr-manz-1/ddr-manz-1-34-transcript-2e0e58d5a9.htm}{Densho Digital Archive},
 Art Imagire recalls his mother's decision to move their family to Reno, Nevada 
 because one of her former clients offered her a job as a dress-maker there 
-\cite{imagireArtImagireInterview2008}.
+\citep{imagireArtImagireInterview2008}.
 Imagire cites his mother's value for her children's education
 as an important reason for why their family was one of the few which chose,
 ``to drop everything and move''.
 Additionally, several thousand Nisei were attending college 
 when Pearl Harbor was attacked.
-Many Nisei students such as \cite{naitoSamNaitoInterview2003}
+Many Nisei students such as Sam Naito 
 were sent home from West Coast schools like the University of Oregon
-during their academic term.
+during their academic term \citep{naitoSamNaitoInterview2003}.
 Some, like Naito, were able to transfer to schools outside of the exclusion
 zone to continue their education.
 
@@ -222,22 +221,36 @@ West Coast as part of a wide-scale program of `deghettoization':
   \hfill \citetalias[p.~234]{commissiononwartimerelocationPersonalJusticeDenied1983}
 \end{quote}
 
+To the extent to which the relocation policies described above were successful,
+this period of history provides an opportunity to examine
+the way that contemporary or future displaced people
+may potentially adapt to new labor markets and conditions.
+
 \subsection{Motivating Literature}\label{motivation}
 
-Several existing studies have tried to quantify the causal effect of Japanese internment on 
-long-term earnings
+Several existing studies have tried to quantify the causal effect 
+of Japanese internment on long-term earnings
 \citep{chinLongRunLaborMarket2005}, 
 childhood health
-(\cite{saavedraEarlyChildhoodConditions2013}, \cite{grossmanIntergenerationalHealthEffects2025}),
+\citep{saavedraEarlyChildhoodConditions2013, 
+grossmanIntergenerationalHealthEffects2025},
 and educational attainment 
 \citep{saavedraSchoolQualityEducational2015}. 
 
-On the other hand, other studies have identified surprising ways in which internees did better than their counterparts.
-\cite{shoagCausalEffectPlace2016} examine the persistant pattern of internees' tendency to settle closer to their assigned camp,
-and as a result find that differential exposure to more affluent areas lead to some internees experiencing more long-term upward mobility than others.
-\cite{arellano-boverDisplacementDiversityMobility2022} finds that overall, interned Japanese men experienced 9-22\% higher incomes than similar Chinese and non-interned Japanese men.
-He attributes this effect to a combination of information and skills transfers among those living in camps together,
-migration to new labor markets, and career switching that would not have happened if internees had remained in their original homes on the West Coast.
+On the other hand, other studies have identified surprising ways 
+in which internees did better than their counterparts.
+\cite{shoagCausalEffectPlace2016} examine the persistant pattern of 
+internees' tendency to settle closer to their assigned camp,
+and as a result find that differential exposure to more affluent areas 
+lead to some internees experiencing more long-term upward mobility than others.
+\cite{arellano-boverDisplacementDiversityMobility2022} finds that overall, 
+interned Japanese men experienced 9-22\% higher incomes 
+relative to similar Chinese and non-interned Japanese men.
+He attributes this effect to a combination of information and skills transfers 
+among those living in camps together, 
+migration to new labor markets, and career switching
+that would not have happened if internees had remained in their original homes 
+on the West Coast.
 
 These economic findings are reinforced by more qualitative evidence
 voiced by the Nisei themselves
@@ -283,6 +296,8 @@ by adding the possibility for the number of individuals in a potential migrant's
 social network living in a given destination to affect their utility
 of living there themselves.
 
+% *** Expand on gender differences at this time
+% to explain heterogeneity findings
 
 \section{Data}
 \subsection{Linked Census Microdata}\label{sec:data-IPUMS}
@@ -389,16 +404,25 @@ and demographics including sex, birth year, and birthplace.
 
 Table \ref{tbl:wra_demog} reports a summary of the main demographic variables 
 of internees compared to the full 1940 Japanese population.
-Internees represented a large majority (86\%) of the Japanese population in the US in 1940.
-Internees were representative of the population in terms of their education, gender composition, and country of birth.
-The 65\% of internees born in the US represent the generation known as the ``Nisei'', or second generation after their parents, 
+Internees represented a large majority (86\%) 
+of the Japanese population in the US in 1940.
+Internees were representative of the population in terms of their education, 
+gender composition, and country of birth.
+The 65\% of internees born in the US 
+represent the generation known as the ``Nisei'', 
+or second generation after their parents, 
 the ``Issei'', who make up most of the remaining 35\% of internees.
-The average Issei was born in 1890, and would have been in their early 50s during internment,
-while the average Nisei was born in 1927 and would have been teenagers when they were interned.
+The average Issei was born in 1890, 
+and would have been in their early 50s during internment,
+while the average Nisei was born in 1927 
+and would have been teenagers when they were interned.
 
-Figure \ref{fig:internee-ages} shows the distribution of the age of internees at the time of the evacutation order in 1942.
-This figure reveals that there was a large variation in the ages of internees and that the ten camps were fairly balanced on their age composition.
-The most prominant age range in this figure is made up of young adults between the ages of 15-25. 
+Figure \ref{fig:internee-ages} shows the distribution 
+of the age of internees at the time of the evacutation order in 1942.
+This figure reveals that there was a large variation in the ages of internees 
+and that the ten camps were fairly balanced on their age composition.
+The most prominant age range in this figure is made up of young adults 
+between the ages of 15-25. 
 
 The WRA records also provide a matching between the county of residence of all internees to the first camp they were placed.
 Table \ref{tbl:cmp-cty} groups all internees into categories of their previous address to their assigned camp.
@@ -409,7 +433,7 @@ However, there are also a large number of internees from more rural counties in 
 Interned Japanese came from a variety of backgrounds shown here by the range of urban and rural counties,
 and also reflected in the range of occupations held by internees.
 
-\input{../tables/wra_demog.tex}\label{tbl:wra_demog}
+\input{../tables/wra_demog.tex}
 
 \section{Methods}
 
@@ -737,6 +761,71 @@ internees from with higher internment proportions within the same state
 experienced any significantly higher wages in 1950 
 than those from less intensively interned counties.
 
+\subsection{Alternative Internment Measures}
+
+Table \ref{tbl:reg_altint} shows the estimates of equation \ref{eq:mainreg}
+using three additional estimating methods for $\hat{E}[I_i]$.
+These methods condition on different subsets of the variables
+$state$ or $county$ of individual $i$ in 1940;
+as well as their birthyear, $byr$; birthplace, $bpl$; $sex$; and $race$.
+
+\input{../tables/reg_altint.tex}
+
+Column (1) reports the same estimate as the main regression result
+in table \ref{tbl:reg1} using $\hat{E}[I|county, race]$
+as the estimated internment status conditional on county of residence and race.
+Column (2) removes $race$ as a variable to predict internment,
+applies the county-level ratio of internees to 1940 Japanese population
+for both the Japanese and Chinese residents of each county.
+Although the estimate of $\hat{E}[I]$ on Income in 1950 
+is much larger in magnitude than the equivalent estimate in Column (1),
+the standard error on this estimate is also much larger
+such that we cannot reject the null that county-level internment proportion alone
+has a positive effect on income.
+Because this county internment proportion
+does not seem to explain the any significant gap in income
+when separately conditioning on individual race,
+there seems to be evidence that the intersection of Japanese individuals
+coming from more highly interned counties is in fact a relevant factor.
+This evidence seems to contradict the possibility that something about the
+highly interned counties themselves was also benefitting the Chinese individuals
+who came from those counties.
+
+Column (3) is the internment probability used by \cite{arellano-boverDisplacementDiversityMobility2022},
+and instead of $county\times race$ level internment status,
+it uses $\textbf{state}$ level internment proportions
+together with birthplace and birthyear categories of internees
+to predict individual internment status.
+Although the estimate of internment on income is slightly larger here
+than in column (1),
+The overall magnitude and level of significance is similar.
+In column (4), when conditioned on county and the full set of demographics,
+the estimated effect $\hat{\beta}$  is slightly lower,
+but again of similar magnitude and significance level.
+
+By comparing column (1) to column (3) and (4),
+there does not appear to be much additional explanatory power gained 
+by including additional demographic factors in $\hat{E}[I]$ besides race.
+
+For these reasons, I use $\hat{E}[I|county, race]$
+as the predicted internment status in the other empirical specifications
+in this paper.
+
+
+\subsection{Difference-in-difference estimates}
+
+Table \ref{tbl:regdid} shows the difference-in-difference estimates
+from a regression with the general formula:
+
+\begin{align}\label{eq:didreg}
+  Y_i & = \beta_0 + \beta_1 \hat{E}[I_i]\times\mathbb{I}(YEAR=1950)  \\
+      & + \beta_2\mathbb{I}(YEAR=1950) + \mathbb{X}_i \Gamma + \epsilon_i
+\end{align}
+
+Because the year fixed-
+
+\input{../tables/regAB.tex}
+
 \subsection{Mechanisms}
 
 Due to the surprising nature of the result above 
@@ -911,18 +1000,37 @@ as the interned Japanese.
 
 \section{Conclusion}
 
-Thanks to newly available linked census data, 
-we can track the outcomes of Japanese internees in more detail.
-Similarly to the findings of \cite{arellano-boverDisplacementDiversityMobility2022}, 
-I find that internment seems to have caused internees to earn higher incomes 
-several years after their release from camps.
-However, I expand the analysis to the case of Japanese women
-for whom I find that internees experienced higher gains in income than interned men.
 
-While these internees were more likely to have resettled by 1950,
-it does not seem like this change in their incomes 
-is attributable to the quality of their new location 
-as measured by median county salaries.
+
+By linking newly available 1940-1950 census data with War Relocation Authority records,
+I constructed a measure of the predicted probability of internment and compared post-war outcomes for Japanese Americans against a control group of Chinese Americans.
+With newly available linked 1940-1950 census data,
+I sought to answer a puzzle posed by the case of Japanese internment:
+how could the forced internment have paradoxically led to economic opportunity for some?
+My results agree with surprising finding thata higher probability of internment
+is associated with higher individual earnings in 1950, after resettlement had occured.
+However, this aggregate effect masks a critical source of heterogeneity;
+the gains were driven almost entirely by women.
+While likely internees were more likely to migrate to higher-income and urban counties,
+this channel only partially explains the results.
+This could suggest that internment fundamentally altered the labor market trajectories of women
+in ways not captured by simple occupational changes.
+
+These findings build on a growing literature
+that re-evaluates the long-run economic consequences of internment.
+My work aligns with recent studies 
+by \cite{arellano-boverDisplacementDiversityMobility2022} 
+and \cite{shoagCausalEffectPlace2016} 
+in documenting upward mobility,
+but it adds a crucial dimension by revealing that these gains were not uniform.
+The concentration of effects among women
+suggests that the forced break from pre-war community structures
+and labor market constraints on the West Coast
+may have paradoxically opened new avenues for economic participation in the post-war economy.
+Although internees suffered lost out on their freedoms, property, and dignity,
+these results provide a more complex understanding
+of how individuals subjected to forced removal
+can also adapt to their new environments.
 
 \newpage
 \singlespacing
