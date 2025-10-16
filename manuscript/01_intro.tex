@@ -1,0 +1,225 @@
+\section{Introduction}
+
+The forced internment of over 120,000 Japanese Americans during World War II 
+stands as a stark episode of racial injustice and economic loss. 
+The policy displaced individuals and families 
+from their homes, businesses, and farms on the West Coast;
+a forced displacement that fractured communities and interrupted lives. 
+Conventional understanding rightly frames this event as a traumatic scar, 
+with research documenting its detrimental effects 
+on property, wealth, and psychological well-being 
+\cite{commissiononwartimerelocationPersonalJusticeDenied1983}.
+
+\cite{abramitzkyLeavingEnclaveHistorical2024}
+However, an emerging body of economic literature
+presents a more complex and surprising picture. 
+Despite losses of property, job opportunities, and livelihoods,
+some evidence suggests that for a subset of the internee population
+this forced displacement paradoxically led to upward economic mobility 
+in the decades following the war
+\citep{arellano-boverDisplacementDiversityMobility2022},
+\citep{shoagCausalEffectPlace2016}.
+This finding presents a central puzzle: 
+How could a policy of forced removal and incarceration 
+have created economic \textit{opportunity}? 
+In this paper I examine the mechanisms through which 
+internment reshaped the labor market outcomes of Japanese Americans 
+and, crucially, for whom these effects were most pronounced.
+
+I argue that, at least for some internees,
+internment acted as a large-scale, "move to opportunity" experiment.
+Forced relocation may have generated economic gains through two primary channels.
+First, it allowed internees to escape discrimination on the West Coast,
+where the anti-Japanese sentiment that originally contributed to internment
+may have held back their potential post-war earnings. 
+Second, the quasi-random placement of internees in camps across the interior U.S.
+inadvertently moved them closer to burgeoning post-war economies, 
+such as those in the Midwest and Chicago,
+creating new labor market prospects that would have otherwise been inaccessible
+\citep{austinEastwardPioneersJapanese2007}.
+
+To test this hypothesis, 
+I use newly available linked census data from IPUMS 
+to track individuals from 1940 to 1950.
+I combinine these census records with detailed War Relocation Authority (WRA) 
+records on internee origins and camp assignments. 
+My empirical strategy leverages the intensity of internment at the county level 
+to identify its causal impact. 
+By comparing the outcomes of Japanese Americans 
+from counties with high internment rates to a control group of Chinese Americans
+and non-West Coast Japanese who were not targeted by the policy,
+I can estimate the effect of forced displacement on post-war earnings
+and migration.
+
+My analysis yields three key findings. 
+First, consistent with the "moved to opportunity" hypothesis,
+individuals with a higher probability of internment 
+experienced a significant increase in their 1950 earnings, 
+even after controlling for pre-war characteristics. 
+Second, this effect was not uniform across the population; 
+it was driven almost entirely by women. 
+Japanese American women who were likely internees 
+saw substantially larger wage gains than their non-interned peers.
+This result highlights a critical intersection between forced migration 
+and gender dynamics. 
+Third, I find that these gains are linked to migration; 
+internees were more likely to move to counties with higher median incomes.
+
+With this paper, I hope to make contributions in the following topics.
+First, I hope to add to our understanding of the long-term economic consequences 
+of Japanese internment 
+by analysing several potential mechanisms that may contribute
+the surprising finding that a discriminatory policy of forced resettlement
+may have led to higher labor market earnings for some.
+Second, this study adds to the growing body of research using
+large-scale historical panel data sets which are only recently available
+advances in machine-learnings.
+More broadly, it provides new evidence on the causal impact of place, 
+demonstrating how a large, exogenous shock to an individual's location 
+can alter their economic trajectory, 
+particularly for historically marginalized groups. 
+The findings shed light on the complex legacy of internment 
+and the different ways in which marginalized people can adapt
+in spite of discrimination and adversity.
+
+\subsection{\label{sec:history}Historical Background}
+\href{https://www.archives.gov/milestone-documents/executive-order-9066}{Executive Order 9066} 
+was signed on February 19, 1942 and granted the Secretary of War the authority
+to designate military areas from which civilians could be prevented access. This
+order was used to target all persons of Japanese descent living in the so-called
+`Exclusion Zone' which included all of California, and large areas of
+Washington, Oregon, and Arizona shown in blue in Figure \ref{fig:internmentmap}.
+At first, the Secretary of War Henry Stimson encouraged some families 
+to relocate voluntarily from the West Coast,
+but starting at the end of March 1942, 
+the Wartime Civil Control Administration (WCCA) and War Relocation Authority (WRA)
+were established to remove all remaining Japanese Americans to temporary
+Assembly Centers which were makeshift shelters in close proximity to the
+population centers where these people were living. As the more permanent WRA
+Relocation Centers reached completion in May 1942, all Japanese Americans left
+in the West Coast were moved from Assembly Centers to Relocation Centers by
+train. This process lasted until November of 1942
+\citep{commissiononwartimerelocationPersonalJusticeDenied1983, denshoencyclopediacontributorsResettlementDenshoEncyclopedia2020}
+.
+
+As seen in Figure \ref{fig:1940JAmap}, over 90\% of the 1940 Japanese American
+population lived in areas which would become subject to relocation orders.
+This population was overwhelmingly concentrated along the West Coast, 
+particularly in California,
+which was home to large, well-established Japanese American communities,
+many of whom were engaged in farming and small businesses.
+The geographic concentration of this population 
+in economically vital areas near major cities and military installations 
+heightened the perceived security threat,
+prompting their forced relocation.
+
+Importantly for the later identifying assumptions in my empirical methods,
+there is historical anecdotal evidence to suggest that these
+voluntary migrants may have been an economically selected group.
+Some Japanese living in the West Coast were permitted to leave the Exclusion Zone
+if they had a sponsor living in another state who was able to prove that
+they had a job or educational program in that state.
+Some Japanese families were able to rely on business connections.
+For example, in an interview with the 
+\href{https://ddr.densho.org/media/ddr-manz-1/ddr-manz-1-34-transcript-2e0e58d5a9.htm}{Densho Digital Archive},
+Art Imagire recalls his mother's decision to move their family to Reno, Nevada 
+because one of her former clients offered her a job as a dress-maker there 
+\citep{imagireArtImagireInterview2008}.
+Imagire cites his mother's value for her children's education
+as an important reason for why their family was one of the few which chose,
+``to drop everything and move''.
+Additionally, several thousand Nisei were attending college 
+when Pearl Harbor was attacked.
+Many Nisei students such as Sam Naito 
+were sent home from West Coast schools like the University of Oregon
+during their academic term \citep{naitoSamNaitoInterview2003}.
+Some, like Naito, were able to transfer to schools outside of the exclusion
+zone to continue their education.
+
+After two years of WRA camp operations, the government began to debate how to
+end the evacuation orders towards the end of 1944. One statement issued on
+December 9 illustrates that one of the initial goals of interment was actually
+to cause a permanent shift in the Japanese American population away from the
+West Coast as part of a wide-scale program of `deghettoization':
+\begin{quote}
+  ``One of the major WRA aims, from the beginning, has been to encourage the widest possible dispersal of evacuees throughout the Nation, and this will continue as a prime objective during the final phase of the program.''
+  \hfill \citetalias[p.~234]{commissiononwartimerelocationPersonalJusticeDenied1983}
+\end{quote}
+
+To the extent to which the relocation policies described above were successful,
+this period of history provides an opportunity to examine
+the way that contemporary or future displaced people
+may potentially adapt to new labor markets and conditions.
+
+\subsection{Motivating Literature}\label{motivation}
+
+Several existing studies have tried to quantify the causal effect 
+of Japanese internment on long-term earnings
+\citep{chinLongRunLaborMarket2005}, 
+childhood health
+\citep{saavedraEarlyChildhoodConditions2013, 
+grossmanIntergenerationalHealthEffects2025},
+and educational attainment 
+\citep{saavedraSchoolQualityEducational2015}. 
+
+On the other hand, other studies have identified surprising ways 
+in which internees did better than their counterparts.
+\cite{shoagCausalEffectPlace2016} examine the persistant pattern of 
+internees' tendency to settle closer to their assigned camp,
+and as a result find that differential exposure to more affluent areas 
+led to some internees experiencing more long-term upward mobility than others.
+\cite{arellano-boverDisplacementDiversityMobility2022} finds that overall, 
+interned Japanese men experienced 9-22\% higher incomes 
+relative to similar Chinese and non-interned Japanese men.
+He attributes this effect to a combination of information and skills transfers 
+among those living in camps together, 
+migration to new labor markets, and career switching
+that would not have happened if internees had remained in their original homes 
+on the West Coast.
+
+These economic findings are reinforced by more qualitative evidence
+voiced by the Nisei themselves
+and in historical research on this period.
+\cite{taylorLeavingConcentrationCamps1991}
+points to the differences in the benefits of relocation between
+those who left earlier in 1942-1944 through work programs or education,
+and those who left in 1944 and 1945 who tended to be older
+and more resistant to the government's policies.
+\cite{austinEastwardPioneersJapanese2007} 
+highlights the experiences of several Nisei who resettled in cities such as
+Chicago, Detroit and Minneapolis.
+For those who faced discrimintation on the West Coast
+where anti-Japanese sentiment was more prevalent,
+these new cities felt more socially welcoming
+and economically promising.
+
+Aside from the importance of understanding the losses to internees, Japanese
+Internment can also serve as an interesting natural experiment through the
+involuntary nature of the experiences of internees. 
+A key question in previous economic literature is the extent to which 
+geographic location influences economic outcomes, such as upward mobility or earnings.
+It is difficult to provide an unbiased causal estimate because households usually
+have a large degree of choice in where they live. Previous studies have used a
+variety of empirical strategies to separate out this causal effect including
+controlling for observable characteristics like education
+\cite{glaeserCitiesSkills2001}, worker fixed-effects , or
+through leveraging other exogenous placements of households like the Moving to
+Opportunity Experiment (\cite{ludwigLongTermNeighborhoodEffects2013},
+\cite{chettyEffectsExposureBetter2016}, etc). 
+
+Related to the overal racial discrimination faced by Japanse Americans,
+Chinese Americans also faced immigration barriers
+\cite{chenImpactSkillBasedImmigration2015},
+and discrimination
+\cite{chenInstitutionalDiscriminationAssimilation2024}.
+
+Other research points to the importance of social networks for migration choices.
+\cite{munshiSocialNetworksMigration2020}
+expands the standard Roy model of migration choice
+\citep{royThoughtsDistributionEarnings1951}
+by adding the possibility for the number of individuals in a potential migrant's
+social network living in a given destination to affect their utility
+of living there themselves.
+
+% *** Expand on gender differences at this time
+% to explain heterogeneity findings
