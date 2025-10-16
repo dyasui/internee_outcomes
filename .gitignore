@@ -15,6 +15,8 @@
 **.blg
 **.dvi
 **.synctex.gz
+**.lof
+**.lot
 
 **.dat.gz
 data/mlp_1940_1950_v1_2_csv/*csv
