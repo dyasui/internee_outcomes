@@ -1,28 +1,26 @@
 \begin{table}[htbp]
    \caption{\label{tbl:regdid} Difference-in-difference regression estimates}
-   \bigskip
-   \centering
    \begin{adjustbox}{width = \textwidth, center}
       \begin{tabular}{lccc}
          \toprule
-          & \multicolumn{3}{c}{INCWAGE}\\
+          & \multicolumn{3}{c}{Income (1950 dollars)}\\
                                                                       & (1)             & (2)             & (3)\\  
          \midrule 
-         age\_adj                                                     & 63.13$^{***}$   & 64.15$^{***}$   & 61.45$^{***}$\\   
+         Age                                                     & 63.13$^{***}$   & 64.15$^{***}$   & 61.45$^{***}$\\   
                                                                       & (4.828)         & (4.719)         & (4.291)\\   
-         age\_adj square                                              & -0.7427$^{***}$ & -0.7534$^{***}$ & -0.7186$^{***}$\\   
+         Age square                                              & -0.7427$^{***}$ & -0.7534$^{***}$ & -0.7186$^{***}$\\   
                                                                       & (0.0494)        & (0.0486)        & (0.0461)\\   
-         YEAR1940 $\times$ $\hat{E}[I|county,race]$                   & -404.2$^{***}$  &                 &   \\   
+         $\hat{E}[I|county,race]$                   & -404.2$^{***}$  &                 &   \\   
                                                                       & (46.48)         &                 &   \\   
-         YEAR1950 $\times$ $\hat{E}[I|county,race]$                   & 193.6$^{***}$   &                 &   \\   
+         $\mathbb{I}(YEAR = 1950)\times\hat{E}[I|county,race]$                   & 193.6$^{***}$   &                 &   \\   
                                                                       & (59.50)         &                 &   \\   
-         YEAR1940 $\times$ $\hat{E}[I_i|state, bpl, byr, race]$       &                 & -395.8$^{***}$  &   \\   
+         $\hat{E}[I_i|state, bpl, byr, race]$       &                 & -395.8$^{***}$  &   \\   
                                                                       &                 & (49.82)         &   \\   
-         YEAR1950 $\times$ $\hat{E}[I_i|state, bpl, byr, race]$       &                 & 210.9$^{***}$   &   \\   
+         $\mathbb{I}(YEAR = 1950)\times\hat{E}[I_i|state, bpl, byr, race]$       &                 & 210.9$^{***}$   &   \\   
                                                                       &                 & (60.80)         &   \\   
-         YEAR1940 $\times$ $\hat{E}[I|county, sex, bpl, byr, race]$   &                 &                 & -348.3$^{***}$\\   
+         $\hat{E}[I|county, sex, bpl, byr, race]$   &                 &                 & -348.3$^{***}$\\   
                                                                       &                 &                 & (39.67)\\   
-         YEAR1950 $\times$ $\hat{E}[I|county, sex, bpl, byr, race]$   &                 &                 & 191.6$^{***}$\\   
+         $\mathbb{I}(YEAR = 1950)\times\hat{E}[I|county, sex, bpl, byr, race]$   &                 &                 & 191.6$^{***}$\\   
                                                                       &                 &                 & (35.00)\\   
           \\
          Observations                                                 & 16,272          & 16,272          & 16,272\\  
@@ -35,4 +33,21 @@
          \bottomrule
       \end{tabular}
    \end{adjustbox}
+   {\footnotesize
+   \emph{Notes:} * = significant at the 10\% level, ** = 5\%, and *** = 1\%. \\
+   Regression estimates correspond to the difference-in-differences specification 
+   described in equation (1), comparing outcomes between 1940 and 1950. 
+   The dependent variable is income from wages and employment measured in 1950 dollars. 
+   Each column uses a different specification of predicted internment status, 
+   $\hat{E}[I]$, defined as the estimated probability of internment 
+   based on individuals’ 1940 characteristics. 
+   Column (1) uses predictions conditional on county and race; 
+   column (2) conditions on state, birthplace, birth year, and race; 
+   and column (3) includes the full set of demographic and geographic controls. 
+   All regressions include education fixed effects and a quadratic in age. 
+   Standard errors are heteroskedasticity-robust 
+   and clustered at the county level for 1950 residence.
+   \emph{Sources:} 1940–1950 Census, IPUMS Multigenerational Longitudinal Panel, and WRA records.
+
+   }
 \end{table}
