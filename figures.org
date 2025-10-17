@@ -392,32 +392,40 @@ read_dta(file="data/all_internees.dta") |>
 
 ** Earning distribution in MLP sample
 #+begin_src R :results graphics file :file figures/group-incwage-dist.pdf
-grp_incwage_grps <- wage_sample |>
-  group_by
-wage_sample |>
+plot_data <- wage_sample |>
   mutate(
     group = case_when(
-      RACE == "Chinese" ~ "Chinese",
-      RACE == "Japanese" & internment_prob == 0 ~ "Non-interned Japanese",
-      RACE == "Japanese" & internment_prob > 0.75 ~ "Interned Japanese",
-      RACE == "Japanese" & internment_prob %in% 0:0.75 ~ "(Dropped)"
+      race_adj == "Chinese" ~ "Chinese",
+      race_adj == "Japanese" & int_prob == 0 ~ "Non-interned Japanese",
+      (race_adj == "Japanese" & (int_prob > 0.75)) ~ "Interned Japanese",
+      race_adj == "Japanese" & int_prob %in% 0:0.75 ~ "(Dropped)"
     )
   ) |>
-  filter(!is.na(group)) |>
   pivot_longer(
     cols = starts_with("INCWAGE"),
+    names_prefix = "INCWAGE_",
     names_to = "YEAR",
     values_to = "INCWAGE"
   ) |>
-  ggplot(aes(x = log(INCWAGE), fill = group)) +
+  filter(!is.na(group))
+
+grp_data <- plot_data |>
+  group_by(YEAR, group) |>
+  summarise(INCWAGE = mean(INCWAGE))
+
+ggplot(aes(x = INCWAGE, fill = group), data = plot_data) +
   geom_histogram() +
+  geom_vline(aes(xintercept = INCWAGE, group = group, color = group), data = grp_data) +
+  scale_x_log10() +
   facet_wrap(~YEAR + group, nrow = 2) +
+  xlab("Income (1950 dollars)") +
   theme_internment() +
   theme(
     ## legend.title = element_blank(),
-    legend.position = "bottom"
+    legend.position = "none"
   ) +
-  scale_fill_paletteer_d("MetBrewer::Juarez")
+  scale_fill_paletteer_d("MetBrewer::Juarez") +
+  scale_color_paletteer_d("MetBrewer::Juarez")
 #+end_src
 
 #+RESULTS:
