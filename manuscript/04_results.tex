@@ -115,10 +115,10 @@ in this paper.
 Table \ref{tbl:regdid} shows the difference-in-difference estimates
 from a regression with the general formula:
 
-\begin{multline}\label{eq:didreg}
-  Y_i = \beta_0 + \beta_1 \hat{E}[I_i]\times\mathbb{I}(YEAR=1950)  \\
-      + \mathbb{X}_i \Gamma + \epsilon_i
-\end{multline}
+\begin{equation}\label{eq:didreg}
+  Y_i = \alpha + \beta \hat{E}[I_i]\times\mathbb{I}(YEAR=1950) 
+        + \mathbb{X}_i \Gamma + \epsilon_i
+\end{equation}.
 
 For my sample, there are only two time periods; 1940 and 1950.
 This regression also includes education levels and a quaratic function of age

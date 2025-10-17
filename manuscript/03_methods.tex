@@ -133,9 +133,10 @@ or migration from those counties prior to 1942 into the West Coast.
 The discrepancy between 1940 Japanese residents and internee origins
 could be due to a few reasons.
 General demographic changes such as births and deaths
-could mean that not everyone who responded to the census was still alive in 1942
-or that some children who show up in the internment camps were yet to be born in 1940.
-voluntary migration could affect these interned proportions.
+could mean that not everyone who responded to the census was still alive in 1942,
+or that some children who show up in the internment camps 
+were yet to be born in 1940.
+Voluntary migration could also affect these interned proportions.
 Some may have migrated between counties before Pearl Harbor,
 or even have chosen to move outside of the Exclusion Zone
 during the period when voluntary migration was encouraged by the Army.
@@ -198,52 +199,73 @@ which conditions on additional demographic variables.
 Per his application of Bayes' Rule, 
 the probability that an individual $i$ 
 in the demographic group $z$ who lived in county $c$ in 1942 was interned
-($Pr(I_{i}=1|z_i,c_{i})$)
+($Pr(I_{i}=1|z_i,c(i))$)
 could be determined from the proportion of the whole population who were interned 
 ($Pr(I_{i}=1)$,
 the proportion of the population with demographics $z$ 
-who lived in county $c$ in 1942 ($Pr(z_i,c_{i}^{1942})$),
+who lived in county $c$ in 1942, $Pr(c(i)_{1942}, z_i)$,
 and the probability of a known internee 
-having the same demographics and county in 1942 
-($Pr(z_i,c_i^{42}|I_i=1)$).
+having the same demographics and county in 1942,
+$Pr(c(i)_{42}, z_i|I_i=1)$:
 
 $$
-Pr(I_i=1|z_i,c_i^{42}) = 
-\frac{Pr(z_i,c_i^{42}|I_i=1) \cdot Pr(I_i=1)}{Pr(z_i,c_i^{42})}
+Pr(I_i=1|z_i, c(i)_{42}) = 
+\frac{Pr\left(c(i)_{42}, z_i|I_i=1\right) \cdot Pr(I_i=1)}{Pr(c(i)_{42}, z_i)}.
 $$
 
 However, because my target sample of census respondents 
 were only asked about their county of residence in the year of the census 
-and not in 1942, $c_i^{1940}$ is used as a proxy 
+and not in 1942, $c(i)_{1940}$ is used as a proxy 
 for census respondents' 1942 locations.
 
 The estimator for the true internment status of a census respondent is:
 
 \begin{equation}\label{eq:predint}
-\hat{E}[I]_{zc} =
-\frac{n(i | z_i=z, ~ c_{i}^{42}=c)}{n(j | z_j=z, ~ c_{j}^{40}=c)}
+\hat{E}[I|c(i), z_i] =
+\frac{n(j |c(i)^{40}=c(j)^{42} , ~ z_i=z_j)_{j\in \{j | I_j = 1\}}}
+{n(k | c(i)^{40}=c(k)^{40}, ~ z_i=z_k)_{k\in K}}.
 \end{equation}
 
-This will produce a biased estimate of true internment status if there were unobserved changes in population in each county between 1940 and 1942. For example, for a county that experienced a net outflow of residents, then the ratio of residents in 1940 vs 1942 would be greater than 1 and we would have an estimated internment probability that overstates the likelihood of anyone who lived in that county in 1940 would be interned.
+The numerator represents the number of individuals $j$ 
+who match linked individual $i$ on origin county and demographics
+in the WRA internment records (so that $I_j = 1$ for certain).
+The denominator represents the number of individuals $k$ from the 1940 census
+who match $i$'s county and demographics.
+
+This will produce a biased estimate of true internment status 
+if there were unobserved changes in population 
+in each county between 1940 and 1942.
+For example, for a county that experienced a net outflow of residents, 
+then the ratio of residents in 1940 vs 1942 would be greater than 1 
+and we would have an estimated internment probability 
+that overstates the likelihood that a resident of county $c$ in 1940 
+would be interned.
 
 \subsection{Internment's Effect on Earnings}\label{sec:wage-reg}
 
-To measure the effect of internment on earnings, my main analysis follows the following specification:
+To measure the effect of internment on earnings, 
+my main analysis follows the following specification:
 
 \begin{equation}\label{eq:mainreg}
-  Y_i = \alpha_i + \beta Pr(I)_c + \mathbb{X}_i \Gamma + \epsilon_i
+  Y_i = \alpha + \beta \hat{E}[I|c(i), z_i] + \mathbb{X}_i \Gamma + \epsilon_i
 \end{equation}.
 
-The main outcome of interest which I use for $Y_i$ is the reported dollar earnings of individual $i$ in the 1950 census.
-$\alpha_i$ represent the state fixed effects for the state in which individual $i$ is living in 1950.
-The vector of individual-level controls in $\mathbb{X}$ include age, sex, and individual $i$'s earnings from the 1940 census,
+The main outcome of interest which I use for $Y_i$ 
+is the reported dollar earnings of individual $i$ in the 1950 census.
+$\alpha$ is an intercept term common to all linked individuals.
+The vector of individual-level controls in $\mathbb{X}$ 
+include age, sex, and individual $i$'s earnings from the 1940 census,
 adjusted to 1950 dollars.
+In some specifications,
+I also apply a fixed effect for the state 
+in which individual $i$ is living in 1950
 
 The probability of individual $i$ being an internee, $Pr(I)_i$,
 is replaced by my estimated version from equation \ref{eq:predint}
 using individual $i$'s reported race in 1940 as the only demographic $z$.
 The main causal effect of interest is represented by the estimator $\beta$,
-which represents the number of dollars of income which an individual is estimated to have gained (or lost)
+which represents the number of dollars of income 
+which an individual is estimated to have gained (or lost)
 when going from a non-internee to a likely internee.
 
 A traditional difference-in-differences approach would require the

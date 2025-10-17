@@ -1,7 +1,5 @@
 \begin{table}[htbp]
    \caption{\label{tbl:reg3} Migration effects}
-   \bigskip
-   \centering
    \begin{adjustbox}{width = \textwidth, center}
       \begin{tabular}{lcccc}
          \toprule
@@ -29,4 +27,28 @@
          \bottomrule
       \end{tabular}
    \end{adjustbox}
+   {\footnotesize
+   \emph{Notes:}
+   * = significant at the 10\% level,
+   ** = 5\%, and
+   *** = 1\%. \\
+   Coefficients from regression estimates for four different
+   dependent variables relating to migrations of linked individuals.
+   Internment status here estimated using $\hat{E}[I|county, race]$,
+   the proportion of interned individuals from the same 1940 origin county.
+   Column (1) includes all individual's linked by MLP between 1940-1950 censuses
+   who also have non-missing income geographic data in both years.
+   Migration is an indicator for whether the individual's county reported in 1950
+   is different from their reported 1940 county.
+   Columns (2) through (4) include only those individuals from the main sample
+   who are identified as migrants in this way.
+   Log county income is calculated using the full-count 1940 census data
+   on all individuals' wage and employment income in 1940,
+   for the county in which each migrant moved to by 1950.
+   Log county pop. is the log of county 1940 population
+   in the county where each migrant was located in 1950.
+   County pct. Japn. is the percent of a county's 1940 population
+   that was Japanese. \\
+   \emph{Sources:} 1940-1950 Census, IPUMS Multigenerational Longitudinal Panel,
+   }
 \end{table}

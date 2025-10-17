@@ -1,7 +1,6 @@
 \begin{table}[htbp]
    \caption{\label{tbl:reg_altint} Estimated effects using alternate internment prediction methods}
-   \bigskip
-   \centering
+   \begin{adjustbox}{width=\textwidth}
    \begin{tabular}{lcccc}
       \toprule
        & \multicolumn{4}{c}{Income in 1950}\\
@@ -33,4 +32,17 @@
       Education fixed effects                   & $\checkmark$    & $\checkmark$    & $\checkmark$    & $\checkmark$\\   
       \bottomrule
    \end{tabular}
+\end{adjustbox}
+   {\footnotesize
+   \emph{Note:}
+   * = significant at the 10\% level,
+   ** = 5\%, and
+   *** = 1\%. \\
+   $\hat{E}[I]$ predict internment status using different variable combinations.
+   Geographic levels $state$ and $county$ compare linked individuals'
+   state or county of residence in 1940 against origins of interned individuals.
+   Demographics include $race$ and $sex$ of individual reported in 1940,
+   birthplace ($bpl$), and birthyear ($byr$) \\
+   \emph{Sources:} 1940-1950 Census, IPUMS Multigenerational Longitudinal Panel, and WRA records.
+   }
 \end{table}

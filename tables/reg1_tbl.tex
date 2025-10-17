@@ -1,7 +1,6 @@
 \begin{table}[htbp]
    \caption{\label{tbl:reg1} Earning effects of internment}
-   \bigskip
-   \centering
+   \begin{adjustbox}{width=\textwidth, center}
    \begin{tabular}{lcccc}
       \toprule
        & \multicolumn{4}{c}{Income in 1950}\\
@@ -20,7 +19,7 @@
       Income in 1940               &         &                 & 0.2409$^{***}$  & 0.2334$^{***}$\\   
                                    &         &                 & (0.0189)        & (0.0218)\\   
        \\
-      Standard-Errors & \multicolumn{3}{c}{IID} & State$_{1940}$ \\ 
+      % Standard-Errors & \multicolumn{3}{c}{IID} & State$_{1940}$ \\ 
       Observations                 & 8,136   & 8,136           & 8,136           & 8,136\\  
       R$^2$                        & 0.00017 & 0.07616         & 0.10227         & 0.10882\\  
       Within R$^2$                 &         &                 & 0.08326         & 0.07855\\  
@@ -29,4 +28,29 @@
       State$_{1940}$ fixed effects &         &                 &                 & $\checkmark$\\   
       \bottomrule
    \end{tabular}
+   \end{adjustbox}
+   {\footnotesize
+   \emph{Notes:}
+   * = significant at the 10\% level,
+   ** = 5\%, and
+   *** = 1\%. \\
+   Internment status here estimated using $\hat{E}[I|county, race]$,
+   the proportion of interned individuals from the same 1940 origin county.
+   Dependent variable is income from wages and employment in 1950 census
+   measured in 1950 dollars.
+   Heteroskesticity-robust standard errors in parentheses.
+   Column (4) regression clusters standard errors at the state level for 1950 locations.
+   Income in 1940 is adjusted for inflation to 1950 dollars.
+   Observations include each individual from the MLP 1940-1950 linked censuses
+   with non-missing income in both years
+   and are reported as either Japanese or Chinese in 1940.
+   Column (1) represents the raw correlation between predicted internment probability
+   and income in 1950.
+   Columns (2) through (4) add in additional controls and fixed-effects.
+   Education is a categorical variable representing various levels
+   of grade school or college education.
+   State fixed-effects use each individual's 1940 residence. \\
+   \emph{Sources:} 1940-1950 Census, IPUMS Multigenerational Longitudinal Panel,
+   and WRA records.
+   }
 \end{table}
