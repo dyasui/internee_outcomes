@@ -2,7 +2,7 @@
 \subsection{Linked Census Microdata}\label{sec:data-IPUMS}
 
 I collect economic and demographic data on the populations of interest 
-from the full count decenial censuses taken in 1940 and 1950
+from the full count decennial censuses taken in 1940 and 1950
 \citep{rugglesIPUMSAncestryFull2024}.
 IPUMS also provides linked individual census data up until 1950
 through their Multigenerational Longitudinal Panel (MLP) project
@@ -11,8 +11,8 @@ I use the links between the 1940 and 1950 full-count censuses
 from version 2.0 of the MLP data provided by IPUMS.
 For my main analysis sample,
 I select all individuals 
-whose reported race in 1940 is either Japanese or Chinese,
-born before 1926 (so that they would have been of working age by World War II),
+whose reported race in 1940 was either Japanese or Chinese,
+who born before 1926 (so that they would have been of working age by World War II),
 and who are not missing income or employment data in either census.
 This leaves me with a linked sample of 8,136 individuals,
 of which about three quarters of whom are Japanese
@@ -24,16 +24,16 @@ Table \ref{tbl:mlp_sumstats} reports summary statistics for this sample,
 broken down by race.
 Japanese and Chinese are similar in age,
 with both groups having an average year of birth of 1904.
-Within the Chinese population, men are overrepresented compared to women
+Within the Chinese population, men are overrepresented,
 with 72\% being male compared to 58\% male in the Japanese population.
 The 1940 census only asked about income earned through wages and employment
 in the previous year.
-However, the 1950 census added additional questions about other forms of income
-including income earned by respondents who earned their own businesses or farms.
+However, the 1950 census added questions about other forms of income
+including income from respondents who owned their own businesses or farms.
 OCCSCORE is a variable provided by IPUMS 
 which ranks the occupations of census respondents 
 by the median wage that was earned for persons with the same occupation.
-Both censused asked about the number of weeks each person reported working
+Both censuses asked about the number of weeks each person reported working
 in the previous year,
 as well as the number of hours they worked in the previous week.
 Employment status for this working-age sample
@@ -47,19 +47,19 @@ participating in the formal labor force due to trauma or discrimination.
 Farm status in either year depends on whether the respondent's family
 lived on a farm or not.
 I take the county of residence reported by each linked respondent
-and categorize them as a migrant over this period
+and categorize each as a  migrant over this period
 if the county they report in 1940 is different from their county in 1950.
 
 In terms of economic characteristics,
 the Japanese sample started with lower wages, fewer weeks and hours worked,
 lower employment rates,
-and lower ranked occupations in the 1940 census compared to the Chinese sample.
-However, the gap in wage income seems to decreased by 1950.
-In the section \ref{sec:results}, I show evidence that 
+and lower-ranked occupations in the 1940 census compared to the Chinese sample.
+However, the gap in wage income seems to have decreased by 1950.
+In section \ref{sec:results}, I show evidence that 
 internment itself may have caused the Japanese population to earn higher wages
-over this period than they would have otherwise.
-The gap in weeks worked seems to also close between these two populations,
-altough the difference in hours worked and occupation score
+over this period than they would have otherwise earned.
+The gap in weeks worked also seems to close between these two populations,
+although the differences in hours worked and occupation score
 do not seem to change between 1940 and 1950.
 
 Migration rates for Japanese are much higher than for Chinese over this period
@@ -72,13 +72,14 @@ or after their release from the WRA camps.
 
 In order to determine internment status at a more granular level,
 I use the distribution of internees' original counties of residence
-from the 1940s camp records which I describe in the following section.
+from the 1940s camp records,
+which I describe in the following section.
 
 \input{../figures/group-incwage-dist.tex}
 
 Figure \ref{fig:group-incwage-dist} shows the histograms of 
 the natural log of INCWAGE,
-the total earnings from wages and employement
+the total earnings from wages and employment
 (as opposed to earnings from self-employment, farming, etc.),
 across the three different treatment groups
 \footnote{see section \ref{eq:predint} for more details}
@@ -86,63 +87,63 @@ among the linked MLP sample.
 The first column shows that Chinese in the control group did experience
 real wage growth on average over these ten years.
 The difference in the Chinese log income distribution shown here
-translates into an average increase in wages by 84\%
+translates into an average increase in wages of 84\%
 (an increase from \$625 in 1940 to \$1151 in 1950).
 Although interned Japanese and non-interned Japanese
 both started with similarly low wages compared to the Chinese sample
 (\$411 and \$419, respectively),
 by 1950, the Japanese who were likely interned almost closed the gap
-in average income compared to Chinese (\$1037 vs \$1151),
+in average income compared to the Chinese (\$1037 vs \$1151),
 while the non-interned Japanese still lagged behind
 with an average wage of \$769.
 
 In section \ref{sec:methods}, I describe the methodological tools I use
 to argue that the convergence I observe between the likely internee group
-and their outperformance against their non-interned peers
-does capture a causal effect of internment and forced relocation
+and their outperformance relative their non-interned peers
+captures a causal effect of internment and forced relocation
 on the incomes earned in 1950.
 
-\subsection{War Relcation Authority Records}
+\subsection{War Relocation Authority Records}
 
 The WRA kept detailed records of the process of relocating and incarcerating 
 the West Coast Japanese population.
 I use the dataset from WRA Form 26: Evacuee Summary Data in the collection of 
 Records About Japanese Americans Interned During World War II 
 in the National Archives.
-The original paper form from which this digitized version is coded 
+The original paper form from which this digitized version was coded 
 included each internee's name, previous address in 1942, 
-the assembly center and internment camp they were assigned to,
+the assembly center and internment camp to which they were assigned,
 their educational attainment, occupation, 
 and demographics including sex, birth year, and birthplace.
 
 Table \ref{tbl:wra_demog} reports a summary of the main demographic variables 
 of internees compared to the full 1940 Japanese population.
 Internees represented a large majority (86\%) 
-of the Japanese population in the US in 1940.
+of the Japanese population in the U.S. in 1940.
 Internees were representative of the population in terms of their education, 
 gender composition, and country of birth.
-The 65\% of internees born in the US 
+The 65\% of internees born in the U.S. 
 represent the generation known as the ``Nisei'', 
 or second generation after their parents, 
 the ``Issei'', who make up most of the remaining 35\% of internees.
 The average Issei was born in 1890, 
-and would have been in their early 50s during internment,
+and would have been in their early fifties during internment,
 while the average Nisei was born in 1927 
-and would have been teenagers when they were interned.
+and would have been a teenager when interned.
 
 Figure \ref{fig:internee-ages} shows the distribution 
-of the age of internees at the time of the evacutation order in 1942.
+of the age of internees at the time of the evacuation order in 1942.
 This figure reveals that there was a large variation in the ages of internees 
-and that the ten camps were fairly balanced on their age composition.
-The most prominant age range in this figure is made up of young adults 
-between the ages of 15-25. 
+and that the ten camps were fairly balanced in their age composition.
+The most prominent age range in this figure is made up of young adults 
+between the ages of 15 and 25. 
 
-The WRA records also provide a matching between the county of residence of all internees to the first camp they were placed.
-Table \ref{tbl:cmp-cty} groups all internees into categories of their previous address to their assigned camp.
-The largest 20 counties with more than 1000 interned residents are shown broken down by each of the ten camps.
+The WRA records also provide a mapping from the county of residence of all internees to the first camp they were placed.
+Table \ref{tbl:cmp-cty} groups all internees by their previous address and their assigned camp.
+The 20 largest counties with more than 1,000 interned residents are shown broken down by each of the ten camps.
 
-Among the main internment counties, the major West Coast urban areas of Los Angeles, Seattle, Sacramento, San Franciso, and Portland.
-However, there are also a large number of internees from more rural counties in California including Fresno, San Joaquin, Placer, and Tulare.
+Among the main internment counties are the major West Coast urban areas of Los Angeles, Seattle, Sacramento, San Francisco, and Portland.
+However, there is also a large number of internees from more rural counties in California including Fresno, San Joaquin, Placer, and Tulare.
 Interned Japanese came from a variety of backgrounds shown here by the range of urban and rural counties,
 and also reflected in the range of occupations held by internees.
 
