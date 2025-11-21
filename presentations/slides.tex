@@ -4,44 +4,28 @@
 \documentclass{beamer}
 % Load a bunch of useful packages:
 \usepackage{amssymb,amsmath,amsfonts,mathtools} % useful math fonts and symbols
-\usepackage{geometry} % allows changing margins and sizes of stuff
-\usepackage{hyperref} % allows referencing of lines of text, urls, figures etc
-\usepackage{natbib} % allows citation referencing from a .bib file
-\bibliographystyle{apalike} % American Psychological Association style guide
+% \usepackage{geometry} % allows changing margins and sizes of stuff
+% \usepackage{hyperref} % allows referencing of lines of text, urls, figures etc
+% \usepackage{natbib} % allows citation referencing from a .bib file
+% \bibliographystyle{apalike} % American Psychological Association style guide
+\usepackage[style=apa,backend=biber]{biblatex}
+\addbibresource{../manuscript/internment_refs.bib}
+\usepackage{lmodern}
 \usepackage{graphicx} % to include graphics from the figures folder with helpful formating options
+\usepackage[table]{xcolor}
 %---------------------------------------------%
 \usepackage{color} % custom color definitions:%
-    %UOregon colors:                          %
-    \definecolor{UOGreen}{RGB}{18, 71, 52}    %
-    \definecolor{UOYellow}{RGB}{254, 225, 35} %
-    %Secondary official colors:               %
-    \definecolor{LegacyGreen}{HTML}{104735}   %
-    \definecolor{GrassGreen}{HTML}{489D46}    %
-    \definecolor{LimeGreen}{HTML}{8ABB40}     %
-    \definecolor{Chartreuse}{HTML}{E2E11B}    %
-    \definecolor{Berry}{HTML}{8D1D58}         %
-    \definecolor{DarkBlue}{HTML}{004F6E}      %
-    \definecolor{LightBlue}{HTML}{00A5B5}     %
 %----------------------------------------------
-\usepackage{setspace} % to specify single, double or one-half spacing of text
-\usepackage{indentfirst} % indent first line of a text paragraph
-\usepackage{multicol} %multipage ability
 \usepackage{ulem} % \ul (underline) command which will break over line ends
-\usepackage{amsthm} % allows standarized theorem commands
-\setbeamertemplate{theorems}[numbered]
-\theoremstyle{plain}
-\newtheorem{assume}{Assumption}
-\usepackage{breqn} %automatic line breaking
-\normalem
+\usepackage{tabularray}
+\UseTblrLibrary{booktabs}
+\UseTblrLibrary{siunitx}
+\usepackage{adjustbox}
+\usepackage{booktabs}
 
-\usetheme{Frankfurt}
+\usetheme{moloch}
 %UOregon colors:
-\definecolor{UOGreen}{RGB}{18, 71, 52}
-\definecolor{UOYellow}{RGB}{254, 225, 35}
-%Secondary official colors:
 \definecolor{LegacyGreen}{HTML}{104735}
-\definecolor{GrassGreen}{HTML}{489D46}
-\definecolor{LimeGreen}{HTML}{8ABB40}
 \definecolor{Chartreuse}{HTML}{E2E11B}
 \definecolor{Berry}{HTML}{8D1D58}
 \definecolor{DarkBlue}{HTML}{004F6E}
@@ -53,302 +37,431 @@
 \setbeamertemplate{headline}{} %Removes Section Index on top of slide
 \hypersetup{
     colorlinks=true,
-    linkcolor=GrassGreen,
+    linkcolor=DarkBlue,
     filecolor=magenta,      
+    citecolor=blue,
     urlcolor={LightBlue},
-    pdftitle={Overleaf Example},
+    % pdftitle={slides},
     pdfpagemode=FullScreen
 }
+
+\setbeamerfont{footnote}{size=\tiny}
 
 %----------------------------------------------------------------------------------------
 %	TITLE PAGE
 %----------------------------------------------------------------------------------------
 
 % The title
-\title{Forced Removal or Economic Mobility?}
-\subtitle{Wage Effects of Japanese Internment}
-\author{Dante Yasui}
-\institute{Presented in Dept. of Economics Grad Group}
+\title{Forced Removal or Moved to Opportunity?}
+\subtitle{Labor Market and Migration Effects of Japanese Internment}
+\author{\href{https://danteyasui.org}{Dante Yasui}}
+\institute{Presented in Dept. of Economics Applied Micro Group}
 \date{\today}
-\titlegraphic{\includegraphics[scale=.4]{figures/UOSignature-356.png}}
+% \titlegraphic{\includegraphics[scale=.4]{figures/UOSignature-356.png}}
 
 \begin{document}
 
 \maketitle
 
 %---------------------------------------------------------------------------
-\section{Introduction}
+% \section{Introduction}
 %---------------------------------------------------------------------------
 
-\begin{frame}{Japanese Internment as Natural Experiment}
+\begin{frame}{Introduction}
+  This project asks:
+  \begin{itemize}
+    \item How did Japanese American internment during WWII 
+    affect long-run labor market outcomes?
+    \item Can forced relocation act as a “move-to-opportunity” shock?
+    \item Do certain types of people adapt differently?
+  \end{itemize}
+  I find that:
+  \begin{itemize}
+    \item Internment paradoxically lead to higher incomes in 1950
+    \item Internees moved to higher-income counties
+    \item Interned women had higher income growth than men 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \begin{center}
+    \textbf{Why should we care?}
+  \end{center}
+  \begin{figure}
+    \includegraphics[width=0.8\textwidth]{UNHCR_forced_displacement_2024.png}\\
+    {\tiny Source: \href{https://www.unhcr.org/global-trends-report-2024}{UNHCR global trends report}}
+  \end{figure}
+  Understanding effects of forced migration is important
+  \begin{itemize}
+    \item Forced migrants can adapt by finding new opportunities \footcite{bauerEconomicIntegrationForced2013,nakamuraGiftMovingIntergenerational2022}
+    \item Migration frictions might keep people from pursuing labor market opportunities \footcite{munshiSocialNetworksMigration2020,abramitzkyLeavingEnclaveHistorical2024,deryuginaDoesWhenYou2020}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{What can Japanese Internment teach us?}
+  Internment displaced $>$100,000 Japanese Americans from 1942-1945
+  \begin{itemize}
+    \item Internees lost property, employment opportunities,
+    experienced worse school quality, and childhood mortality during incarceration
+    \footcite{chinLongRunLaborMarket2005,saavedraEarlyChildhoodConditions2013,saavedraSchoolQualityEducational2015}
+    \item However, emerging empirical literature points to 
+    unexpected upward mobility in the long-run
+      \begin{itemize}
+        \item Internees were exposed to new occupation and migration possibilities \footcite{arellano-boverDisplacementDiversityMobility2022}
+        \item Camp assignment led to quasi-random long-term resettlement \footcite{shoagCausalEffectPlace2016}
+      \end{itemize}
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+  What I contribute:
+  \begin{itemize}
+    \item Use new individual-level linked Census data (1940-1950)
+    \item Causal evidence on the migration mechanism leading to internment income effect
+    \item New evidence on heterogenous outcomes by gender
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Japanese Internment as Natural Experiment}\label{piocrtmap}
     \begin{figure}
         \centering
-        \includegraphics[width=0.7\linewidth]{figures/PioCrtInternmentMap.jpg}
+        \includegraphics[width=0.7\linewidth]{../figures/PioCrtInternmentMap.jpg} \\
+    {\tiny Source: \href{https://pioneercourthouse.org/gallery-Japanese-American-Internment.html}{pioneercourthouse.org}}
     \end{figure}
-    {\footnotesize \href{https://pioneercourthouse.org/gallery-Japanese-American-Internment.html}{Source}}
-\end{frame}
-
-\begin{frame}{Pre-Internment Japanese Distribution}\label{ctmap}
-    \begin{figure}
-        \centering
-        \includegraphics[width=.85\linewidth]{figures/county_JAmap.png}
-        \label{fig:county40map}
-    \end{figure}
+  \hyperlink{fig:1940map}{\beamergotobutton{1940 Japanese population}}
 \end{frame}
 
 %---------------------------------------------------------------------------
-\section{Research Question}
+% \section{Methods}
 %---------------------------------------------------------------------------
 
-\begin{frame}{Research Question}\label{rq_slide}
-    \begin{block}{Research Question:}
-        \textbf{How were internee labor market outcomes affected after their release?}
-    \end{block}
-    \begin{itemize}
-        \item WRA camps and resettlement lead to shift in Japanese Population \hyperlink{areaplot}{\beamergotobutton{Plot}}
-        \item Variation in camp areas by local median incomes \hyperlink{stincomemap}{\beamergotobutton{Map}}
-        \item Camps assigned by geography and capacity; not economic characteristics \hyperlink{campplcmap}{\beamergotobutton{Map}}
-    \end{itemize}
-\end{frame}
-
-%---------------------------------------------------------------------------
-\section{Significance and Contribution}
-%---------------------------------------------------------------------------
-
-\begin{frame}{Related Literature}
-    \begin{block}{Effects on Japanese American Internees:}
-        \begin{itemize}
-            \item Internment caused labor market withdrawl leading to reduction of working-age male earnings by 9-13\% in 1970 \citep{chin_longrun_2005}
-            \item Internment may have lead to higher long-term wages due to re-optimization and camp diversity (Arellano-Bover 2022).
-            \item Camp assignment induced resettlement and those moved to richer areas did better then those moved to poorer areas in 1980s \citep{shoag_causal_2016}
-        \end{itemize}
-    \end{block}
-\end{frame}
-
-%---------------------------------------------------------------------------
-\section{Methods}
-%---------------------------------------------------------------------------
-
-\begin{frame}{Data}
+\begin{frame}{Data}\label{data}
     \textbf{Sources:} 
     \begin{itemize}
-        \item 1940 and 1950 full count census via IPUMS \citep{ruggles_steven_ipums_2020}
+        \item 1940 and 1950 full count census via IPUMS
           \begin{itemize}
-            \item I use IPUMS' linked data: the Multigenerational Longitudinal Panel (MLP)
-           \end{itemize}
+            \item Linked records: Multigenerational Longitudinal Panel (MLP)
+          \end{itemize}
         \item Wartime Relocation Authority (WRA) camp records via National Archives
     \end{itemize}
     \textbf{Variables:}
     \begin{itemize}
-    \item Outcomes: wages, employment, occupation
-    \item Time-Invariant: birth year, birthplace, sex, etc
-    \item Location: either census address or 1942 address prior to EO9066 evacuations
-    \item Treatment: predicted internment status
+    \item Outcomes: wage income, employment, occupation, hours, weeks worked
+    \item Demographics: age, sex, birthplace
+    \item Location: county of residence (in 1940 \& 1950) $\rightarrow$ migration measures
+    \item WRA individual records: name, origin county, demographics
     \end{itemize}
+  \hyperlink{sumstats}{\beamergotobutton{Summary Statistics}}
 \end{frame}
 
-    \begin{frame}{Methods}
-      \begin{block}{Predicted Internment Status}
-        Using known proportions of demographic categories within WRA and census,
-        we can estimate the probability of internment using Bayes Rule:
-        $$
-        Pr(I_i=1|Z_i,c_i^{40}) = \frac{Pr(z_i,c_i^{40}|I_i=1) \cdot Pr(I_i=1)}{Pr(z_i,c_i^{40})}
-        $$
-        \begin{itemize}
-        \item $Pr(z_i,c_i^{40}|I_i=1)$: proportion of internees in each county-demographic
-        \item $Pr(I_i=1)$: fraction of internees over 1940 Japanese American population
-        \item $Pr(z_i,s_i^{40})$: proportion of Japanese Americans in each county-demographic in 1940 census
-        \end{itemize}
-      \end{block}
-    \end{frame}
+\begin{frame}{Predicted Internment Status}\label{intstatus}
+  The intuition:
+  \begin{itemize}
+    \item Most mainland Japanese were interned, but not all
+    \item Chinese Americans were never interned, but had similar migrant experience
+    \item Non-interned Japanese were either already living outside of Exclusion Area,
+    or managed to leave between 1940 and 1942.
+    \item Voluntary evacuation was likely endogenous:
+    \begin{itemize}
+      \item some Japanese students transfered to non-West Coast colleges
+      \item some had families or professional connections in other states
+    \end{itemize}
+  \end{itemize}
+  The solution:
+    \begin{itemize}
+      \item Compare county and demographic records in WRA camps to linked sample
+      \item Update naive prior that all West Coast Japanese were interned with more detailed information
+      \item Probability of internment is higher for more affected counties, always zero for Chinese
+    \end{itemize}
+  \hyperlink{bayesrule}{\beamergotobutton{Details}}
+\end{frame}
 
-    \begin{frame}
-      \begin{table}
-        \begin{tabular}{lrrrr}
-          \textbf{YEAR:} & \multicolumn{2}{c}{1940} & \multicolumn{2}{c}{1950} \\
-          \underline{variable} & Chinese & Japanese & Chinese & Japanese \\
-          $\hat{E}[\text{internment}]$: & 0 &  0.66 & 0 &  0.64 \\
-          Percent Female: &  0.33 &  0.45 &  0.34 &  0.45 \\
-          Average BirthYear: & 1912 & 1908 & 1913 & 1908 \\
-          Employed: & 0.37 & 0.42 &  0.50 & 0.52 \\
-          Some College: & 0.05 & 0.05 & 0.036 & 0.03 \\
-        \end{tabular}
-      \end{table}
-    \end{frame}
+\begin{frame}
+  \begin{figure}
+    \centering
+    \caption{Proportion of Japanese population interned by 1940 county}
+    \vspace{-1cm}
+    \includegraphics[width=\textwidth]{../figures/pr_interned_map.pdf}
+  \end{figure}
+\end{frame}
 
-    \begin{frame}{Summary Statistics}
-      \begin{table}[!t]                                        
-        \fontsize{12.0pt}{14.4pt}\selectfont                     
-        \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lcc}  
-          \textbf{Characteristic} & \textbf{4}\\                   
-          N = 6,448\textsuperscript{\textit{1}} & \textbf{5}\\     
-          N = 4,631\textsuperscript{\textit{1}} \\                 
-          \midrule\addlinespace[2.5pt]                             
-          pr\_intern & 0.00 (0.00, 0.00) & 0.84 (0.40, 1.00) \\    
-          female & 2,157 (33\%) & 2,101 (45\%) \\                  
-          BIRTHYR & 1,912 (1,899, 1,930) & 1,904 (1,892, 1,927) \\ 
-          employed & 2,388 (37\%) & 1,947 (42\%) \\                
-          college & 340 (5.3\%) & 244 (5.3\%) \\                   
-          foreign & 181 (2.8\%) & 149 (3.2\%) \\                   
-        \end{tabular*}                                           
-        \begin{minipage}{\linewidth}                             
-          \textsuperscript{\textit{1}}Median (Q1, Q3); n (\%)\\    
-        \end{minipage}                                           
-      \end{table}                                              
-    \end{frame}
+\begin{frame}{Econometric Specification}
+  Panel of Japanese and Chinese individuals born before 1926 with employment data in 1940 and 1950
+  \begin{equation*}\label{eq:mainreg}
+    \text{Income}_{i,1950} = \alpha + \beta ~ \widehat{\text{Internment}} 
+    + \mathbb{X}_i \Gamma + \delta \text{Income}_{i,1940} +
+    \epsilon_i
+  \end{equation*}
+  \begin{itemize}
+    \item individual $i$ is observed in both 1940 and 1950
+    \item Income from wages across both census years (in 1950 dollars)
+    \item $\mathbb{X}_i$ time-invariant demographics: age, gender, race
+  \end{itemize}
+\end{frame}
 
-    \begin{frame}
-      \begin{figure}
-        \centering
-        \includegraphics[width=0.7\linewidth]{figures/did_plot.png}
-      \end{figure}
-    \end{frame}
-    
-    \begin{frame}{Methods}\label{methods}
-      \begin{block}{Difference-in-Differences \hyperlink{DiDmethod}{\beamergotobutton{Diff-in-Diff}}}
-        Assuming that Chinese and Japanese Americans would have experienced similar wage trends without internment:
-        $$y_{it} = \alpha_t + X_{it}' \gamma + \delta \hat{E}[I_i|Z_i,c_i^t] + \beta (\hat{E}[I_i|Z_i,c_i^t] \times Post_t) + \epsilon_{it}$$
-      \end{block}
-        \begin{itemize}
-        \item $y_{it}$: real wages earned by individual $i$ in year $t$
-        \item $\hat{E}[I_i|Z_i,c_i^t]$: Predicted internhment status
-        \item $Post_t$: treatment has an effect in 1950, but not 1940
-        \item $X_{it}$: Time-variant controls (educ, marst, etc)
-        \end{itemize}
-        $\beta$ : DiD estimate between internees and non-internees, pre vs post internment
-    \end{frame}
+\begin{frame}
+  \input{../tables/reg1_tbl.tex}
+\end{frame}
 
-    \begin{frame}{Diff-in-Diff}
-      \begin{block}{Identifying assumption:}
-        The only reason an internee would resettle and stay in destination $k$ is through the internment and resettlement mechanism
-      \end{block} 
-      \begin{itemize}
-      \item Possibly violated if internees did have some degree of choice and ability to move between release and 1950 census
-      \end{itemize}
-    \end{frame}
+\begin{frame}{Methods}\label{methods}
+  \begin{block}{Difference-in-Differences}
+    Assuming that Chinese and Japanese Americans would have experienced similar wage trends without internment:
+    \begin{align*}
+    \text{Income}_{i,t} & = \beta_0 \mathbb{I}(t=1950) + \beta_1 ~ \widehat{\text{Internment}} \\
+                        & + \beta_{DiD} \widehat{\text{Internment}} \times \mathbb{I}(t=1950) \\
+                        & + \mathbb{X}_i \Gamma + \epsilon_{it}
+    \end{align*}
+  \end{block}
+    \begin{itemize}
+    \item Income$_{it}$: real wages earned by individual $i$ in year $t\in\{1940,1950\}$
+    \item $\mathbb{I}$: treatment has an effect in 1950, but not 1940
+    \item $X_{it}$: Time-variant controls (age and race)
+    \end{itemize}
+    $\beta_{DiD}$ estimate between internees and non-internees, pre vs post internment
+\end{frame}
 
-    \begin{frame}
-      \begingroup
-      \centering
-      \begin{tabular}{lcccc}
-        \tabularnewline \midrule \midrule
-        Dependent Variable: & \multicolumn{4}{c}{INCWAGE}\\
-        Model:                & (1)            & (2)            & (3)            & (4)\\  
-        \midrule
-        \emph{Variables}\\
-        Constant              & 334.0$^{***}$  & -1,591.9       &                &   \\   
-        & (9.644)        & (1,030.1)      &                &   \\   
-        did                   & 170.9$^{***}$  & 189.8$^{***}$  & 36.45          & 62.72\\   
-        & (33.62)        & (32.36)        & (40.87)        & (33.43)\\   
-        pr\_intern            & -121.7$^{***}$ & -62.10$^{***}$ & -39.38$^{***}$ & -27.95$^{***}$\\   
-        & (18.54)        & (18.17)        & (7.830)        & (6.908)\\   
-        as\_factor(YEAR)1950  & 174.9$^{***}$  & 203.0$^{***}$  & 295.3$^{***}$  & 321.8$^{***}$\\   
-        & (17.99)        & (17.99)        & (40.59)        & (35.45)\\   
-        female                &                & -347.9$^{***}$ &                & -287.3$^{***}$\\   
-        &                & (13.65)        &                & (7.192)\\   
-        BIRTHYR               &                & 0.9884$^{*}$   &                & 0.8518$^{***}$\\   
-        &                & (0.5377)       &                & (0.2067)\\   
-        college               &                & 233.5$^{***}$  &                & 129.3$^{***}$\\   
-        &                & (22.34)        &                & (11.67)\\   
-        married               &                & 174.6$^{***}$  &                & 173.2$^{***}$\\   
-        &                & (17.64)        &                & (7.610)\\   
-        \midrule
-        \emph{Fixed-effects}\\
-        as\_factor(state)     &                &                & Yes            & Yes\\  
-        \midrule
-        \emph{Fit statistics}\\
-        Observations          & 10,309         & 10,309         & 4,720          & 4,720\\  
-        R$^2$                 & 0.02777        & 0.10337        & 0.05570        & 0.10621\\  
-        Within R$^2$          &                &                & 0.05040        & 0.10120\\  
-        \midrule \midrule
-        \multicolumn{5}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
-      \end{tabular}
-      \par\endgroup
-    \end{frame}
-
-    \begin{frame}
-      \begingroup
-      \centering
+\begin{frame}
+\begin{table}[htbp]
+   \caption{\label{tbl:regdid} Difference-in-difference regression estimates}
+   \begin{adjustbox}{width = \textwidth, center}
       \begin{tabular}{lccc}
-        \tabularnewline \midrule \midrule
-        Dependent Variables:  & employed        & OCCSCORE        & college\\  
-        Model:                & (1)             & (2)             & (3)\\  
-        \midrule
-        \emph{Variables}\\
-        Constant              & 8.696$^{***}$   & 162.2$^{***}$   & $-3.96\times 10^{-14}$\\    
-        & (0.4347)        & (12.58)         & ($1.19\times 10^{-13}$)\\    
-        did                   & -0.0739$^{***}$ & -1.977$^{***}$  & $-3.38\times 10^{-17}$\\    
-        & (0.0138)        & (0.3988)        & ($3.78\times 10^{-15}$)\\    
-        pr\_intern            & 0.0779$^{***}$  & -1.797$^{***}$  & $-1.48\times 10^{-16}$\\    
-        & (0.0098)        & (0.2840)        & ($2.69\times 10^{-15}$)\\    
-        as\_factor(YEAR)1950  & 0.1396$^{***}$  & 2.335$^{***}$   & $-2.11\times 10^{-17}$\\    
-        & (0.0068)        & (0.1968)        & ($1.87\times 10^{-15}$)\\    
-        female                & -0.3449$^{***}$ & -9.011$^{***}$  & $2.84\times 10^{-16}$\\    
-        & (0.0059)        & (0.1720)        & ($1.63\times 10^{-15}$)\\    
-        BIRTHYR               & -0.0044$^{***}$ & -0.0802$^{***}$ & $8.12\times 10^{-17}$\\    
-        & (0.0002)        & (0.0065)        & ($6.2\times 10^{-17}$)\\    
-        college               & 0.1216$^{***}$  & 8.288$^{***}$   & 1$^{***}$\\   
-        & (0.0139)        & (0.4033)        & ($3.83\times 10^{-15}$)\\    
-        married               & 0.2354$^{***}$  & 7.285$^{***}$   & $2.87\times 10^{-16}$\\    
-        & (0.0083)        & (0.2396)        & ($2.27\times 10^{-15}$)\\    
-        \midrule
-        \emph{Fit statistics}\\
-        Observations          & 22,158          & 22,158          & 22,158\\  
-        R$^2$                 & 0.28101         & 0.24857         & 1\\  
-        Adjusted R$^2$        & 0.28078         & 0.24833         & 1\\  
-        \midrule \midrule
-        \multicolumn{4}{l}{\emph{IID standard-errors in parentheses}}\\
-        \multicolumn{4}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+         \toprule
+          & \multicolumn{3}{c}{Income (1950 dollars)}\\
+                                                                      & (1)             & (2)             & (3)\\  
+         \midrule 
+         Age                                                     & 63.13$^{***}$   & 64.15$^{***}$   & 61.45$^{***}$\\   
+                                                                      & (4.828)         & (4.719)         & (4.291)\\   
+         Age square                                              & -0.7427$^{***}$ & -0.7534$^{***}$ & -0.7186$^{***}$\\   
+                                                                      & (0.0494)        & (0.0486)        & (0.0461)\\   
+         $\widehat{\text{Internment}}$                                & -404.2$^{***}$  &  -395.8$^{***}$ & -348.3$^{***}$\\ 
+                                                                      & (46.48)         &  (49.82)        & (39.67)\\        
+         \rowcolor{blue!30}$\widehat{\text{Internment}}\times \mathbb{I}(t = 1950)$  & 193.6$^{***}$   &  210.9$^{***}$  & 191.6$^{***}$\\  
+         \rowcolor{blue!30}                                           & (59.50)         &  (60.80)        & (35.00)\\        
+         Observations                                                 & 16,272          & 16,272          & 16,272\\  
+         R$^2$                                                        & 0.08263         & 0.08187         & 0.10987\\  
+         Within R$^2$                                                 & 0.05989         & 0.05911         & 0.05029\\  
+          \\
+         Education fixed effects                                          & $\checkmark$    & $\checkmark$    & $\checkmark$\\   
+         State fixed effects                                          &                 &                 & $\checkmark$\\   
+         County fixed effects                                         &                 &                 & $\checkmark$\\   
+         \\
+         Internment estimated using:                                  & race, county    & race, state,  & race, county, sex, \\
+                                                                      &                 & birthpl, birthyr & birthpl, birthyr \\
+         \bottomrule
       \end{tabular}
-      \par\endgroup
-    \end{frame}
-    
-    \section{Conclusion}
+     \end{adjustbox}
+  \end{table}
+\end{frame}
 
-    \begin{frame}[plain]{}
-      \tiny
-      \bibliography{InternRefs}
-      \addtocounter{framenumber}{-1}
-    \end{frame}
+\begin{frame}{Mechanisms}
+  One possible explanation:
+  \begin{itemize}
+    \item Internees responded to lost wages by increasing labor market participation
+    \item Would expect to see measures of intensive and extensive participation increase
+    \item Also might expect to see shifting to higher-earning occupations
+    \item Census asks employment, hours and weeks worked
+    \item Occupational categories ranked by median earning within same category
+  \end{itemize}
+  This doesn't seem to be the case, if anything internees switched jobs less frequently
+\end{frame}
 
-    \section{maps}
+\begin{frame}
+  \begin{table}[htbp]
+     \caption{\label{tbl:reg2} Employment and occupation effects}
+     \begin{adjustbox}{width = \textwidth, center}
+        \begin{tabular}{lccccc}
+           \toprule
+                                 & Employed        & Hours worked    & Weeks worked    & Occ. score      & Occ. change\\  
+                                 & (1)             & (2)             & (3)             & (4)             & (5)\\  
+                                 &  Logit          & OLS             & OLS             & OLS             & Logit\\  
+           \midrule 
+           % (Intercept)           & -3.402$^{***}$  & -4.282          & 6.322$^{***}$   & 13.05$^{***}$   & -1.898$^{***}$\\   
+           %                       & (0.2640)        & (3.084)         & (1.029)         & (2.171)         & (0.2156)\\   
+           \rowcolor{blue!30}Internment Status     & -0.0138         & -1.504          & -0.9339         & 0.0739          & -0.5367$^{***}$\\   
+           \rowcolor{blue!30}    & (0.1282)        & (1.040)         & (1.150)         & (0.9624)        & (0.2025)\\   
+           Age                   & 0.1633$^{***}$  & 1.156$^{***}$   & 0.8436$^{***}$  & 0.0804          & 0.0576$^{***}$\\   
+                                 & (0.0125)        & (0.1481)        & (0.0421)        & (0.0914)        & (0.0089)\\   
+           Age square            & -0.0022$^{***}$ & -0.0167$^{***}$ & -0.0135$^{***}$ & -0.0037$^{***}$ & -0.0004$^{***}$\\   
+                                 & (0.0001)        & (0.0014)        & (0.0004)        & (0.0009)        & ($9.26\times 10^{-5}$)\\    
+           Male                  & 2.245$^{***}$   & 20.79$^{***}$   & 16.78$^{***}$   & 6.941$^{***}$   & -0.9214$^{***}$\\   
+                                 & (0.0267)        & (0.5576)        & (0.3428)        & (0.3454)        & (0.0542)\\   
+           Japanese              & 0.5674$^{***}$  & 4.858$^{***}$   & 4.574$^{***}$   & -2.481$^{**}$   & 0.1879\\   
+                                 & (0.1319)        & (1.198)         & (1.407)         & (1.070)         & (0.1769)\\   
+           Lagged outcome$_{1940}$ &                 & 0.1089$^{***}$  & 0.1355$^{***}$  &  0.2649$^{***}$ &   \\   
+                                 &                 & (0.0102)        & (0.0089)        &  (0.0075)       &   \\   
+            \\
+           Observations          & 8,136           & 8,136           & 8,136           & 8,136           & 8,136\\  
+          %  Squared Correlation   & 0.25011         & 0.25589         & 0.25521         & 0.23167         & 0.06235\\  
+           Pseudo R$^2$          & 0.20794         & 0.03173         & 0.03247         & 0.03232         & 0.05077\\  
+          %  BIC                   & 8,420.4         & 73,447.2        & 71,494.9        & 64,251.3        & 9,449.2\\  
+           \bottomrule
+        \end{tabular}
+     \end{adjustbox}
+  \end{table}
+\end{frame}
 
-    \begin{frame}[plain]\label{wrapmap}
-      \begin{figure}
-        \centering
-        \includegraphics[width=.95\linewidth]{figures/wrap_maps.png}
-      \end{figure}
-      \addtocounter{framenumber}{-1}
-    \end{frame}
+\begin{frame}
+  \frametitle{Mechanisms}
+  Another explanation is that internment kicked off `moves to opportunity'
+  \begin{itemize}
+    \item After release from camps, many moved to new cities like Denver, Chicago, New York
+    \item New geographic access to labor markets with more opportunities
+  \end{itemize}
+  The evidence seems more consistent with this mechanism:
+  \begin{itemize}
+    \item Hard to define migration status for internees who move back to West Coast
+    \item But internees who move to new counties end up in higher-income areas their migrant peers
+  \end{itemize}
+\end{frame}
 
-    \begin{frame}[plain]\label{areaplot}
-      \begin{figure}
-        \caption{Regional Trends in Japanese Population Concentration \hyperlink{rq_slide}{\beamerreturnbutton{Back}}}
-        \centering
-        \includegraphics[width=.65\linewidth]{figures/shareareaplot.png}
-        \label{fig:areaplot}
-      \end{figure}
-      \addtocounter{framenumber}{-1}
-    \end{frame}
+\begin{frame}
+  \begin{table}[htbp]
+     \caption{\label{tbl:reg3} Migration effects}
+     \begin{adjustbox}{width = \textwidth, center}
+        \begin{tabular}{lcccc}
+           \toprule
+                               & Migration               & Log county income             & Log county pop.         & County pct. Japn.\\  
+                               & (1)                     & (2)                           & (3)                     & (4)\\  
+                               &  Logit                  & OLS                           & OLS                     & OLS\\  
+           \midrule 
+           Internment Status   & 0.2779                  & 0.2508$^{***}$                & 1.291$^{***}$           & 0.0129$^{***}$\\   
+                               & (0.5710)                & (0.0822)                      & (0.4143)                & (0.0010)\\   
+           Age                 & -0.0104                 & 0.0038$^{*}$                  & 0.0493$^{***}$          & $-9.39\times 10^{-5}$\\    
+                               & (0.0096)                & (0.0023)                      & (0.0114)                & (0.0002)\\   
+           Age square          & $-3.25\times 10^{-5}$   & $-3.55\times 10^{-5}$         & -0.0005$^{***}$         & $9\times 10^{-7}$\\    
+                               & ($9.08\times 10^{-5}$)  & ($2.32\times 10^{-5}$)        & (0.0001)                & ($1.46\times 10^{-6}$)\\    
+           Male                & -0.0593                 & -0.0253$^{**}$                & -0.0648                 & $9.83\times 10^{-5}$\\    
+                               & (0.0377)                & (0.0096)                      & (0.0585)                & (0.0004)\\   
+           Japanese            & 0.7287$^{***}$          & -0.3197$^{***}$               & -1.427$^{***}$          & -0.0030\\   
+                               & (0.1841)                & (0.0728)                      & (0.3310)                & (0.0020)\\   
+           Income in 1940      & $4.24\times 10^{-5}$    & $4.38\times 10^{-5}$$^{***}$  & 0.0002$^{***}$          & $-3.11\times 10^{-7}$\\    
+                               & ($4.24\times 10^{-5}$)  & ($5.75\times 10^{-6}$)        & ($4.01\times 10^{-5}$)  & ($2.02\times 10^{-7}$)\\    
+            \\
+           Observations        & 8,109                   & 2,454                         & 2,454                   & 2,454\\  
+           Pseudo R$^2$        & 0.03245                 & 0.67766                       & 0.01738                 & -0.02534\\  
+           \bottomrule
+        \end{tabular}
+     \end{adjustbox}
+  \end{table}
+\end{frame}
 
-    \begin{frame}[plain]\label{stincomemap}
-      \begin{figure}
-        \centering
-        \includegraphics[height=.6\linewidth]{figures/st_income_map.png}
-      \end{figure}
-      \hyperlink{rq_slide}{\beamerreturnbutton{Back}}
-      \addtocounter{framenumber}{-1}
-    \end{frame}
-    
-    \begin{frame}[plain]\label{campplcmap}
-      \begin{figure}
-        \centering
-        \includegraphics[height=.6\linewidth]{figures/RDmap.png}
-      \end{figure}
-      \hyperlink{rq_slide}{\beamerreturnbutton{Back}}
-                {\footnotesize \href{http://resource.nlm.nih.gov/01130040R}{Source}}
-                \addtocounter{framenumber}{-1}
-    \end{frame}
+\begin{frame}{Gendered internment effect}
+  Among internees, gender makes a big difference for estimated labor market impacts
+  \begin{itemize}
+    \item Interruption of pre-internment gender norms?
+    \item Greater acceptance of Japanese American women in some labor markets?
+    \item Legacy of wartime female employment?
+  \end{itemize}
 
+\end{frame}
+
+\begin{frame}
+  \begin{table}[htbp]
+     \caption{\label{tbl:reghet} Internment income effect heterogeneities}
+     \begin{adjustbox}{width=\textwidth, center}
+     \begin{tabular}{lccccc}
+        \toprule
+         & \multicolumn{5}{c}{Income in 1950}\\
+                                & All            & Male            & Female         & JM              & JF \\   
+                                & (1)            & (2)             & (3)            & (4)             & (5)\\  
+        \midrule 
+        Internment Status       & 0.9465         & 4.657           & 186.5$^{***}$  & 253.1$^{**}$    & 225.4$^{**}$\\   
+                                & (82.93)        & (104.0)         & (42.09)        & (120.9)         & (106.4)\\   
+        Age                     & -14.27$^{***}$ & 45.29$^{***}$   & -44.55$^{***}$ & 65.24$^{***}$   & -42.18$^{***}$\\   
+                                & (4.535)        & (6.884)         & (8.400)        & (9.097)         & (11.04)\\   
+        Age square              & -0.0414        & -0.6452$^{***}$ & 0.2812$^{***}$ & -0.8229$^{***}$ & 0.2414$^{**}$\\   
+                                & (0.0412)       & (0.0631)        & (0.0780)       & (0.0884)        & (0.1068)\\   
+        Income in 1940          & 0.3283$^{***}$ & 0.2140$^{***}$  & 0.3475$^{***}$ & 0.1710$^{***}$  & 0.2139$^{***}$\\   
+                                & (0.0230)       & (0.0240)        & (0.0781)       & (0.0192)        & (0.0524)\\   
+         \\
+        Observations            & 8,136          & 4,921           & 3,215          & 3,427           & 2,640\\  
+        R$^2$                   & 0.07841        & 0.07305         & 0.06974        & 0.07042         & 0.06458\\  
+        Within R$^2$            & 0.05889        & 0.05476         & 0.04667        & 0.04987         & 0.04244\\  
+         \\
+        Education fixed effects & $\checkmark$   & $\checkmark$    & $\checkmark$   & $\checkmark$    & $\checkmark$\\   
+        \bottomrule
+     \end{tabular}
+     \end{adjustbox}
+    \end{table}
+\end{frame}
+
+\begin{frame}{Discussion}
+  Takeaways:
+  \begin{itemize}
+    \item Internment produced a forced Move to Opportunity shock for many internees.
+    \item Migration, not occupation switching, is the key channel.
+    \item Gender norms \& labor market structures likely shaped heterogeneous outcomes.
+  \end{itemize}
+  Caveats:
+  \begin{itemize}
+    \item Does not measure:
+    \item wealth loss
+    \item trauma
+    \item property seizure
+  \end{itemize}
+  Results do not diminish moral harm of internment.
+\end{frame}
+
+\section{Appendix}
+
+\begin{frame}
+  \addtocounter{framenumber}{-1}
+  \renewcommand{\bibfont}{\tiny}
+  \printbibliography
+\end{frame}
+
+\begin{frame}
+  \addtocounter{framenumber}{-1}
+    \begin{center}
+        \textbf{1940 Japanese population by county} \\
+        \vspace{-2cm}
+        \includegraphics[width=\linewidth]{../figures/1940_map.pdf}
+        \label{fig:1940map}
+    \end{center}
+  \vspace{-2cm}
+  \hyperlink{piocrtmap}{\beamergotobutton{Back}}
+\end{frame}
+
+\begin{frame}\label{sumstats}
+  \addtocounter{framenumber}{-1}
+  \input{../tables/mlp_sumstats.tex}
+  \hyperlink{data}{\beamergotobutton{Back}}
+\end{frame}
+
+\begin{frame}{Methods}\label{bayesrule}
+  \addtocounter{framenumber}{-1}
+  \begin{block}{Predicted Internment Status}
+    Using known proportions of demographic categories within WRA and census,
+    we can estimate the probability of internment using Bayes Rule:
+    $$
+    Pr(I_i=1|z_i, c(i)) = 
+    \frac{Pr\left(c(i), z_i|I_i=1\right) \cdot Pr(I_i=1)}{Pr(c(i), z_i)}.
+    $$
+    \begin{itemize}
+    \item $Pr(z_i,c(i)|I_i=1)$: proportion of internees in each county with demographics $z$
+    \item $Pr(I_i=1)$: fraction of internees over 1940 Japanese American population
+    \item $Pr(z_i,c(i))$: proportion of Japanese Americans in each county-demographic in 1940 census
+    \end{itemize}
+  \end{block}
+  \hyperlink{intstatus}{\beamergotobutton{Back}}
+\end{frame}
+
+\begin{frame}
+  \addtocounter{framenumber}{-1}
+  \begin{center}
+    \includegraphics[width=0.7\textwidth]{../figures/race_wage_plot.pdf}
+  \end{center}
+\end{frame}
+\end{document}
+
+\begin{frame}
+  \addtocounter{framenumber}{-1}
+  \begin{center}
+    \textbf{Income distributions by year and treatment group} \\
+    \includegraphics[width=\linewidth]{../figures/group-incwage-dist.pdf}
+  \end{center}
+\end{frame}
 \end{document}
 
