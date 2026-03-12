@@ -47,7 +47,6 @@ ddi_fullcount|stem|c4f16ccfc172450c|9f920095266b8e96|60d4f02c6c865f68|293976391|
 ddi_mlp|stem|e46c61d648d41253|3de5b22e1ce2236c|2c530c1562a7fbd1|2019325191|data/mlp_v2_0/usa_00131.xml|t20287.8117814952s|s810299b|810299|file|local|vector|||0.269||
 mlp_db|stem|5b937c5b0e6804d1|41cb73342219e833|2c530c1562a7fbd1|-864068346|data/mlp.duckdb|t20333.7805133356s|s28653137920b|28653137920|file|local|vector|||0.835||
 mlp_tbl|stem|4ca64a2e1bd5fac5|eb31f3ab96217b49|fc6903f931dfd4c9|1503791023||t20334.7478049931s|s65b|65|rds|local|vector|||0.064||
-wra_data|stem|8f62184d5486a869|3642d58430340b91|6d18c20fe1208190|-1309043206||t20334.8728522964s|s2218160b|2218160|rds|local|vector|||5.291|There were 6 warnings in `mutate()`. The first warning was: ℹ In argument: `across(...)`. Caused by warning in `recode.numeric()`: ! NAs introduced by coercion ℹ Run `dplyr::last_dplyr_warnings()` to see the 5 remaining warnings.|
 internpr|stem|30bac87048ced699|7688eac2b78fd62e|98df9b086cb59eb8|1541184665||t20334.9040643889s|s35699b|35699|rds|local|vector|||95.238||
 internpr_county|stem|23d12cb1e6c03b0d|bb88a51fcb06f825|98df9b086cb59eb8|749564709||t20334.905131355s|s13562b|13562|rds|local|vector|||91.922||
 sample_wide|stem|6f1bb368d409012f|b76e8d449ba34106|e7123eb61ddbf87f|-1271352495||t20338.830415047s|s1691706b|1691706|rds|local|vector|||67.127||
@@ -58,27 +57,29 @@ sample_long|stem|0fae1aef82a9d617|5b4ebacbc810bdc5|8d2b3e60a597a324|1915771157||
 mlp_raw|stem|8353ba1b61d14d0e|3b3c8687181f4b43|23bed85a596ce3de|-788791517||t20369.0832923133s|s2039197b|2039197|rds|local|vector|||79.688||
 mlp_cleaned|stem|679379ced2d9ffa6|9b47dcb0525143d4|cec586fb1b85f8d5|867578914||t20372.7726419317s|s3176980b|3176980|rds|local|vector|||0.709||
 mlp_sample|stem|f83af52a75492e92|9332ebd0fe224576|e1658940552b9b03|-1554629035||t20375.9747157131s|s3804240b|3804240|rds|local|vector|||648.283||
+wage_sample|stem|c5bba963fb99146b|83a0a4eef51c1c45|8d94ae13ed711ec1|-603891538||t20375.9819158393s|s617144b|617144|rds|local|vector|||0.265||
+calc_int_proportion|function|a910cd88d186a328
 group_bpl|function|0d54ea4e8590a2e8
-group_birthyr|function|6f51488f23f1168b
 define_ipums_extract|function|3966825d8524104b
 submit_and_download_extract|function|5c952a8614914c2d
+group_birthyr|function|6f51488f23f1168b
 read_fw_form26|function|9c2a5332dcf968fc
 form26_label|function|9e50da66cdf02b32
 theme_internment|function|788f3f8f309c1a00
 adjust_dollar_vars|function|d9d86e7381ed584a
-.Random.seed|object|c6fea5ed5c8093f2
+.Random.seed|object|259dda035cb535b1
 occ_category|function|81c02408dccc900e
 write_ipums_db|function|936fb2340941b08b
+calculate_proportions|function|4ae75c773dbf9e72
 form26_drop_dup|function|a479b7157659cbf7
 nhgis_extract|object|f525dc6fb316f0e2
 is_evac_county|function|87e16828e9ad46e6
 collect_mlp|function|7bfecaeaa5e5cc39
 define_wage_sample|function|38ef9c1d45c59d13
-calc_int_proportion|function|a910cd88d186a328
+predict_internment|function|f1b679f416d21b66
 clean_wide_vars|function|f9daf1a3cb6c9f7f
 collect_county_stats|function|f730ccaa239f8569
 clean_long_vars|function|ec29ce9b2da81e9d
-compile_WRA|function|6b39bd9af3fa36af
-predict_internment|function|c999405529af7412
-clean_mlp|function|8e321dfeac4bd7f1
-wage_sample|stem|c5bba963fb99146b|83a0a4eef51c1c45|8d94ae13ed711ec1|-603891538||t20375.9819158393s|s617144b|617144|rds|local|vector|||0.265||
+compile_WRA|function|de4d9b2bde6f9592
+clean_mlp|function|090c5804bf4701cf
+wra_data|stem|74290e06f94aee87|3642d58430340b91|d45cf3490c041b9f|-1309043206||t20376.9936612126s|s2218178b|2218178|rds|local|vector|||5.237|There were 6 warnings in `mutate()`. The first warning was: ℹ In argument: `across(...)`. Caused by warning in `recode.numeric()`: ! NAs introduced by coercion ℹ Run `dplyr::last_dplyr_warnings()` to see the 5 remaining warnings.|

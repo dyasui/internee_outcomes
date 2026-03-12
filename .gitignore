@@ -17,6 +17,8 @@
 **.synctex.gz
 **.lof
 **.lot
+**.bcf
+**.xml
 
 **.dat.gz
 data/mlp_1940_1950_v1_2_csv/*csv
@@ -45,3 +47,4 @@ WRA-internees.org~
 data/mlp.duckdb
 notes/cleaning-functions.org
 .vscode
+/data/ipums.duckdb

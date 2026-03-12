@@ -163,16 +163,25 @@ table_dt <- wage_sample |>
   mutate(
     employed_1940 = as_factor(employed_1940),
     employed_1950 = as_factor(employed_1950),
-    migrant = as_factor(migrate10)
+    migrant = as_factor(migrate10),
+    FARM_1940 = ifelse(FARM_1940 == "Farm", 1, 0),
+    FARM_1950 = ifelse(FARM_1950 == "Farm", 1, 0),
+    Female = ifelse(sex_adj=="Female", 1, 0),
+    employed_1940 = as.numeric(employed_1940),
+    employed_1950 = as.numeric(employed_1950),
+    migrant = as.numeric(migrant)
   ) |>
-  select(`Race` = race_adj, `Internment probability` = int_prob, `Year of birth` = birthyr_adj,
-         `Farm status 1940`=FARM_1940, `Farm status 1950`=FARM_1950,
+  select(`Race` = race_adj,
+         ## `Internment probability` = int_prob,
+         `Year of birth` = birthyr_adj,
+         Female,
+         `Farm status 1940`=FARM_1940,
+         `Farm status 1950`=FARM_1950,
          `Wage income 1939`=INCWAGE_1940, `Wage income 1949`=INCWAGE_1950, 
          `Business/farm income 1949`=INCBUSFM_1950, `Other income 1949`=INCOTHER_1950,
          `OCCSCORE 1940`=OCCSCORE_1940, `OCCSCORE in 1950`=OCCSCORE_1950,
          `Weeks worked in 1939`=WKSWORK1_1940, `Weeks worked in 1949`=WKSWORK1_1950,
          `Hours worked last week (1940)`=HRSWORK1_1940, `Hours worked last week (1950)`=HRSWORK1_1950,
-         `Sex`=sex_adj,
          `Was employed 1940`=employed_1940, `Was employed 1950`=employed_1950,
          `Moved counties 1940-1950`=migrant) 
 
@@ -182,7 +191,9 @@ modelsummary::datasummary_balance(~Race, table_dt)
 #+RESULTS:
 
 #+begin_src R :results output file :file tables/mlp_sumstats.tex
-modelsummary::datasummary_balance(~Race, table_dt, output = "latex")
+modelsummary::datasummary_balance(
+                ~Race, table_dt,
+                output = "latex" 
 #+end_src
 
 #+RESULTS:
@@ -291,7 +302,7 @@ wage_sample_did <- wage_sample |>
   ) |>
   mutate(YEAR = as_factor(YEAR))
 
-AB_formula <- INCWAGE ~ YEAR:intprob_AB + age_adj + age_adj^2 | EDUCD
+AB_formula <- INCWAGE ~ YEAR + intprob_Ab + YEAR:intprob_AB + age_adj + age_adj^2 | EDUCD
 
 etable(
   feols(
@@ -323,6 +334,112 @@ etable(
 [[file:tables/regAB.tex]]
 
 *** Alternative Internment statuses
+
+#+begin_src R
+data <- wage_sample |>
+  mutate(
+    state = as_factor(STATEFIP_1940),
+    county = as_factor(STATEFIP_1940 * 10000 + COUNTYICP_1940),
+    race = race_adj,
+    sex = sex_adj
+  )
+
+Z <- c("state", "county", "sex", "race", "bpl_grp", "byr_grp")
+
+c(combn(Z, 2), combn(Z,3))
+#+end_src
+
+#+RESULTS:
+| state   |
+| county  |
+| state   |
+| sex     |
+| state   |
+| race    |
+| state   |
+| bpl_grp |
+| state   |
+| byr_grp |
+| county  |
+| sex     |
+| county  |
+| race    |
+| county  |
+| bpl_grp |
+| county  |
+| byr_grp |
+| sex     |
+| race    |
+| sex     |
+| bpl_grp |
+| sex     |
+| byr_grp |
+| race    |
+| bpl_grp |
+| race    |
+| byr_grp |
+| bpl_grp |
+| byr_grp |
+| state   |
+| county  |
+| sex     |
+| state   |
+| county  |
+| race    |
+| state   |
+| county  |
+| bpl_grp |
+| state   |
+| county  |
+| byr_grp |
+| state   |
+| sex     |
+| race    |
+| state   |
+| sex     |
+| bpl_grp |
+| state   |
+| sex     |
+| byr_grp |
+| state   |
+| race    |
+| bpl_grp |
+| state   |
+| race    |
+| byr_grp |
+| state   |
+| bpl_grp |
+| byr_grp |
+| county  |
+| sex     |
+| race    |
+| county  |
+| sex     |
+| bpl_grp |
+| county  |
+| sex     |
+| byr_grp |
+| county  |
+| race    |
+| bpl_grp |
+| county  |
+| race    |
+| byr_grp |
+| county  |
+| bpl_grp |
+| byr_grp |
+| sex     |
+| race    |
+| bpl_grp |
+| sex     |
+| race    |
+| byr_grp |
+| sex     |
+| bpl_grp |
+| byr_grp |
+| race    |
+| bpl_grp |
+| byr_grp |
 
 #+begin_src R :results output file :file tables/reg_altint.tex
 etable(

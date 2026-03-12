@@ -38,8 +38,8 @@ list(
 
   tar_target(county_stats,
              collect_county_stats(ddi_fullcount, inflator = 1.69)),
-  tar_target(mlp_raw, collect_mlp(mlp_db, mlp_tbl)),
-  tar_target(mlp_sample, clean_mlp(mlp_raw, county_stats, wra_data, ddi_fullcount, 1.69)),
-  tar_target(wage_sample, define_wage_sample(mlp_sample))
+  tar_target(mlp_raw, collect_mlp(mlp_db, mlp_tbl))
+  ## tar_target(mlp_sample, clean_mlp(mlp_raw, county_stats, wra_data, ddi_fullcount, 1.69)),
+  ## tar_target(wage_sample, define_wage_sample(mlp_sample))
 
 )

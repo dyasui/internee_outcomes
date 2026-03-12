@@ -722,14 +722,21 @@ compile_WRA <- function(wra_file="data/WRA.FORM26.PU.txt",
 
   data_int <- data_labelled |>
     left_join(addr, by = "prev_address") |>
-    select(ind_number, state, county, city,
-           camp, assembly, race, sex, birthyr, bpl, birthplace,
-           bpl_pop, bpl_mom, yrimmig, nativity, generation,
-           degfield, high_deg, educ, 
-           bpl_grp, byr_grp, 
-           fath_occ_us, fath_occ_abroad, school_jap,
-           NHGISST, NHGISCTY, STATEFIP, COUNTYICP,
-           last_name, first_name, qual_occ_1, qual_occ_2)
+    select(
+      ind_number, state, county, city,
+      camp, assembly, race, sex, birthyr, bpl, birthplace,
+      bpl_pop, bpl_mom, yrimmig, nativity, generation,
+      degfield, high_deg, educ, 
+      bpl_grp, byr_grp, 
+      fath_occ_us, fath_occ_abroad, school_jap,
+      NHGISST, NHGISCTY, STATEFIP, COUNTYICP,
+      last_name, first_name, qual_occ_1, qual_occ_2
+    ) |>
+    rename_with(toupper,
+                c("race", "sex", "birthyr", "bpl",
+                  "yrimmig",
+                  "nativity", "degfield", "educ")
+                )
 
   # I have to get rid of the haven labels so it can be stored as part of the targets workflow
   final_data <- data_int |>

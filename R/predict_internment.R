@@ -1,65 +1,95 @@
-calc_int_proportion <- function(wra_data, ddi,
-                                by = c("STATEFIP", "COUNTYICP", "RACE"),
-                                chunk_size = 1e6,
-                                label = "intern_p") {
-  library(tidyverse)
-  library(dbplyr)
-  library(duckdb)
-
-  mutate_vars <- list() # variables to be mutated if present
-  groups <- by
+#' Calculate proportions across multiple grouping variable combinations
+#'
+#' @param x A tibble or dataframe representing a subset
+#' @param y A tibble or dataframe representing the full dataset
+#' @param var_combos Either:
+#'   - A character vector of variable names
+#'   - A list of character vectors, where each vector contains variable names
+#' @param var_y_combos Optional. Same format as var_combos with corresponding
+#'   variable names in y. If NULL, assumes same names as in x
+#' @param prefix Prefix for the proportion column names. Default is "p"
+#'
+#' @return A tibble with x joined to all calculated proportions. Each set of
+#'   grouping variables gets columns: n.x_{vars}, n.y_{vars}, and p.{vars}
+#'
+#' @examples
+#' x <- slice_sample(mtcars, n = 15)
+#' 
+#' # Single variable
+#' result1 <- calculate_multiple_proportions(x, mtcars, "cyl")
+#' 
+#' # Single combination
+#' result2 <- calculate_multiple_proportions(x, mtcars, c("cyl", "vs"))
+#' 
+#' # Multiple combinations
+#' result3 <- calculate_multiple_proportions(
+#'   x, mtcars,
+#'   list(c("cyl", "vs"), c("gear", "am"))
+#' )
+calculate_proportions <- function(x, y, var_combos, 
+                                  var_y_combos = NULL,
+                                  prefix = "p") {
   
-  if ("BPL" %in% by) {
-    mutate_vars <- append(mutate_vars, list(bpl_grp = expr(group_bpl(BPL))))
-    groups <- setdiff(groups, "BPL")
+  # Convert var_combos to list format if needed
+  if (is.character(var_combos)) {
+    var_combos <- list(var_combos)
+  } else if (!is.list(var_combos)) {
+    stop("var_combos must be a character vector or list of character vectors")
   }
   
-  if ("BIRTHYR" %in% by) {
-    mutate_vars <- append(mutate_vars, list(byr_grp = expr(group_birthyr(BIRTHYR))))
-    groups <- setdiff(groups, "BIRTHYR")
-  }
-  
-  groups <- c(groups, names(mutate_vars))
-  
-  callback <- function(x, pos) {
-    if (length(mutate_vars) > 0) {
-      x <- x |> mutate(!!!mutate_vars)
+  # Convert var_y_combos to list format if provided
+  if (!is.null(var_y_combos)) {
+    if (is.character(var_y_combos)) {
+      var_y_combos <- list(var_y_combos)
+    } else if (!is.list(var_y_combos)) {
+      stop("var_y_combos must be a character vector or list of character vectors")
     }
-    result <- x |> count(across(all_of(c(groups, "YEAR"))))
-    ## print(result) # for debuging
-    return(result)
   }
-
-  chunks <- read_ipums_micro_chunked(
-    ddi = ddi,
-    callback = IpumsDataFrameCallback$new(callback),
-    chunk_size = chunk_size,
-    vars = c(all_of(by), "YEAR")
-  )
-
-  pop_grp <- chunks |>
-    filter(YEAR==1940) |> 
-    group_by(across(all_of(groups))) |>
-    summarise(n_census = sum(n), .groups = "drop") 
-
-  # Count by group in internee data
-  int_grp <- wra_data |>
-    rename_with(toupper, c("race", "sex", "birthyr", "bpl", "bpl_pop", "bpl_mom", "yrimmig", "nativity", "degfield", "educ")) |>
-    mutate(!!!mutate_vars) |> 
-    ## filter(RACE==5) |>
-    group_by(across(all_of(unname(groups)))) |>
-    summarise(n_interned = n(), .groups = "drop")
-
-  # Join and calculate fraction
-  proportions <- pop_grp |>
-    full_join(int_grp, by = groups) |>
-    mutate(
-      n_interned = replace_na(n_interned, 0),
-      pr_interned = n_interned / n_census
-    ) |>
-    rename(!!label := pr_interned)
-
-  return(proportions)
+  
+  # If var_y_combos not provided, use same names as x
+  if (is.null(var_y_combos)) {
+    var_y_combos <- var_combos
+  }
+  
+  # Ensure both lists have same length
+  if (length(var_combos) != length(var_y_combos)) {
+    stop("var_combos and var_y_combos must have the same length")
+  }
+  
+  # Start with original x
+  result <- x
+  
+  # Loop through each combination of variables
+  for (i in seq_along(var_combos)) {
+    x_vars <- var_combos[[i]]
+    y_vars <- var_y_combos[[i]]
+    
+    # Create suffix for column names (based on variable names)
+    suffix <- paste(x_vars, collapse = "_")
+    
+    # Calculate proportions for this combination
+    props <- calculate_proportions(
+      x = x,
+      y = y,
+      by = x_vars,
+      var_y = y_vars,
+      join = FALSE
+    )
+    
+    # Rename the n_x, n_y, and p columns to avoid conflicts
+    props <- props |>
+      rename(
+        !!paste0("n.x_", suffix) := n_x,
+        !!paste0("n.y_", suffix) := n_y,
+        !!paste0(prefix, ".", suffix) := p
+      )
+    
+    # Join to result
+    result <- result |>
+      left_join(props, by = x_vars)
+  }
+  
+  return(result)
 }
 
 predict_internment <- function(data,
