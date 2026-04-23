@@ -21,6 +21,7 @@ list(
   tar_target(form26_raw, "data/WRA.FORM26.PU.txt", format = "file"),
   tar_target(wra_addr, "data/WRA_prev_address.csv", format = "file"),
   tar_target(wra_data, compile_WRA(form26_raw, wra_addr)),
+  tar_target(wra_grps, collect_wra_demographics(wra_data)),
 
   tar_target(extract_def, define_ipums_extract()),
   tar_target(
@@ -31,6 +32,9 @@ list(
     )
   ),
   tar_target(ddi_fullcount, extract_ready, format = "file"),
+  tar_target(fc_grps, collect_census_demographics(ddi_fullcount)),
+
+  tar_target(internment_groups, calculate_proportions(wra_grps, fc_grps)),
   tar_target(ddi_mlp, "data/mlp_v2_0/usa_00131.xml", format = "file"),
   tar_target(mlp_db, "data/mlp.duckdb", format = "file"),
   tar_target(mlp_tbl, write_ipums_db(ddi_mlp, mlp_db, "mlp_1940_1950", debug = TRUE, chunk_size = 1e7)),

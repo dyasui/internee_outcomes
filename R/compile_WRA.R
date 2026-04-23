@@ -745,3 +745,8 @@ compile_WRA <- function(wra_file="data/WRA.FORM26.PU.txt",
 
   return(final_data)
 }
+
+collect_wra_demographics <- function(x) {
+  x |>
+    count(STATEFIP, COUNTYICP, RACE, SEX, BIRTHYR, BPL)
+}
