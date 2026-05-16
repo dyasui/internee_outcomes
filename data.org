@@ -15,10 +15,6 @@ library(duckdb)
 #+begin_src R :tangle _targets.R :session *R:internment* :results silent
 # Load packages required to define the pipeline:
 library(targets)
-library(dplyr)
-library(ipumsr)
-library(fixest)
-# library(tarchetypes) # Load other packages as needed.
 
 # Set target options:
 tar_option_set(
@@ -27,17 +23,23 @@ tar_option_set(
   error = "null" # produce a result even if the target errored out.
 )
 
-# Run the R scripts in the R/ folder with your custom functions:
 tar_source()
-# tar_source("other_functions.R") # Source other scripts as needed.
+
+# global object definitions
+form26_raw <- "data/WRA.FORM26.PU.txt"
+wra_addr <- "data/WRA_prev_address.csv"
+ddi_mlp <- "data/mlp_v2_0/usa/00131.xml"
+db_file_mlp <- "data/mlp.duckdb"
+county_shp <- "data/gis/nhgis0035_shape.zip"
 
 # Target list describes workflow
 list(
-  tar_target(form26_raw, "data/WRA.FORM26.PU.txt", format = "file"),
-  tar_target(wra_addr, "data/WRA_prev_address.csv", format = "file"),
+  # WRA camp records cleaning
   tar_target(wra_data, compile_WRA(form26_raw, wra_addr)),
   tar_target(wra_grps, collect_wra_demographics(wra_data)),
+  tar_target(internment_groups, calculate_proportions(wra_grps, fc_grps)),
 
+  # 1940 Full count census data
   tar_target(extract_def, define_ipums_extract()),
   tar_target(
     extract_ready,
@@ -48,18 +50,19 @@ list(
   ),
   tar_target(ddi_fullcount, extract_ready, format = "file"),
   tar_target(fc_grps, collect_census_demographics(ddi_fullcount)),
+  tar_target(county_demographics, collect_county_demographics(internment_groups)),
+  tar_target(county_income,
+             collect_county_income(ddi_fullcount, inflator = 1.69)),
 
-  tar_target(internment_groups, calculate_proportions(wra_grps, fc_grps)),
-  tar_target(ddi_mlp, "data/mlp_v2_0/usa_00131.xml", format = "file"),
-  tar_target(mlp_db, "data/mlp.duckdb", format = "file"),
-  tar_target(mlp_tbl, write_ipums_db(ddi_mlp, mlp_db, "mlp_1940_1950", debug = TRUE, chunk_size = 1e7)),
+  # MLP data
+  tar_target(mlp_tbl, write_ipums_db(ddi_mlp, db_file_mlp, "mlp_1940_1950", debug = TRUE, chunk_size = 1e7)),
+  tar_target(mlp_raw, collect_mlp(db_file_mlp, mlp_tbl)),
+  tar_target(mlp_sample, clean_mlp(mlp_raw, county_stats, wra_data, ddi_fullcount, 1.69)),
+  tar_target(wage_sample, define_wage_sample(mlp_sample)),
 
 
-  tar_target(county_stats,
-             collect_county_stats(ddi_fullcount, inflator = 1.69)),
-  tar_target(mlp_raw, collect_mlp(mlp_db, mlp_tbl))
-  ## tar_target(mlp_sample, clean_mlp(mlp_raw, county_stats, wra_data, ddi_fullcount, 1.69)),
-  ## tar_target(wage_sample, define_wage_sample(mlp_sample))
+  # Figures
+  tar_target(internment_map, internment_proportion_map(county_demographics, county_shp))
 
 )
 #+end_src
@@ -69,6 +72,7 @@ All of the functions above are defined in their own code blocks in the rest of t
 The targets workflow is currently set up to clean the 
 
 * Sample Selection
+After linking individual census records by HIKs across the 1940 and 1950 sample, there are discrepancies in reported races.
 #+begin_src R
 tar_load(mlp_sample)
 mlp_sample |>
@@ -152,58 +156,6 @@ define_wage_sample <- function(mlp_sample) {
 |---|
 
 * Helper Functions and Definitions
-** Geographic State and County Codes
-I started the process of going through the =NARA-WRA-Form26_documentation.pdf=
-to look up the count and city codes manually, but it's pretty annoying.
-I have all of the states and counties coded so far, as well as all of the identifiable cities in states except for California and Oregon.
-Identifing cities has been a lot of me doing detective work of which cities fall into a population category where I can narrow it down to a single one.
-There might be a better way to do it, but I'm leaving the city work for the future.
-
-Here is a function which strips the names and NHGIS codes from a shapefile downloaded via =define_extract_nhgis= in the IPUMSR API.
-
-For the list of state and county names in the WIP previous address list,
-I want to give them appropriate NHGIS codes to make the joins with other datasets easier.
-The county names from the WRA records should match the county names from the NHGIS system for counties in 1940.
-#+begin_src R :colnames yes :tangle R/helper-functions :session *R:internment*
-library(tidyverse)
-nhgis_shp <- "data/nhgis0035_shape.zip"
-
-get_nhgis_codes <- function(shp) {
-  library(dplyr)
-  library(ipumsr)
-.R
-  nhgis_codes <- read_ipums_sf(shp, file_select = matches("us_county_1950")) |>
-    sf::st_drop_geometry() |>
-    mutate(STATENAM = case_when(
-           STATENAM == "Alaska Territory" ~ "Alaska",
-           STATENAM == "Hawaii Territory" ~ "Hawaii",
-           .default = STATENAM
-           )) |>
-    select(STATENAM, NHGISNAM ,NHGISST, NHGISCTY, ICPSRFIP) |>
-    mutate(STATEFIP = floor(as.numeric(NHGISST) /10), # floor deals with historic AK, HI, territories
-           COUNTYICP = as.numeric(NHGISCTY))
-  return(nhgis_codes)
-}
-
-nhgis_codes <- get_nhgis_codes(nhgis_shp)
-
-wra_counties <- function(nhgis, addr) {
-  library(tidyverse)
-  # read nhgiscodes from shapefile
-  wra_counties <- read_csv(addr) |>
-    select(prev_address, state, county, city)
-  join_counties <- inner_join(
-    wra_counties, nhgis,
-    by = c("state" = "STATENAM", "county" = "NHGISNAM")
-  )
-  return(join_counties)
-}
-
-# I'm going to save these wra counties with nhgis codes to a separate file than the original for now, in case I go back later to change the original.
-wra_counties(nhgis_codes, "data/WRA_prev_address.csv") |>
-  write_csv("data/WRA_prev_address.csv")
-#+end_src
-
 ** Birth Cohort Definitions
 I define birth cohorts here to use to group both census respondents and internees.
 Following Arellano-Bover, I use 3-year intervals.
@@ -240,8 +192,8 @@ group_bpl <- function(bpl) {
     grp_num,
     levels = 1:4,
     labels = c(
-      "AZ, CA, OR, WA",
-      "Rest of continental US",
+      "West Coast (AZ, CA, OR, WA)",
+      "Rest of Continental US",
       "Japan",
       "Alaska, Hawaii, other"
     )
@@ -262,14 +214,112 @@ The WDC's final exclusion area included the western halves of Washington and Ore
 #+begin_src R :tangle R/helper_functions.R
 is_evac_county <- function(STATEFIP, COUNTYICP) {
   case_when(
+    ! STATEFIP %in% c(4, 6, 41, 53) ~ FALSE,
     STATEFIP==6 ~ 1, # all of california evacuation zone
-    (STATEFIP==4 & COUNTYICP %in% c(30, 130, 190, 230, 270)) ~ 1, # Arizona evacuation zones
-    (STATEFIP==41 & COUNTYICP %in% c(30, 50, 70, 90, 110, 190, 270, 290, 330, 390, 410, 430, 470, 510, 530, 570, 670, 690, 730, 770)) ~ 1, # Oregon evacuation zones
-    (STATEFIP==53 & COUNTYICP %in% c(50, 70, 90, 150, 270, 310, 330, 350, 370, 390, 410, 430, 470, 510, 530, 570, 590, 610, 690, 730, 770)) ~ 1, # Washington evacuation zones
-    .default = 0
+    internment_location(STATEFIP, COUNTYICP) == "Southern AZ" ~ TRUE, # Arizona evacuation zones
+    internment_location(STATEFIP, COUNTYICP) == "Northern AZ" ~ FALSE, # Arizona evacuation zones
+    internment_location(STATEFIP, COUNTYICP) %in%  c("Northwest OR", "Southern OR", "Fall Line OR", "Clackamas, OR", "Hood River, OR", "Marion, OR", "Multnomah, OR", "Washington, OR") ~ TRUE, # Oregon
+    internment_location(STATEFIP, COUNTYICP) %in% c("Clallam-Jefferson-Island-San-Juan, WA", "Skagit-Snohomish-Whatcom, WA", "Skamania-Kilikatat, WA", "Lewis-Mason-Thurston, WA", "Grays-Harbor-Pacific-Wahkiakum, WA", "Clark, WA", "Cowlitz, WA", "King, WA", "Kitsap, WA", "Pierce, WA", "Yakima, WA") ~ TRUE,
+    .default = FALSE
   )
 }
 #+end_src
+
+#+RESULTS:
+|---|
+
+#+begin_src R :tangle R/helper_functions.R
+internment_location <- function(STATEFIP, COUNTYICP) {
+  case_when(
+    ! STATEFIP %in% c(4, 6, 41, 53) ~ as_factor(STATEFIP),
+    STATEFIP == 4 & COUNTYICP %in% c(30, 70, 90, 110, 130, 190, 210, 230, 250, 270) ~ "Southern AZ",
+    STATEFIP == 4 & COUNTYICP %in% c(10, 50, 150, 170) ~ "Northern AZ",
+    STATEFIP == 6 & COUNTYICP %in% c(30, 50, 90, 170, 270, 430, 510) ~ "South Sierras CA",
+    STATEFIP == 6 & COUNTYICP %in% c(150, 210, 230, 350, 490, 630, 890, 930, 1030, 1050) ~ "Northern CA",
+    STATEFIP == 6 & COUNTYICP %in% c(330, 410, 450, 550, 970) ~ "North Coast CA",
+    STATEFIP == 6 & COUNTYICP %in% c(570, 910, 1150) ~ "Yuba CA",
+    STATEFIP == 6 & COUNTYICP ==   10 ~ "Alameda, CA",
+    STATEFIP == 6 & COUNTYICP ==   70 ~ "Butte, CA",
+    STATEFIP == 6 & COUNTYICP ==  110 ~ "Colusa, CA",
+    STATEFIP == 6 & COUNTYICP ==  130 ~ "Contra Costa, CA",
+    STATEFIP == 6 & COUNTYICP ==  190 ~ "Fresno, CA",
+    STATEFIP == 6 & COUNTYICP ==  250 ~ "Imperial, CA",
+    STATEFIP == 6 & COUNTYICP ==  290 ~ "Kern, CA",
+    STATEFIP == 6 & COUNTYICP ==  310 ~ "Kings, CA",
+    STATEFIP == 6 & COUNTYICP ==  370 ~ "Los Angeles, CA",
+    STATEFIP == 6 & COUNTYICP ==  390 ~ "Madera, CA",
+    STATEFIP == 6 & COUNTYICP ==  470 ~ "Merced, CA",
+    STATEFIP == 6 & COUNTYICP ==  530 ~ "Monterey, CA",
+    STATEFIP == 6 & COUNTYICP ==  590 ~ "Orange, CA",
+    STATEFIP == 6 & COUNTYICP ==  610 ~ "Placer, CA",
+    STATEFIP == 6 & COUNTYICP ==  650 ~ "Riverside, CA",
+    STATEFIP == 6 & COUNTYICP ==  670 ~ "Sacramento, CA",
+    STATEFIP == 6 & COUNTYICP ==  690 ~ "San Benito, CA",
+    STATEFIP == 6 & COUNTYICP ==  710 ~ "San Bernardino, CA",
+    STATEFIP == 6 & COUNTYICP ==  730 ~ "San Diego, CA",
+    STATEFIP == 6 & COUNTYICP ==  750 ~ "San Francisco, CA",
+    STATEFIP == 6 & COUNTYICP ==  770 ~ "San Joaquin, CA",
+    STATEFIP == 6 & COUNTYICP ==  790 ~ "San Luis Obispo, CA",
+    STATEFIP == 6 & COUNTYICP ==  810 ~ "San Mateo, CA",
+    STATEFIP == 6 & COUNTYICP ==  830 ~ "Santa Barbara, CA",
+    STATEFIP == 6 & COUNTYICP ==  850 ~ "Santa Clara, CA",
+    STATEFIP == 6 & COUNTYICP ==  870 ~ "Santa Cruz, CA",
+    STATEFIP == 6 & COUNTYICP ==  950 ~ "Solano, CA",
+    STATEFIP == 6 & COUNTYICP ==  970 ~ "Sonoma, CA",
+    STATEFIP == 6 & COUNTYICP ==  990 ~ "Stanislaus, CA",
+    STATEFIP == 6 & COUNTYICP == 1010 ~ "Sutter, CA",
+    STATEFIP == 6 & COUNTYICP == 1070 ~ "Tulare, CA",
+    STATEFIP == 6 & COUNTYICP == 1110 ~ "Ventura, CA",
+    STATEFIP == 6 & COUNTYICP == 1130 ~ "Yolo, CA",
+    STATEFIP == 41 & COUNTYICP %in% c(30, 70, 90, 410, 530, 570, 710) ~ "Northwest OR",
+    STATEFIP == 41 & COUNTYICP %in% c(10, 130, 210, 230, 250, 370, 450, 490, 550, 590, 610, 630, 690) ~ "Eastern Oregon",
+    STATEFIP == 41 & COUNTYICP %in% c(110, 150, 190, 330) ~ "Southern OR",
+    STATEFIP == 41 & COUNTYICP %in% c(170, 310, 350, 650) ~ "Fall Line OR",
+    STATEFIP == 41 & COUNTYICP == 50 ~ "Clackamas, OR",
+    STATEFIP == 41 & COUNTYICP == 270 ~ "Hood River, OR",
+    STATEFIP == 41 & COUNTYICP == 470 ~ "Marion, OR",
+    STATEFIP == 41 & COUNTYICP == 510 ~ "Multnomah, OR",
+    STATEFIP == 41 & COUNTYICP == 670 ~ "Washington, OR",
+    STATEFIP == 53 & COUNTYICP %in% c(10, 30, 50, 130, 210, 230, 710, 750) ~ "South East WA",
+    STATEFIP == 53 & COUNTYICP %in% c(70, 170, 190, 250, 430, 470, 510, 650) ~ "North East WA",
+    STATEFIP == 53 & COUNTYICP %in% c(90, 290, 310, 550) ~ "Clallam-Jefferson-Island-San-Juan, WA",
+    STATEFIP == 53 & COUNTYICP %in% c(570, 610, 730) ~ "Skagit-Snohomish-Whatcom, WA",
+    STATEFIP == 53 & COUNTYICP %in% c(390, 590) ~ "Skamania-Klikatat, WA",
+    STATEFIP == 53 & COUNTYICP %in% c(410, 450, 670) ~ "Lewis-Mason-Thurston, WA",
+    STATEFIP == 53 & COUNTYICP %in% c(270, 490, 690) ~ "Grays-Harbor-Pacific-Wahkiakum, WA",
+    STATEFIP == 53 & COUNTYICP == 110 ~ "Clark, WA",
+    STATEFIP == 53 & COUNTYICP == 150 ~ "Cowlitz, WA",
+    STATEFIP == 53 & COUNTYICP == 330 ~ "King, WA",
+    STATEFIP == 53 & COUNTYICP == 350 ~ "Kitsap, WA",
+    STATEFIP == 53 & COUNTYICP == 530 ~ "Pierce, WA",
+    STATEFIP == 53 & COUNTYICP == 630 ~ "Spokane, WA",
+    STATEFIP == 53 & COUNTYICP == 770 ~ "Yakima, WA",
+  )
+}
+#+end_src
+
+#+RESULTS:
+|---|
+
+** Dollar values
+
+#+begin_src R :tangle R/helper_functions.R
+na_dollar_vals <- function(df) {
+  cols <- grep("(INCWAGE|INCTOT|INCBUSFM|INCOTHER)$",
+               names(df), value = TRUE)
+
+  df |>
+    mutate(
+      across(any_of("INCWAGE"), ~ ifelse(.x %in% 999998:999999, NA, .x)),
+      across(any_of("INCTOT"), ~ ifelse(.x %in% 9999998:9999999, NA, .x)),
+      across(any_of(c("INCBUSFM", "INCOTHER")), ~ ifelse(.x %in% 99998:99999, NA, .x))
+    )
+
+}
+#+end_src
+
+#+RESULTS:
+|---|
 
 * WRA Camp Internee Records
 :PROPERTIES:
@@ -1103,7 +1153,7 @@ write_csv(csv_data, "data/all_internees.csv")
 
 #+RESULTS:
 
-** Demographic Groups
+** PROJ Demographic Groups
 #+begin_src R
 collect_wra_demographics <- function(x) {
   x |>
@@ -1125,8 +1175,6 @@ library(duckdb)
 tar_load(c(mlp_tbl, mlp_db, ddi_mlp))
 con <- dbConnect(duckdb(), dbdir = mlp_db)
 #+end_src
-
-#+RESULTS:
 
 ** Write MLP data to database
 
@@ -1247,7 +1295,7 @@ collect_mlp <- function(db, table,
 
   # collect HIKs of interest from 1940 data
   hiks_to_keep <- db_tbl |>
-    filter(YEAR == 1940, RACE %in% c(4,5)) |>
+    ## filter(YEAR == 1940, RACE %in% c(4,5)) |>
     select(HIK)
 
   # Main query: join to keep only relevent HIKs,
@@ -1302,73 +1350,11 @@ Top code for 1950: $10,000
 99998 = Unknown 
 Top code for 1950: $10,000
 
-#+begin_src R :tangle R/cleaning_funs.R
-adjust_dollar_vars <- function(df, inflator = 1.69,
-                               harmonize_incwage = TRUE,
-                               replace = FALSE,
-                               name_style = c("var_adj_year", "var_year_adj")) {
-  name_style <- match.arg(name_style)
-  cols <- grep("^(INCWAGE|INCTOT|INCBUSFM|INCOTHER)_(1940|1950)$", names(df), value = TRUE)
-  if (!length(cols)) return(df)
-
-  # adjust topcode for 1950 incwage to match 1940 incwage if present
-  have_incwage_1940 <- "INCWAGE_1940" %in% names(df)
-  incwage_1950_top <- if (harmonize_incwage && have_incwage_1940) 5001 * inflator else 10000
-
-  top_1950 <- c(INCWAGE = incwage_1950_top, INCTOT = 10000, INCBUSFM = 10000, INCOTHER = 10000)
-
-  na_codes_for <- function(var) {
-    switch(var,
-      INCWAGE  = c(999999, 999998),
-      INCTOT   = c(9999999, 9999998),
-      INCBUSFM = c(99999, 99998),
-      INCOTHER = c(99999, 99998),
-      numeric(0)
-    )
-  }
-
-  for (col in cols) {
-    base <- sub("_(1940|1950)$", "", col)
-    yr   <- as.integer(sub(".*_(\\d{4})$", "\\1", col))
-    x    <- as.numeric(df[[col]])
-
-    # set NA/unknown codes to NA (preserve negatives like net loss)
-    na_codes <- na_codes_for(base)
-    x[x %in% na_codes] <- NA_real_
-
-    # inflate 1940 to 1950 dollars
-    if (yr == 1940) x <- x * inflator
-
-    # pick topcode
-    top <- if (yr == 1940 && base == "INCWAGE") 5001 * inflator else
-           if (yr == 1950) top_1950[[base]] else NA_real_
-
-    # cap at top (vectorized)
-    if (!is.na(top)) x <- ifelse(x > top, top, x)
-
-    # name for output column
-    newname <- if (replace) {
-      col
-    } else if (name_style == "var_adj_year") {
-      paste0(base, "_adj_", yr)
-    } else {
-      paste0(base, "_", yr, "_adj")
-    }
-
-    df[[newname]] <- x
-  }
-
-  df
-}
-#+end_src
-
 
 #+begin_src R :tangle R/cleaning_funs.R
 clean_wide_vars <- function(wide_df, ddi, inflator = 1.69) {
   # ten-year inflation rate from bls.gov/data/inflation_calculator.htm
   wide_df <- wide_df |>
-    # adjust dollar amounts for inflation and missing values
-    adjust_dollar_vars(inflator = 1.69, replace = TRUE) |>
     # deal with inconsistencies in reported birthyear across censuses by averaging
     mutate(birthyr_adj = round( (BIRTHYR_1950 + BIRTHYR_1940) / 2 )) |>
     # base time-invariant demographics on 1940 response
@@ -1523,16 +1509,20 @@ calculate_proportions <- function(x, y,
 
 #+begin_src R :tangle R/predict_internment.R
 predict_internment <- function(input, proportions,
-                               name = "internment_prop",
                                # variable names from data
                                by = c("STATEFIP", "COUNTYICP", "RACE", "SEX",
-                                      "BIRTHYR", "BPL")) {
+                                      "BIRTHYR", "BPL"),
+                               threshold = 0.5) {
   library(tidyverse)
 
   if ("BIRTHYR" %in% by) {
     # add year groupings if missing
     if (!"byr_grp" %in% colnames(input)) {
       input <- input |>
+        mutate(bpl_yr = group_birthyr(BIRTHYR))
+    }
+    if (!"byr_grp" %in% colnames(proportions)) {
+      proportions <- proportions |>
         mutate(bpl_yr = group_birthyr(BIRTHYR))
     }
     # use groupings instead of raw birthyear
@@ -1545,19 +1535,26 @@ predict_internment <- function(input, proportions,
       input <- input |>
         mutate(bpl_grp = group_bpl(BPL))
     }
+    if (!"bpl_grp" %in% colnames(proportions)) {
+      proportions <- proportions |>
+        mutate(bpl_grp = group_bpl(BPL))
+    }
     join_vars = str_replace(by, "BPL", "bpl_grp")
   }
 
   intern_grps <- proportions |>
-    group_by(join_vars) |>
+    group_by(across(all_of(join_vars))) |>
     summarise(
       n_wra = sum(n_wra),
       n_fc = sum(n_fc),
-      proportion = sum(n_wra) / sum(n_fc)
+      intern_prop = sum(n_wra) / sum(n_fc)
     )
 
   data <- input |>
-    left_join(intern_grps, by = join_vars)
+    left_join(intern_grps, by = join_vars) |>
+    mutate(
+      intern_status = (intern_prop > threshold)
+    )
 
 
   return(data)
@@ -1654,7 +1651,7 @@ wait_for_extract(fullcount_extract) |>
   download_extract("data/fullcount_census")
 #+end_src
 
-** Reading IPUMS data into database
+** PROJ Reading IPUMS data into database
 With all of the variables and individual records downloaded, the full count census data can be up to 11G uncompressed on disk.
 
 To find the optimal chunk size, I can make use of the =read_ipums_micro_yield()= function.
@@ -1687,47 +1684,256 @@ collect_census_demographics <- function(ddi) {
     )
 }
 #+end_src
+**  TODO Summary Statistics
+I want to gather overall summary statistics on Japanese and Chinese populations from the full-count 1940 census.
+There isn't enough local memory available to hold all observations and variables at one time to calculate.
+To deal with this, I could either:
+  a) read data from the =usa_*****.dat.gz= file in chunks and estimate population level statistics from chunks
+  b) use =duckdb= to read the full-count =usa_*****.dat.gz= file into a new table in the database and then estimate using =dbplyr= tools
+
+*** a) Chunking with =read_ipums_micro_chunked=
+I ran out of memory after the function tried to go from chunks to the overall summary tibble.
+Maybe there are too many variables to do this all at once with.
+Another problem with this is that there's not an easy way to get a total variance back from chunked summaries of means and variances.
+
+#+begin_src R :tangle nil
+sumstats_census <- function(ddi,
+                            internment_groups,
+                            int_grps = c("STATEFIP", "COUNTYICP",
+                                         "RACE", "SEX", "BIRTHYR", "BPL")) {
+
+  summary_cb <- function(x, pos) {
+    x |>
+      filter(YEAR==1940) |>
+      filter(RACE %in% c(4,5)) |>
+      predict_internment(proportions = internment_groups,  by = int_grps) |>
+      mutate(
+        byr_clean = ifelse(BIRTHYR %in% 9996:9999, NA, BIRTHYR),
+        ## iyr_clean = ifelse(YRIMMIG==0, NA, YRIMMIG),
+      ) |>
+      na_dollar_vals() |>
+      filter(if_all(c("byr_clean", "INCWAGE"), ~ !is.na(.))) |>
+      group_by(across(all_of(int_grps))) |>
+      summarise(
+        n_chunk = n(),
+        Male = sum(SEX==1),
+        FirstGen = sum(NATIVITY==5),
+        mean_Age = 1942 - mean(byr_clean, na.rm=T),
+        var_Age = var(byr_clean, na.rm=T),
+        ## mean_ImmigYr = mean(iyr_clean, na.rm=T),
+        ## var_ImmigYr = var(iyr_clean, na.rm=T),
+        Employed = sum(EMPSTAT==1),
+        Unemployed = sum(EMPSTAT==2),
+        NotinLF = sum(EMPSTAT==3),
+        mean_Wage = mean(INCWAGE),
+        var_Wage = var(INCWAGE),
+        mean_Occscore = mean(OCCSCORE, na.rm=T),
+        var_Occscore = var(OCCSCORE, na.rm=T),
+        EvacZone = sum(is_evac_county(STATEFIP, COUNTYICP)),
+      )
+  }
+
+  fullcount_sum_tbl <- read_ipums_micro_chunked(ddi,
+                                                callback = IpumsDataFrameCallback$new(summary_cb),
+                                                chunk_size = 1e7,
+                                                vars = c("YEAR", "STATEFIP", "COUNTYICP",
+                                                         "RACE", "SEX" , "BIRTHYR" , "BPL",
+                                                         "NATIVITY", "EMPSTAT",
+                                                         "INCWAGE", "OCCSCORE"),
+                                                verbose = TRUE) |>
+    group_by(int_grps) |>
+    summarise(
+      n = sum(n_chunk),
+      across(any_of(c("Male", "FirstGen", "EvacZone", "Employed", "NotinLF")),
+             ~ sum(.x)/sum(n_chunk)),
+
+      # Overall Means
+      mean_Age = sum(n_chunk * mean_Age) / sum(n_chunk),
+      mean_ImmigYr = sum(n_chunk * mean_ImmigYr) / sum(n_chunk),
+      mean_Wage = sum(n_chunk * mean_Wage) / sum(n_chunk),
+      mean_Occscore = sum(n_chunk * mean_Occscore) / sum(n_chunk),
+
+      # Overall Variances using the parallel formula
+      var_Age = sum((n_chunk - 1) * var_Age + n_chunk * (mean_Age - sum(n_chunk * mean_Age)/sum(n_chunk))^2) / (sum(n_chunk) - 1),
+      var_ImmigYr = sum((n_chunk - 1) * var_ImmigYr + n_chunk * (mean_ImmigYr - sum(n_chunk * mean_ImmigYr)/sum(n_chunk))^2) / (sum(n_chunk) - 1),
+      var_Wage = sum((n_chunk - 1) * var_Wage + n_chunk * (mean_Wage - sum(n_chunk * mean_Wage)/sum(n_chunk))^2) / (sum(n_chunk) - 1),
+      var_Occscore = sum((n_chunk - 1) * var_Occscore + n_chunk * (mean_Occscore - sum(n_chunk * mean_Occscore)/sum(n_chunk))^2) / (sum(n_chunk) - 1),
+      .groups = "drop"
+    )
+
+  return(fullcount_sum_tbl)
+}
+
+#+end_src
+
+#+RESULTS:
+**** Trying one variable at a time
+Maybe a better way to do this is to write a function that creates a population level summary for one variable at a time and handle counts differently than average floats.
+#+begin_src R :results silent
+library(tidyverse)
+library(targets)
+library(ipumsr)
+library(duckdb)
+
+tar_source()
+tar_load(c(ddi_fullcount, internment_groups))
+ddi <- "~/Documents/Work/Internment/data/fullcount_census/usa_00124.xml"
+var <- c("INCWAGE", "OCCSCORE")
+group_by <- c("STATEFIP", "RACE", "BPL")
+
+callback <- function(x, pos) {
+  x |>
+    na_dollar_vals() |>
+    group_by(across(all_of(group_by))) |>
+    summarise(
+      n_chunk = n(),
+      across(all_of(var), ~ mean(.x, na.rm = TRUE), .names = "{.col}_mean"),
+      across(all_of(var), ~ sd(.x, na.rm = TRUE), .names = "{.col}_sd")
+    )
+}
+#+end_src
+
+#+begin_src R :results silent
+all_vars <- c(group_by, var)
+chunks <- read_ipums_micro_chunked(ddi,
+                                    callback = IpumsDataFrameCallback$new(callback),
+                                    chunk_size = 1e6,
+                                    vars = all_vars,
+                                    verbose = FALSE)
+#+end_src
+
+#+begin_src R
+chunks |>
+  ## mutate(BIRTHYR = ifelse(BIRTHYR %in% 9996:9999, NA, BIRTHYR)) |>
+  predict_internment(proportions = internment_groups,  by = group_by) |>
+  group_by(RACE, intern_status) |>
+  summarise(
+    n = sum(n_chunk),
+    across(ends_with("_mean"), ~ sum(.x * n_chunk, na.rm = TRUE) / sum(n_chunk)),
+    across(ends_with("_sd"), ~ sum((n_chunk - 1) * .x + n_chunk * (.x - sum(n_chunk * .x)/sum(n_chunk))^2, na.rm = TRUE) / (sum(n_chunk) - 1) )
+  )
+#+end_src
+
+#+RESULTS:
+| RACE | intern_status |      n |     INCWAGE_mean |    OCCSCORE_mean | INCWAGE_sd | OCCSCORE_sd |
+|------+---------------+--------+------------------+------------------+------------+-------------|
+|    4 | FALSE         | 165408 | 470.218038561939 | 10.7900766589282 |          0 |           0 |
+|    4 |               |  32319 | 3.20424395829357 | 10.5397444227854 |          0 |           0 |
+|    5 | FALSE         |  48677 | 738.067566567338 | 9.32717710623087 |          0 |           0 |
+|    5 | TRUE          | 356408 | 179.131245729406 | 8.54728288927297 |          0 |           0 |
+|    5 |               |    219 | 874.375365882215 | 5.89041095890411 |          0 |           0 |
+
+*** b) Reading from a =duckdb= table
+Again, I tried this with all of the variables at once, but ran out of memory.
+#+begin_src R :tangle nil
+sumstats_census <- function(db, tbl,
+                            internment_groups,
+                            int_grps = c("STATEFIP", "COUNTYICP",
+                                         "RACE", "SEX", "BIRTHYR", "BPL"),
+                            vars = c("NATIVITY", "EMPSTAT",
+                                     "OCCSCORE", "INCWAGE", "FARM")) {
+  con <- dbConnect(duckdb(), dbdir = db)
+
+  group_data <- tbl(con, tbl) |>
+    filter(YEAR==1940) |>
+    select(YEAR, all_of(int_grps), all_of(vars)) |>
+    mutate(
+      BIRTHYR = ifelse(BIRTHYR %in% 9996:9999, NA, BIRTHYR),
+      ## iyr_clean = ifelse(YRIMMIG==0, NA, YRIMMIG),
+      ) |>
+    na_dollar_vals() |>
+    filter(if_all(c("BIRTHYR", "INCWAGE", "STATEFIP"), ~ !is.na(.))) |>
+    group_by(across(all_of(int_grps))) |>
+    summarise(
+      n_grp = n(),
+      Male = sum(as.integer(SEX==1)),
+      FirstGen = sum(as.integer(NATIVITY==5)),
+      Farm = sum(as.integer(FARM==2)),
+      mean_Age = 1942 - mean(BIRTHYR, na.rm=T),
+      sd_Age = sd(BIRTHYR, na.rm=T),
+      ## mean_ImmigYr = mean(iyr_clean, na.rm=T),
+      ## sd_ImmigYr = sd(iyr_clean, na.rm=T),
+      Employed = sum(as.integer(EMPSTAT==1)),
+      Unemployed = sum(as.integer(EMPSTAT==2)),
+      NotinLF = sum(as.integer(EMPSTAT==3)),
+      mean_Wage = mean(INCWAGE),
+      sd_Wage = sd(INCWAGE),
+      mean_Occscore = mean(OCCSCORE, na.rm=T),
+      sd_Occscore = sd(OCCSCORE, na.rm=T),
+      ) |>
+    collect()
+
+  sum_stats <- group_data |>
+    predict_internment(proportions = internment_groups,  by = int_grps) |>
+    mutate(EvacZone - (is_evac_county(STATEFIP, COUNTYICP))) |>
+    ungroup() |>
+    group_by(RACE, intern_status) |>
+    summarise(
+      n = sum(n_grp),
+      Male = sum(Male)/sum(n_grp),
+      FirstGen = sum(FirstGen)/sum(n_grp),
+      Farm = sum(Farm)/sum(n_grp),
+      Age = sum(mean_Age*n_grp)/
+    )
+
+  dbDisconnect(con)
+
+  return(sum_stats)
+}
+#+end_src
+
 ** County-Level Wages
 #+begin_src R :tangle R/cleaning_funs.R
-collect_county_stats <- function(ddi, inflator = 1.69) {
+collect_county_income <- function(ddi, inflator = 1.69,
+                                  dollar_vars = c("INCWAGE"),
+                                  group_vars = c("YEAR", "STATEFIP", "COUNTYICP")) {
+
   # callback function to calculate county summary stats
-  countystat_cb <- function(x, pos) {
+  cb <- function(x, pos) {
     x |>
-      filter(YEAR == 1940) |>
-      ## mutate(INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE * inflator)) |>
-      rename(INCWAGE_1940 = INCWAGE) |> # var name for adjust_dollar_vars formating
-      adjust_dollar_vars(inflator = inflator) |>
-      group_by(STATEFIP, COUNTYICP) |>
+      na_dollar_vals() |>
+      mutate(across(all_of(dollar_vars),
+                    ~ ifelse(YEAR == 1940, .x * inflator, .x))) |>
+      group_by(across(all_of(group_vars))) |>
       summarise(
-        county_tot.salary   = sum(INCWAGE_adj_1940, na.rm=T),
-        county_haswage.n    = sum(!is.na(INCWAGE_adj_1940)),
-        county_pop          = n(),
-        county_pop.white    = sum(RACE==1),
-        county_pop.chinese  = sum(RACE==4),
-        county_pop.japanese = sum(RACE==5),
+        across(all_of(dollar_vars),
+               list(total = ~ sum(.x, na.rm = TRUE),
+                    nwith = ~ sum(!is.na(.x))),
+               .names = "{.fn}_{.col}"),
         .groups = "drop"
       )
   }
-  
-  county_data <- read_ipums_micro_chunked(
+
+  chunk_data <- read_ipums_micro_chunked(
     ddi,
-    callback = IpumsDataFrameCallback$new(countystat_cb),
+    callback = IpumsDataFrameCallback$new(cb),
     chunk_size = 1e6,
-    vars = c("YEAR", "STATEFIP", "COUNTYICP", "INCWAGE", "RACE"),
+    vars = any_of(c(group_vars, dollar_vars)),
     verbose = TRUE
-  ) |>
-    group_by(STATEFIP, COUNTYICP) |>
+  )
+
+  county_data <- chunk_data|>
+    group_by(across(any_of(group_vars))) |>
     summarise(
-      # hopefully mean of sample median is good aprx for median?
-      county_med.salary   = sum(county_tot.salary, na.rm=T) / sum(county_haswage.n, na.rm=T),
-      county_pop          = sum(county_pop),
-      county_pop.white    = sum(county_pop.white),
-      county_pct.white    = sum(county_pop.white) / sum(county_pop, na.rm=T),
-      county_pop.chinese  = sum(county_pop.chinese),
-      county_pct.chinese  = sum(county_pop.chinese) / sum(county_pop, na.rm=T),
-      county_pop.japanese = sum(county_pop.japanese),
-      county_pct.japanese = sum(county_pop.japanese) / sum(county_pop, na.rm=T),
-      .groups = "drop"
+      across(any_of(starts_with("total_")),
+             ~ sum(.x, na.rm = TRUE),
+             .names = "{.col}"),
+      across(any_of(starts_with("nwith")),
+             ~ sum(.x, na.rm = TRUE),
+             .names = "{.col}"),
+      .groups = "drop") |>
+    pivot_longer(
+      cols = starts_with(c("total_", "nwith_")),
+      names_to = c(".value", "variable"),
+      names_pattern = "(total|nwith)_(.*)"
+    ) |>
+    pivot_wider(
+      names_from = c(variable),
+      values_from = c(total, nwith),
+      names_glue = "{.value}_{variable}",
+      values_fn = sum) |>
+    mutate(
+      mean_INCWAGE = total_INCWAGE / nwith_INCWAGE,
     )
 
   return(county_data)
@@ -1735,9 +1941,54 @@ collect_county_stats <- function(ddi, inflator = 1.69) {
 #+end_src
 
 #+RESULTS:
+|---|
 
-* TODO County GIS Files
-** Historical Counties
+
+* Geography
+** WRA internee previous addresses
+I started the process of going through the =NARA-WRA-Form26_documentation.pdf=
+to look up the count and city codes manually, but it's pretty annoying.
+I have all of the states and counties coded so far, as well as all of the identifiable cities in states except for California and Oregon.
+Identifing cities has been a lot of me doing detective work of which cities fall into a population category where I can narrow it down to a single one.
+There might be a better way to do it, but I'm leaving the city work for the future.
+
+Here is a function which strips the names and NHGIS codes from a shapefile downloaded via =define_extract_nhgis= in the IPUMSR API.
+
+For the list of state and county names in the WIP previous address list,
+I want to give them appropriate NHGIS codes to make the joins with other datasets easier.
+The county names from the WRA records should match the county names from the NHGIS system for counties in 1940.
+#+begin_src R :tangle R/helper_functions.R
+get_nhgis_codes <- function(shp) {
+  library(dplyr)
+  library(ipumsr)
+  nhgis_codes <- read_ipums_sf(shp, file_select = matches("us_county_1950")) |>
+    sf::st_drop_geometry() |>
+    mutate(STATENAM = case_when(
+           STATENAM == "Alaska Territory" ~ "Alaska",
+           STATENAM == "Hawaii Territory" ~ "Hawaii",
+           .default = STATENAM
+           )) |>
+    select(STATENAM, NHGISNAM ,NHGISST, NHGISCTY, ICPSRFIP) |>
+    mutate(STATEFIP = floor(as.numeric(NHGISST) /10), # floor deals with historic AK, HI, territories
+           COUNTYICP = as.numeric(NHGISCTY))
+  return(nhgis_codes)
+}
+
+wra_counties <- function(nhgis, addr) {
+  library(tidyverse)
+  # read nhgiscodes from shapefile
+  wra_counties <- read_csv(addr) |>
+    select(prev_address, state, county, city)
+  join_counties <- inner_join(
+    wra_counties, nhgis,
+    by = c("state" = "STATENAM", "county" = "NHGISNAM")
+  )
+  return(join_counties)
+}
+#+end_src
+
+** Downloading GIS data
+*** Historical County borders
 I download shapefiles for county boundaries in 1940 and 1950 from the [[https://www.nhgis.org/][National Historical Geographic Information System]] (NHGIS).
 
 #+begin_src R :results silent
@@ -1775,7 +2026,106 @@ nhgis_codes <- read_ipums_sf(nhgis_shp, bind_multiple = T) |>
 
 #+RESULTS:
 
-** NHGIS County Census 1940
+***
+** West Coast internment proportions
+#+begin_src R :tangle R/mapping.R
+collect_county_demographics <- function(data) {
+  library(ipumsr)
+
+  pop_data <- data |>
+    ungroup() |>
+    mutate(race_group = case_when(RACE == 5 ~ "japn", RACE == 4 ~ "chin", .default = "other")) |>
+    group_by(STATEFIP, COUNTYICP, race_group) |>
+    summarise(pop = sum(n_fc, na.rm = TRUE)) |>
+    pivot_wider(id_cols = c("STATEFIP", "COUNTYICP"),
+                names_prefix = "pop_",
+                names_from = race_group,
+                values_from = c("pop")) |>
+    mutate(across(all_of(c("pop_chin", "pop_japn")), ~ ifelse(is.na(.x), 0, .x))) |>
+    mutate(pop_tot = pop_japn + pop_chin + pop_other) |>
+    select(STATEFIP, COUNTYICP, pop_tot, pop_japn, pop_chin)
+
+  int_data <- data |>
+    ungroup() |>
+    group_by(STATEFIP, COUNTYICP) |>
+    summarise(internees = sum(n_wra, na.rm = TRUE)) |>
+    mutate(evac_zone = is_evac_county(STATEFIP, COUNTYICP),
+           intern_location = internment_location(STATEFIP, COUNTYICP))
+
+  result <- full_join(pop_data, int_data, by = c("STATEFIP", "COUNTYICP")) |>
+    mutate(int_prop_tot = internees / pop_tot,
+           int_prop_japn = internees / pop_japn)
+
+  return(result)
+}
+#+end_src
+
+#+RESULTS:
+|---|
+
+#+begin_src R :tangle R/mapping.R
+collect_county_shp <- function(shp_file) {
+  library(sf)
+  # read shapefiles and append FIPS and ICPSR codes
+  shp <- read_ipums_sf(shp_file, file_select = ends_with("tl2008_us_county_1950.zip")) |>
+    mutate(
+      STATEFIP = as.numeric(NHGISST) / 10,
+      COUNTYICP = as.numeric(NHGISCTY),
+    ) |>
+    select(State = STATENAM, County = NHGISNAM, STATEFIP, COUNTYICP, geometry)
+}
+#+end_src
+
+#+begin_src R :tangle R/mapping.R
+internment_proportion_map <- function(df, shp_file) {
+  library(tidyverse)
+  library(ggplot2)
+
+  shp_data <- collect_county_shp(shp_file)
+
+  map_data <- left_join(shp_data, df, by = c("STATEFIP", "COUNTYICP")) |>
+    group_by(intern_location) |>
+    summarise(across(any_of(c("pop_tot", "pop_chin", "pop_japn", "internees")),
+                     ~ sum(.x, na.rm = TRUE)),
+              evac_zone = mean(evac_zone, na.rm = TRUE)) |>
+    mutate(int_prop_tot = internees / pop_tot,
+           int_prop_japn = internees / pop_japn)
+
+  plot <- ggplot(data = map_data, aes(geometry = geometry)) +
+    geom_sf(aes(fill=int_prop_japn,
+                color = as_factor(evac_zone))) +
+    theme_linedraw() +
+    theme(
+      legend.title = element_blank(),
+      legend.position = "inside",
+      legend.position.inside = c(0,0)
+      ) +
+    ## labs(title="Internment Proportion of 1940 Japanese Population") +
+    scale_color_manual(values = c("0" = NA, "1" = "#C34043")) +
+    scale_fill_gradient2(
+      limits = c(0,1),
+      oob = scales::squish,
+      na.value = "#625e5a",
+      low = "#252535",
+      mid = "#2D4F67",
+      high = "#f2ecbc",
+      midpoint = 0.5,
+      ## transform = "exp"
+    ) +
+    coord_sf(crs = st_crs(8858),
+             xlim = c(-3000000, -1000000),
+             ylim = c(3900000, 5900000),
+             expand = FALSE)
+
+  return(plot)
+}
+#+end_src
+
+#+RESULTS:
+|---|
+
+** Other Geographical data
+***  IDEA NHGIS County Census 1940
 :PROPERTIES:
 :header-args:R: :tangle R/download_nhgis.R :colnames yes
 :END:
@@ -1800,7 +2150,7 @@ nhgis_extract <- define_extract_nhgis(
   
 )
 #+end_src
-** Census Designated Places
+***  IDEA Census Designated Places
 :PROPERTIES:
 :header-args:R: :session *R:downloads*
 :END:
@@ -1852,7 +2202,7 @@ nhgis_place_codes <- read_ipums_sf(nhgis_place_shp) |>
 
 #+RESULTS:
 
-* TODO Japanese American Redress Verification Information System (JARVIS) Files
+* IDEA Japanese American Redress Verification Information System (JARVIS) Files
 :PROPERTIES:
 :HEADER-ARGS:R: :session *R:internment* :results silent
 :END:
@@ -1896,12 +2246,13 @@ contacts <- read_jarvis_raw(contacts_file)
 
 #+end_src
 
-* TODO Japanese American Research Project (JARP)
+* IDEA Japanese American Research Project (JARP)
 Download the Issei, Nisei, and Sansei files from Gene Levine's [[https://www.icpsr.umich.edu/web/NACDA/studies/8450/datadocumentation][online repository.]]
 #+begin_src R
 
 #+end_src
 
+* Local Variables
 ;; Local Variables: 
 ;; eval: (add-hook 'after-save-hook (lambda ()(if (y-or-n-p "Tangle?")(org-babel-tangle))) nil t) 
 ;; End:

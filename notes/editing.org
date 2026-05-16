@@ -332,4 +332,77 @@ Include standard checks to strengthen credibility:
 
 Which of these resonates most with you? I can help draft specific sections once you decide on your primary contribution story.
 
+*  : Let's start with the results
+I want to add robustness checks using different internment status estimates.
+How should I introduce these and where should I present the results?
+
+I have these results for three different internment statuses.
+The first is the one I originally report on.
+~county_intprop~ is not conditioned on race, so Chinese also get the proportion of Japanese interned from their home state.
+~intprob_AB~ is based on the Bayes' Rule application I describe at the end of the methods section
+and conditions on state in 1940, birthyear, birthplace, and race.
+~intprob_full~ is similar but also adds sex and county in 1940 to predict internment.
+
+| Dependent Var.:   | Income in 1950 | Income in 1950 | Income in 1950 | Income in 1950 |
+|                   |                |                |                |                |
+| Internment Status | 250.7***       |                |                |                |
+|                   | (59.86)        |                |                |                |
+| Age               | 12.45          | 12.78          | 13.0           | 13.04          |
+|                   | (8.210)        | (8.221)        | (8.210)        | (8.210)        |
+| Age square        | -0.3143***     | -0.3189***     | -0.3236***     | -0.3237***     |
+|                   | (0.0835)       | (0.0836)       | (0.0835)       | (0.0835)       |
+| Male              | 487.5***       | 485.0***       | 486.1***       | 499.5***       |
+|                   | (35.14)        | (35.17)        | (35.13)        | (35.30)        |
+| Japanese          | -246.2***      | -44.2          | -268.6***      | -208.1***      |
+|                   | (64.55)        | (39.78)        | (66.73)        | (56.02)        |
+| Income in 1940    | 0.2409***      | 0.2416***      | 0.2391***      | 0.2406***      |
+|                   | (0.0189)       | (0.0189)       | (0.0189)       | (0.0189)       |
+| county_intprop    |                | 2,041.8        |                |                |
+|                   |                | (1,284.3)      |                |                |
+| intprob_AB        |                |                | 282.5***       |                |
+|                   |                |                | (64.33)        |                |
+| intprob_full      |                |                |                | 213.7***       |
+|                   |                |                |                | (48.55)        |
+| Fixed-Effects:    | -------------- | -------------- | -------------- | -------------- |
+| Education         | Yes            | Yes            | Yes            | Yes            |
+| _________________   | ______________   | ______________   | ______________   | ______________   |
+| S.E. type         | IID            | IID            | IID            | IID            |
+| Observations      | 8,136          | 8,136          | 8,136          | 8,136          |
+| R2                | 0.10227        | 0.10061        | 0.10246        | 0.10247        |
+| Within R2         | 0.08326        | 0.08156        | 0.08346        | 0.08346        |
+
+
+
+**  
+#+begin_reasoning
+The user wants to add robustness checks using different internment status estimates. They have three different measures:
+1. county_intprop - county-level proportion, not conditioned on race
+2. intprob_AB - Bayes' Rule application conditioned on state, birthyear, birthplace, race
+3. intprob_full - similar to AB but also conditions on sex and county
+
+They want to know how to introduce these and where to present the results.
+
+Looking at the table, the results seem quite consistent across specifications - all three internment measures show positive and significant effects on 1950 income, with coefficients ranging from ~214 to ~283.
+
+For presentation, I should suggest:
+1. Where to place this in the results section
+2. How to introduce it textually
+3. How to interpret the consistency across specifications
+4. How to frame this as a robustness check
+
+The logical place would be after the main results table, as a robustness check on the treatment measure.
+#+end_reasoning
+
+
+Here's how to structure and present these robustness checks:
+
+* Where to Place This
+Add this as a new subsection after your main results table (Table 1), called something like:
+
+*"Robustness to Alternative Internment Measures"*
+
+* How to Introduce Textually
+
+/"To ensure my results are not driven by the specific construction of the predicted internment measure, I estimate the main specification using three alternative measures of internment probability. The first, =county_intprop=, assigns all individuals in a county the same internment proportion based solely on county-level patterns.
+
 *  :

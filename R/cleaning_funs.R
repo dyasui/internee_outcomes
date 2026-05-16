@@ -71,7 +71,7 @@ collect_mlp <- function(db, table,
 
   # collect HIKs of interest from 1940 data
   hiks_to_keep <- db_tbl |>
-    filter(YEAR == 1940, RACE %in% c(4,5)) |>
+    ## filter(YEAR == 1940, RACE %in% c(4,5)) |>
     select(HIK)
 
   # Main query: join to keep only relevent HIKs,
@@ -93,69 +93,9 @@ collect_mlp <- function(db, table,
   return(reg_data)
 }
 
-adjust_dollar_vars <- function(df, inflator = 1.69,
-                               harmonize_incwage = TRUE,
-                               replace = FALSE,
-                               name_style = c("var_adj_year", "var_year_adj")) {
-  name_style <- match.arg(name_style)
-  cols <- grep("^(INCWAGE|INCTOT|INCBUSFM|INCOTHER)_(1940|1950)$", names(df), value = TRUE)
-  if (!length(cols)) return(df)
-
-  # adjust topcode for 1950 incwage to match 1940 incwage if present
-  have_incwage_1940 <- "INCWAGE_1940" %in% names(df)
-  incwage_1950_top <- if (harmonize_incwage && have_incwage_1940) 5001 * inflator else 10000
-
-  top_1950 <- c(INCWAGE = incwage_1950_top, INCTOT = 10000, INCBUSFM = 10000, INCOTHER = 10000)
-
-  na_codes_for <- function(var) {
-    switch(var,
-      INCWAGE  = c(999999, 999998),
-      INCTOT   = c(9999999, 9999998),
-      INCBUSFM = c(99999, 99998),
-      INCOTHER = c(99999, 99998),
-      numeric(0)
-    )
-  }
-
-  for (col in cols) {
-    base <- sub("_(1940|1950)$", "", col)
-    yr   <- as.integer(sub(".*_(\\d{4})$", "\\1", col))
-    x    <- as.numeric(df[[col]])
-
-    # set NA/unknown codes to NA (preserve negatives like net loss)
-    na_codes <- na_codes_for(base)
-    x[x %in% na_codes] <- NA_real_
-
-    # inflate 1940 to 1950 dollars
-    if (yr == 1940) x <- x * inflator
-
-    # pick topcode
-    top <- if (yr == 1940 && base == "INCWAGE") 5001 * inflator else
-           if (yr == 1950) top_1950[[base]] else NA_real_
-
-    # cap at top (vectorized)
-    if (!is.na(top)) x <- ifelse(x > top, top, x)
-
-    # name for output column
-    newname <- if (replace) {
-      col
-    } else if (name_style == "var_adj_year") {
-      paste0(base, "_adj_", yr)
-    } else {
-      paste0(base, "_", yr, "_adj")
-    }
-
-    df[[newname]] <- x
-  }
-
-  df
-}
-
 clean_wide_vars <- function(wide_df, ddi, inflator = 1.69) {
   # ten-year inflation rate from bls.gov/data/inflation_calculator.htm
   wide_df <- wide_df |>
-    # adjust dollar amounts for inflation and missing values
-    adjust_dollar_vars(inflator = 1.69, replace = TRUE) |>
     # deal with inconsistencies in reported birthyear across censuses by averaging
     mutate(birthyr_adj = round( (BIRTHYR_1950 + BIRTHYR_1940) / 2 )) |>
     # base time-invariant demographics on 1940 response
@@ -223,45 +163,56 @@ clean_long_vars <- function(wide_df, ddi) {
   return(long_df)
 }
 
-collect_county_stats <- function(ddi, inflator = 1.69) {
+collect_county_income <- function(ddi, inflator = 1.69,
+                                  dollar_vars = c("INCWAGE"),
+                                  group_vars = c("YEAR", "STATEFIP", "COUNTYICP")) {
+
   # callback function to calculate county summary stats
-  countystat_cb <- function(x, pos) {
+  cb <- function(x, pos) {
     x |>
-      filter(YEAR == 1940) |>
-      ## mutate(INCWAGE = ifelse(INCWAGE %in% c(999999,999998), NA, INCWAGE * inflator)) |>
-      rename(INCWAGE_1940 = INCWAGE) |> # var name for adjust_dollar_vars formating
-      adjust_dollar_vars(inflator = inflator) |>
-      group_by(STATEFIP, COUNTYICP) |>
+      na_dollar_vals() |>
+      mutate(across(all_of(dollar_vars),
+                    ~ ifelse(YEAR == 1940, .x * inflator, .x))) |>
+      group_by(across(all_of(group_vars))) |>
       summarise(
-        county_tot.salary   = sum(INCWAGE_adj_1940, na.rm=T),
-        county_haswage.n    = sum(!is.na(INCWAGE_adj_1940)),
-        county_pop          = n(),
-        county_pop.white    = sum(RACE==1),
-        county_pop.chinese  = sum(RACE==4),
-        county_pop.japanese = sum(RACE==5),
+        across(all_of(dollar_vars),
+               list(total = ~ sum(.x, na.rm = TRUE),
+                    nwith = ~ sum(!is.na(.x))),
+               .names = "{.fn}_{.col}"),
         .groups = "drop"
       )
   }
-  
-  county_data <- read_ipums_micro_chunked(
+
+  chunk_data <- read_ipums_micro_chunked(
     ddi,
-    callback = IpumsDataFrameCallback$new(countystat_cb),
+    callback = IpumsDataFrameCallback$new(cb),
     chunk_size = 1e6,
-    vars = c("YEAR", "STATEFIP", "COUNTYICP", "INCWAGE", "RACE"),
+    vars = any_of(c(group_vars, dollar_vars)),
     verbose = TRUE
-  ) |>
-    group_by(STATEFIP, COUNTYICP) |>
+  )
+
+  county_data <- chunk_data|>
+    group_by(across(any_of(group_vars))) |>
     summarise(
-      # hopefully mean of sample median is good aprx for median?
-      county_med.salary   = sum(county_tot.salary, na.rm=T) / sum(county_haswage.n, na.rm=T),
-      county_pop          = sum(county_pop),
-      county_pop.white    = sum(county_pop.white),
-      county_pct.white    = sum(county_pop.white) / sum(county_pop, na.rm=T),
-      county_pop.chinese  = sum(county_pop.chinese),
-      county_pct.chinese  = sum(county_pop.chinese) / sum(county_pop, na.rm=T),
-      county_pop.japanese = sum(county_pop.japanese),
-      county_pct.japanese = sum(county_pop.japanese) / sum(county_pop, na.rm=T),
-      .groups = "drop"
+      across(any_of(starts_with("total_")),
+             ~ sum(.x, na.rm = TRUE),
+             .names = "{.col}"),
+      across(any_of(starts_with("nwith")),
+             ~ sum(.x, na.rm = TRUE),
+             .names = "{.col}"),
+      .groups = "drop") |>
+    pivot_longer(
+      cols = starts_with(c("total_", "nwith_")),
+      names_to = c(".value", "variable"),
+      names_pattern = "(total|nwith)_(.*)"
+    ) |>
+    pivot_wider(
+      names_from = c(variable),
+      values_from = c(total, nwith),
+      names_glue = "{.value}_{variable}",
+      values_fn = sum) |>
+    mutate(
+      mean_INCWAGE = total_INCWAGE / nwith_INCWAGE,
     )
 
   return(county_data)

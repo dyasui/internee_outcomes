@@ -48,3 +48,5 @@ data/mlp.duckdb
 notes/cleaning-functions.org
 .vscode
 /data/ipums.duckdb
+/data/fullcount_census
+/figures/.auctex-auto

@@ -1,0 +1,153 @@
+:PROPERTIES:
+:header-args:R: :session *R:internment* :colnames yes :export no
+:END:
+#+title: Duckplyr
+
+#+begin_src R :results silent
+library(targets)
+library(duckdb)
+library(duckplyr)
+library(tidyverse)
+tar_source()
+#+end_src
+
+
+#+begin_src R
+db <- "~/Documents/Work/Internment/data/mlp.duckdb"
+con <- DBI::dbConnect(duckdb(), db)
+
+dbListTables(con)
+#+end_src
+
+#+RESULTS:
+| x             |
+|---------------|
+| mlp_1940_1950 |
+
+#+begin_src R
+join_vars <- c("STATEFIP", "COUNTYICP", "RACE", "byr_grp", "bpl_grp")
+#+end_src
+
+#+RESULTS:
+| x         |
+|-----------|
+| STATEFIP  |
+| COUNTYICP |
+| RACE      |
+| byr_grp   |
+| bpl_grp   |
+
+#+begin_src R :results silent
+mlp_groups <- tbl(con, "mlp_1940_1950") |>
+  filter(YEAR == 1940) |>
+  select(STATEFIP, COUNTYICP, RACE, SEX, BPL, BIRTHYR) |>
+  collect() |>
+  mutate(
+    byr_grp = group_birthyr(BIRTHYR),
+    bpl_grp = group_bpl(BPL)
+  ) |>
+  count(STATEFIP, COUNTYICP, RACE, byr_grp, bpl_grp)
+#+end_src
+
+#+begin_src R :results silent
+tar_load(wra_data)
+
+wra_groups <- wra_data |>
+  count(STATEFIP, COUNTYICP, RACE, byr_grp, bpl_grp)
+#+end_src
+
+#+begin_src R :results silent
+interned_proportions <- mlp_groups |>
+  left_join(wra_groups,
+            by = join_vars,
+            suffix = c("_mlp", "_wra")) |>
+  mutate(proportion = n_wra / n_mlp)
+#+end_src
+
+#+begin_src R :results silent
+mlp_internment_proportions <- tbl(con, "mlp_1940_1950") |>
+  filter(YEAR == 1940) |>
+  select(HIK, STATEFIP, COUNTYICP, RACE, SEX, BPL, BIRTHYR) |>
+  collect() |>
+  mutate(
+    byr_grp = group_birthyr(BIRTHYR),
+    bpl_grp = group_bpl(BPL)
+  ) |>
+  left_join(interned_proportions, by = join_vars)
+
+head(mlp_internment_proportions)
+#+end_src
+
+#+begin_src R
+dbWriteTable(con, "mlp_1940_1950", mlp_internment_proportions, temporary = TRUE)
+#+end_src
+
+#+RESULTS:
+: Could not parse R result
+
+#+begin_src R :results graphics file :file ./figures/pr_intern_histogram.png
+ggplot(mlp_internment_proportions, aes(x = proportion)) +
+  geom_histogram()
+#+end_src
+
+#+RESULTS:
+[[file:../figures/pr_intern_histogram.png]]
+
+* Analysis
+#+begin_src R :results graphics file :file ./figures/INCWAGE_plot.pdf
+wage_plot_data <- tbl(con, "dbplyr_atxbcgPWCa") |>
+  select(YEAR, INCWAGE, proportion, RACE, SEX) |>
+  collect() |>
+  adjust_dollar_vars()
+
+ggplot(wage_plot_data, aes(x = YEAR, y = INCWAGE, color = ))
+#+end_src
+
+#+RESULTS:
+[[file:./figures/INCWAGE_plot.pdf]]
+
+
+* Plans
+Here's what the main datasets look like:
+
+#+name: wra_data
+| ind_number | STATEFIP | COUNTYICP | RACE | SEX | BIRTHYR | BPL | ... |
+|------------+----------+-----------+------+-----+---------+-----+-----|
+| 33001A     |        6 |        10 |    5 |   1 |    1910 |     |     |
+: 109,246 x 32
+
+
+#+name: 1940_fullcount
+| STATEFIP | COUNTYICP | RACE | SEX | BIRTHYR | BPL | ... |
+|----------+-----------+------+-----+---------+-----+-----|
+|        6 |        10 |    5 |   1 |    1910 |     |     |
+: 131,904,000 x ?
+
+#+name: mlp_1940_1950
+| HIK             | YEAR | STATEFIP | COUNTYICP | RACE | SEX | BIRTHYR | BPL | INCWAGE | ... |
+|-----------------+------+----------+-----------+------+-----+---------+-----+---------+-----|
+| JW1T3R6I0a1ExjA | 1940 |        6 |        10 |    5 |   1 |    1910 |     |         |     |
+| JW1T3R6I0a1ExjA | 1950 |        6 |        15 |    5 |   1 |    1910 |     |         |     |
+
+For internment probability estimation, I need to:
+#+begin_example
+wra_data -count cases->
+#+end_example
+
+#+begin_src dot :file graph-0.pdf
+digraph structs {
+    node [shape=record];
+    wra_data [label="<f0> wra_data \n 109,246 | {<f1>ind_num |<f2>STATEFIP |<f3> COUNTYICP |<f4> RACE |<f5> SEX |<f6> BIRTHYR |<f7> BPL | ...}"];
+    fc_1940 [label="<f0> 1940 fullcount \n 131,904,000 | {<f1>STATEFIP |<f2>COUNTYICP |<f3> RACE |<f4> SEX |<f5> BIRTHYR |<f6> BPL | ...}"];
+    int_prop [label="<f0> internment \nproportions | {<f1>STATEFIP |<f2>COUNTYICP | <f3>RACE | <f4>SEX | <f5>byr | <f6>bpl |<f7> prop}"];
+    wra_grp [label="<f0> wra \n groups | {<f1>STATEFIP |<f2>COUNTYICP | <f3>RACE | <f4>SEX | <f5>byr | <f6>bpl |<f7> n_wra}"];
+    fc_grp [label="<f0> 1940 fullcount \n groups | {<f1>STATEFIP |<f2>COUNTYICP |<f3> RACE |<f4> SEX |<f5> byr |<f6> bpl | n_fc}"];
+    wra_data:f2 -> wra_grp:f1;
+    wra_grp:f7 -> int_prop:f7;
+    fc_1940:f1 -> fc_grp:f1;
+    fc_grp:f7 -> int_prop:f7;
+}
+#+end_src
+
+#+RESULTS:
+[[file:graph-0.pdf]]

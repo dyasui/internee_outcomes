@@ -2,11 +2,7 @@ name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iterat
 form26_file|stem|11e8aa3100675520|6293d8226f4fd12a|2c530c1562a7fbd1|1522383917|data/WRA.FORM26.PU.txt|t16829.9232638889s|s8969488b|8969488|file|local|vector|||0.576||
 shp|stem|6560877e41eff557|7ec2681f1c675af0|2c530c1562a7fbd1|535786637|data/nhgis0035_shape.zip|t20237.9617455549s|s313167188b|313167188|file|local|vector|||0.572||
 nhgis|stem|c5ae0ada8dfbcf1c|7b38f3da7155e86f|2c530c1562a7fbd1|-441644372|data/nhgis_codes.csv|t20262.9794756982s|s81471b|81471|file|local|vector|||0.544||
-nhgis_codes|stem|c5ae0ada8dfbcf1c|7b38f3da7155e86f|2c530c1562a7fbd1|-1570799778|data/nhgis_codes.csv|t20262.9794756982s|s81471b|81471|file|local|vector|||1.646||
-form26_raw|stem|11e8aa3100675520|6293d8226f4fd12a|2c530c1562a7fbd1|223250430|data/WRA.FORM26.PU.txt|t16829.9232638889s|s8969488b|8969488|file|local|vector|||0||
-wra_counties|function|5405300fecc2a333
 wract|stem|b5b4a8704ef6a04e|f29657cd94cb284e|96ad59bfb89b9106|-186488897||t20264.993236872s||14328|fst_tbl|local|vector|||0.004||could not find function 'wra_counties'
-get_nhgis_codes|function|00c08f845e1735ce
 emp_vars|object|2105e5fcec01012a
 dem_vars|object|fa8f531a8a491d29
 edu_vars|object|7fe4c6f960208597
@@ -47,44 +43,63 @@ clean_sample|function|d15d86c0a1c3737f
 collect_sample|function|b217dc10b392f3a6
 sample_long|stem|0fae1aef82a9d617|5b4ebacbc810bdc5|8d2b3e60a597a324|1915771157||t20341.7523811486s|s2564062b|2564062|rds|local|vector|||0.586||
 mlp_cleaned|stem|679379ced2d9ffa6|9b47dcb0525143d4|cec586fb1b85f8d5|867578914||t20372.7726419317s|s3176980b|3176980|rds|local|vector|||0.709||
-mlp_sample|stem|f83af52a75492e92|9332ebd0fe224576|e1658940552b9b03|-1554629035||t20375.9747157131s|s3804240b|3804240|rds|local|vector|||648.283||
-wage_sample|stem|c5bba963fb99146b|83a0a4eef51c1c45|8d94ae13ed711ec1|-603891538||t20375.9819158393s|s617144b|617144|rds|local|vector|||0.265||
 calc_int_proportion|function|a910cd88d186a328
-ddi_mlp|stem|e46c61d648d41253|3de5b22e1ce2236c|2c530c1562a7fbd1|2019325191|data/mlp_v2_0/usa_00131.xml|t20287.8117708333s|s810299b|810299|file|local|vector|||0.269||
-wra_addr|stem|9768fd74d3b093ec|c0fff599cfabc119|2c530c1562a7fbd1|-825283821|data/WRA_prev_address.csv|t20284.0527430556s|s16785b|16785|file|local|vector|||0.318||
 extract_def|stem|101eebe54031b0cb|96370b2e33adaae4|f3b9a231b1b368f4|1644780375||t20270.9809953704s|s874b|874|rds|local|vector|||0.36||
-wra_data|stem|74290e06f94aee87|3642d58430340b91|d45cf3490c041b9f|-1309043206||t20376.9936574074s|s2218178b|2218178|rds|local|vector|||5.237|There were 6 warnings in `mutate()`. The first warning was: ℹ In argument: `across(...)`. Caused by warning in `recode.numeric()`: ! NAs introduced by coercion ℹ Run `dplyr::last_dplyr_warnings()` to see the 5 remaining warnings.|
 extract_ready|stem|ad0c9fc1b48021ae|75e35132149a3af7|3ffafea5cfc21467|-456591837||t20271.0736921296s|s89b|89|rds|local|vector|||0.001||
 mlp_db|stem|31c33f9742efc372|41cb73342219e833|2c530c1562a7fbd1|-864068346|data/mlp.duckdb|t20565.0777292095s|s14336929792b|14336929792|file|local|vector|||0.142||
-mlp_tbl|stem|4ca64a2e1bd5fac5|eb31f3ab96217b49|d7dd69a8debb0568|1503791023||t20565.0837022086s|s65b|65|rds|local|vector|||0.049||
-mlp_raw|stem|d3690968abc66d17|d17fb6c62671c891|2c530c1562a7fbd1|-788791517||t20566.8613827782s|s57b|57|rds|local|vector|||0.134||
 ddi_fullcount|stem|c4f16ccfc172450c|9f920095266b8e96|60d4f02c6c865f68|293976391|data/fullcount_census//usa_00128.xml|t20266.1548611111s|s611909b|611909|file|local|vector|||0.001||
-county_stats|stem|bc966698366f1fa1|53e7e92d1bf72859|e47eaf3a1f4ea828|-49828956||t20566.8745465883s|s85747b|85747|rds|local|vector|||111.486||
+funncount_stats|stem|error|a3bfb530c587beba|e61c1f7a67cd1dd8|-2011238716||t20579.9419793009s||0|null|local|vector|||0.006||could not find function 'sumstats_census'
+adjust_dollar_vars|function|553573ec72b590db
+sumstats_census|function|b737366c084bd178
+fc_grps|stem|93aef1a31dddcc33|97e37ad644224e25|a32a31e75bcdfec5|-810060633||t20579.9607130257s|s11918119b|11918119|rds|local|vector|||229.004||
+internment_groups|stem|9145917f11b600b0|50ea676a723b422f|4c60e2f4782deee3|469874924||t20579.9608936214s|s13176963b|13176963|rds|local|vector|||4.109||
+fullcount_stats|stem|error|a3bfb530c587beba|fca44edd7a86b3b8|621414709||t20579.9649625669s||0|null|local|vector|||350.843||ℹ In argument: `bpl_grp = group_bpl(BPL)`. Caused by error: ! vector memory limit of 16.0 Gb reached, see mem.maxVSize()
+wra_grps|stem|5abdfc237d697cbb|1ff277e866017268|b787533e390c8796|-329349762||t20586.0811889666s|s25521b|25521|rds|local|vector|||0.048||
+nhgis_shp|object|4a4c531d270d5b0d
+nhgis_codes|object|2b60c0652a315fe7
+county_demographics|stem|f88b8b449d7c7944|0fc1557431bddea8|d527980cb6a0c9f4|-1234797040||t20586.0869141954s|s34619b|34619|rds|local|vector|||6.236||
+collect_county_stats|function|0cc32ec6de3699db
+wra_data|stem|d779f7360539acb0|3642d58430340b91|7bb3475aef1fe4f3|-1309043206||t20587.8207691172s|s2226964b|2226964|rds|local|vector|||5.748|There were 6 warnings in `mutate()`. The first warning was: ℹ In argument: `across(...)`. Caused by warning in `recode.numeric()`: ! NAs introduced by coercion ℹ Run `dplyr::last_dplyr_warnings()` to see the 5 remaining warnings.|
+mlp_tbl|stem|4ca64a2e1bd5fac5|aa04324b47879389|8a72a8019aefd3cf|1503791023||t20587.820770038s|s65b|65|rds|local|vector|||0.056||
+internment_map|stem|9cd9b26a08762340|afa83bc49418511b|fa7c9ef81778f149|-2112505334||t20587.8216510547s|s584907392b|584907392|rds|local|vector|||39.973||
+county_stats|stem|error|53e7e92d1bf72859|90f74970130da43f|-49828956||t20588.9180099234s||0|null|local|vector|||0.004||could not find function 'collect_county_stats'
+ddi_mlp|object|05d9ae46a1925cef
 occ_category|function|81c02408dccc900e
+na_dollar_vals|function|01c7c8ee9ae6ee89
 define_wage_sample|function|38ef9c1d45c59d13
-.Random.seed|object|9b07b0886a7085ef
+.Random.seed|object|c34e60241a2ca940
 form26_drop_dup|function|a479b7157659cbf7
+county_shp|object|8bec03d8e1365fe1
 collect_wra_demographics|function|accc04f3f3f35324
 define_ipums_extract|function|3966825d8524104b
-group_bpl|function|0d54ea4e8590a2e8
+group_bpl|function|24cc4c6b2a43a5b0
+wra_counties|function|f81d2b641959283a
 nhgis_extract|object|f525dc6fb316f0e2
+collect_county_shp|function|9a4f19c2f6605c36
 collect_census_demographics|function|48c2feb45dd6e1a9
+get_nhgis_codes|function|27d6474666f31e8a
+wra_addr|object|caf28346de47a285
+form26_raw|object|a1145dd8e5b75f08
+internment_location|function|bda661cd7402f0da
 read_fw_form26|function|9c2a5332dcf968fc
-adjust_dollar_vars|function|d9d86e7381ed584a
 write_ipums_db|function|936fb2340941b08b
 submit_and_download_extract|function|5c952a8614914c2d
 calculate_proportions|function|cdc57c040c1d840f
 group_birthyr|function|6f51488f23f1168b
 form26_label|function|9e50da66cdf02b32
+db_file_mlp|object|a08d0e6f9dea009e
 collect_mlp|function|a28cedc0d9e8bfbf
 theme_internment|function|788f3f8f309c1a00
-is_evac_county|function|87e16828e9ad46e6
 clean_long_vars|function|ec29ce9b2da81e9d
-collect_county_stats|function|f730ccaa239f8569
-clean_wide_vars|function|f9daf1a3cb6c9f7f
-predict_internment|function|cf0acda72d2d0bad
-compile_WRA|function|de4d9b2bde6f9592
-clean_mlp|function|3a57d2ddb0c33e9b
-wra_grps|stem|5abdfc237d697cbb|1ff277e866017268|8f6a22b48e44c6ca|-329349762||t20566.9342429512s|s25521b|25521|rds|local|vector|||0.058||
-fc_grps|stem|93aef1a31dddcc33|97e37ad644224e25|a32a31e75bcdfec5|-810060633||t20566.9358799984s|s11918119b|11918119|rds|local|vector|||138.137||
-internment_groups|stem|9145917f11b600b0|50ea676a723b422f|4c60e2f4782deee3|469874924||t20566.9359669158s|s13176963b|13176963|rds|local|vector|||2.909||
+collect_county_income|function|db75b5264791d3ca
+internment_proportion_map|function|ed21f7d4b21e4123
+is_evac_county|function|fe2ea3b26952e787
+clean_wide_vars|function|81f9753532f08beb
+predict_internment|function|df9edd45116d15c5
+compile_WRA|function|d3a8378ce1be8ddc
+collect_county_demographics|function|2ee893f09306c904
+clean_mlp|function|ec046cb051687f67
+mlp_raw|stem|error|88b7a236cb3595b4|a116ad2041964141|-788791517||t20588.9948794538s||0|null|local|vector|||0.067||argument 'table' is missing, with no default
+county_income|stem|b5073d0e5f975cd3|5d222bd70dbf5017|f45a99f5dd6f56fb|1332700542||t20588.9980238693s|s255628b|255628|rds|local|vector|||271.639||
+mlp_sample|stem|error|9332ebd0fe224576|d5cf74be93b4eb6b|-1554629035||t20588.9980301032s||0|null|local|vector|||0.253||ℹ In argument: `.data$var_name %in% names(data)`. Caused by error in `predict_internment()`: ! unused argument (method = methods)
+wage_sample|stem|error|83a0a4eef51c1c45|8a37f82fdd0f374a|-603891538||t20588.9980302942s||0|null|local|vector|||0.01||no applicable method for 'pivot_wider' applied to an object of class 'NULL'

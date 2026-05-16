@@ -1,7 +1,7 @@
-* Data Visualizations
-:PROPERTIES:
-:HEADER-ARGS:R: :session *R:figures*
-:END:
+#+TITLE: Force Removal or Moved to Opportunity
+#+SUBTITLE: Figures
+#+PROPERTY: header-args:R :session *R:internment* :exports results :results silent :colnames yes
+#+STARTUP: hideblocks
 
 #+begin_src R :results silent
 library(tidyverse)
@@ -10,6 +10,7 @@ library(haven)
 library(ggridges)
 
 library(targets)
+tar_source()
 tar_load(c(linked_data_full, ddi_path, wage_sample, county_stats, internpr_county))
 #+end_src
 
@@ -311,37 +312,40 @@ wage_sample |>
 ** Internee County of Origin vs 1940 Japanese Population
 #+begin_src R :results silent
 library(sf)
+library(targets)
 
-map_data <- left_join(county_stats, internpr_county,
-                     by = c("STATEFIP", "COUNTYICP")) |>
-  mutate(
-    NHGISST = str_pad(string = STATEFIP*10, width = 3, side = "left", pad = "0"),
-    NHGISCTY = str_pad(COUNTYICP, width = 4, side = "left", pad = "0")
-  ) |>
-  mutate(interned_ja_prop = n_interned / county_pop.japanese)
+tar_source()
+tar_load(internment_groups)
 
-# read shapefiles and append distances
-shp <- ipumsr::read_ipums_sf("data/nhgis0035_shape.zip", file_select = "nhgis0035_shape/nhgis0035_shapefile_tl2008_us_county_1950.zip") |>
-  ## filter( STATENAM %in% c("Oregon", "Washington", "California", "Arizona") ) |>
-  filter( ! STATENAM %in% c("Alaska Territory", "Hawaii Territory") ) |>
-  left_join(map_data, by = c("NHGISST", "NHGISCTY"))
-
-county_map <- ggplot(data = shp, aes(geometry=geometry))
+map_data <- collect_internment_proportions(internment_groups, "data/nhgis0035_shape.zip")
 #+end_src
 
 #+begin_src R :results graphics file :file figures/pr_interned_map.pdf :exports results
 county_map +
-  geom_sf(aes(fill=interned_ja_prop)) +
-  theme_void() +
+  geom_sf(aes(fill=intern_p,
+              color = as_factor(evac_zone))) +
+  ## theme_void() +
   theme(
     legend.title = element_blank(),
-    legend.position = "bottom",
+    legend.position = "inside",
+    legend.position.inside = c(0,0)
     ) +
   ## labs(title="Internment Proportion of 1940 Japanese Population") +
-  scale_fill_continuous(
-    limits = c(0,1), oob = scales::squish,
-    na.value = "transparent", type = "viridis"
-  )
+  scale_color_manual(values = c("0" = NA, "1" = "#C34043")) +
+  scale_fill_gradient2(
+    limits = c(0,1),
+    oob = scales::squish,
+    na.value = "#625e5a",
+    low = "#252535",
+    mid = "#2D4F67",
+    high = "#f2ecbc",
+    midpoint = 0.5,
+    ## transform = "exp"
+  ) +
+  coord_sf(crs = st_crs(8858),
+           xlim = c(-3000000, -1000000),
+           ylim = c(3900000, 5900000),
+           expand = FALSE)
 #+end_src
 
 #+RESULTS:

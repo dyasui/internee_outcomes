@@ -61,16 +61,20 @@ calculate_proportions <- function(x, y,
 }
 
 predict_internment <- function(input, proportions,
-                               name = "internment_prop",
                                # variable names from data
                                by = c("STATEFIP", "COUNTYICP", "RACE", "SEX",
-                                      "BIRTHYR", "BPL")) {
+                                      "BIRTHYR", "BPL"),
+                               threshold = 0.5) {
   library(tidyverse)
 
   if ("BIRTHYR" %in% by) {
     # add year groupings if missing
     if (!"byr_grp" %in% colnames(input)) {
       input <- input |>
+        mutate(bpl_yr = group_birthyr(BIRTHYR))
+    }
+    if (!"byr_grp" %in% colnames(proportions)) {
+      proportions <- proportions |>
         mutate(bpl_yr = group_birthyr(BIRTHYR))
     }
     # use groupings instead of raw birthyear
@@ -83,19 +87,26 @@ predict_internment <- function(input, proportions,
       input <- input |>
         mutate(bpl_grp = group_bpl(BPL))
     }
+    if (!"bpl_grp" %in% colnames(proportions)) {
+      proportions <- proportions |>
+        mutate(bpl_grp = group_bpl(BPL))
+    }
     join_vars = str_replace(by, "BPL", "bpl_grp")
   }
 
   intern_grps <- proportions |>
-    group_by(join_vars) |>
+    group_by(across(all_of(join_vars))) |>
     summarise(
       n_wra = sum(n_wra),
       n_fc = sum(n_fc),
-      proportion = sum(n_wra) / sum(n_fc)
+      intern_prop = sum(n_wra) / sum(n_fc)
     )
 
   data <- input |>
-    left_join(intern_grps, by = join_vars)
+    left_join(intern_grps, by = join_vars) |>
+    mutate(
+      intern_status = (intern_prop > threshold)
+    )
 
 
   return(data)

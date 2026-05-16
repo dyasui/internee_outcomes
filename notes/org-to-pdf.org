@@ -1,0 +1,1127 @@
+:PROPERTIES:
+:GPTEL_MODEL: z-ai/glm-5.1
+:GPTEL_BACKEND: GPTEL
+:GPTEL_SYSTEM: You are a large language model living in Emacs and a helpful assistant. Respond concisely.
+:GPTEL_TOOLS: Bash Eval WebSearch WebFetch YouTube Diagnostics Mkdir Edit Insert Write Glob Read Grep TodoWrite Skill Agent
+:GPTEL_BOUNDS: ((tool (23296 23441 "call_807550ad5fe34052872f628a") (23505 23674 "call_807550ad5fe34052872f628a") (23755 24014 "call_f0256972ffb440fca8d3b756") (24095 24326 "call_f0256972ffb440fca8d3b756") (24407 24582 "call_7e680bb1cc6c448eaa407d7e") (24663 26120 "call_7e680bb1cc6c448eaa407d7e") (26201 28107 "call_7e680bb1cc6c448eaa407d7e") (28188 32084 "call_30faa18601094b48a2330f16") (32165 33097 "call_f5e48fabbfb74be5a98a1fdb") (33232 33409 "call_da6ad618abeb442a951f98f6") (33552 33749 "call_f5d205635d3544e28f41dc27") (44219 44364 "toolu_bdrk_01R3aBufiigUwfZmExp1oCWu") (47238 47411 "toolu_bdrk_012QVmyukdz9mz8XxZJQMAy5") (47494 47667 "toolu_bdrk_01McY2d8yLVnVUCjH2kXQkQo") (47750 51914 "toolu_bdrk_01EokxcvN92SBw6AcEpoRxAb")) (response (1298 22730) (22748 23242) (33761 35218) (42238 44162) (44376 46978) (47098 47165) (51926 53210) (55122 57837) (57855 59152)))
+:END:
+* : Why does pdflatex say that my document is missing \begin{document} when it is on line 28?
+
+
+-----
+>
+#+begin_reasoning
+The user is asking about a LaTeX compilation error. Looking at the terminal output, the error is:
+
+#+begin_src
+! LaTeX Error: Missing \begin{document}.
+...
+l.1 \begin{thebibliography}{}
+#+end_src
+
+This error occurs at line 1 of =outline.bbl=, which is the bibliography file. The issue is that =\bibliography{internment_refs}= is placed *before* =\begin{document}= in the preamble area, but it should be inside the document body.
+
+Let me check the outline.tex file. Looking at the buffer content:
+
+#+begin_src latex
+\usepackage{natbib}
+\begin{document}
+#+end_src
+
+Wait, =\usepackage{natbib}= is on line 27, and =\begin{document}= is on line 28. And =\bibliography{internment_refs}= is near the end of the document, inside the document body.
+
+But the error says =l.1 \begin{thebibliography}{}= in =(./outline.bbl)=. The error is that the =.bbl= file is being read before =\begin{document}=.
+
+Wait, let me look more carefully. The terminal output shows:
+#+begin_src
+\bibdata{internment_refs}
+(./outline.bbl
+#+end_src
+
+This appears right after the preamble packages are loaded, before =\begin{document}=. But =\bibliography{internment_refs}= is at the end of the document body in the source.
+
+Actually, looking at the error more carefully - the =.bbl= file starts with =\begin{thebibliography}{}= and this is being read before =\begin{document}=. This typically happens when =\bibliography= is in the preamble.
+
+But in the source, =\bibliography{internment_refs}= is inside the document body, near the end before the appendix. So why would it be processed before =\begin{document}=?
+
+Wait, let me re-read the terminal output more carefully. The sequence is:
+1. Packages load
+2. =(./preamble.tex= loads
+3. Various packages from preamble.tex load
+4. Then we see =\bibdata{internment_refs}= and =(./outline.bbl=
+
+Hmm, but that's not how it should work. Let me look again...
+
+Actually, looking at the terminal output again:
+#+begin_src
+(/usr/local/texlive/2026/texmf-dist/tex/latex/natbib/natbib.sty)
+\bibdata{internment_refs}
+(./outline.bbl
+#+end_src
+
+Wait - =\bibdata{internment_refs}= appears right after natbib.sty is loaded. This is suspicious. It seems like something is causing the bibliography to be processed during the preamble.
+
+Oh wait, I think I see the issue. Looking at the source file more carefully:
+
+#+begin_src latex
+\usepackage{natbib}
+\begin{document}
+#+end_src
+
+But what if there's something before this that's causing the issue? Let me look at the full structure...
+
+The =.tex= file has =\input{preamble.tex}= on line 15, then author/date/title, then =\usepackage{natbib}= on line 27, then =\begin{document}= on line 28.
+
+But the terminal output shows natbib loading, then immediately =\bibdata{internment_refs}= and =(./outline.bbl=. This means the bbl file is being read before =\begin{document}=.
+
+This could happen if there's an =\input= or =\include= that's pulling in the bbl file prematurely, or if the bbl file is somehow being read during the preamble.
+
+Actually, the most likely explanation: the =.bbl= file contains =\begin{thebibliography}= at line 1, and it's being =\input= before =\begin{document}=.
+
+Looking at the source again - =\bibliography{internment_refs}= is inside the document body. But the error shows it being read before =\begin{document}=.
+
+Hmm, wait. Could the issue be with the =.bbl= file itself? Maybe it has some issue, or maybe there's a cached/old version.
+
+Actually, I think the most likely cause is that =natbib= is loaded, and then somehow the bibliography commands are being processed. But that doesn't make sense with the standard LaTeX workflow.
+
+Let me re-examine. The error message says:
+#+begin_src
+(./outline.bbl
+
+! LaTeX Error: Missing \begin{document}.
+
+l.1 \begin{thebibliography}{}
+#+end_src
+
+So =outline.bbl= starts with =\begin{thebibliography}{}= and this is being input before =\begin{document}=.
+
+The question is: why is =outline.bbl= being read during the preamble?
+
+One possibility: The =.aux= file from a previous run might contain =\bibdata= and =\bibstyle= commands that cause bibtex to regenerate the bbl, or there might be an =\input{outline.bbl}= somewhere unexpected.
+
+Actually, I think I found it. Looking at the terminal output sequence:
+
+#+begin_src
+(/usr/local/texlive/2026/texmf-dist/tex/latex/natbib/natbib.sty)
+\bibdata{internment_refs}
+(./outline.bbl
+#+end_src
+
+This =\bibdata{internment_refs}= line - this is typically written by natbib to the =.aux= file. But it's appearing in the console output, which means it's being processed.
+
+Wait, no. When LaTeX processes =\bibliography{internment_refs}= inside the document body, it writes =\bibdata{internment_refs}= to the aux file AND it inputs the =.bbl= file. The console output showing these after natbib might just be coincidental ordering.
+
+Actually, I need to reconsider. The terminal output is truncated - it says =...= after the error. The actual error happens when processing =outline.bbl=, and the =outline.bbl= file starts with =\begin{thebibliography}{}=.
+
+But =\bibliography{internment_refs}= should only read the bbl file when it's called. If it's called inside =\begin{document}...\end{document}=, then =\begin{thebibliography}= should work fine.
+
+Unless... the =.bbl= file is being read from the =.aux= file. In LaTeX, the =.aux= file is read at =\begin{document}=, and if the previous run's aux file contains =\input{outline.bbl}=, then it would be read before the document body's =\bibliography= command.
+
+But that's not standard behavior. The aux file wouldn't normally contain =\input{outline.bbl}=.
+
+Hmm, let me think about this differently. Could it be that there's a problem with the =outline.bbl= file itself? Maybe it's malformed?
+
+Actually, I think the simplest explanation might be that =outline.tex= is using =\input{preamble.tex}= and the preamble.tex file might contain something that's causing issues, or there might be a problem with how the document is structured.
+
+Wait - let me look at the console output more carefully. After loading natbib, we see:
+#+begin_src
+\bibdata{internment_refs}
+(./outline.bbl
+#+end_src
+
+This =\bibdata= command is NOT a LaTeX command that should appear in the main document flow. It's a BibTeX command that goes in the =.aux= file. If it's appearing in the console, it means it's being written to the aux file by natbib's =\bibliography= command.
+
+But wait - if =\bibliography{internment_refs}= is inside the document body, it should be fine. The fact that the bbl file is being read before =\begin{document}= is the key issue.
+
+Oh! I think I understand now. The =.aux= file from a PREVIOUS run is read at =\begin{document}=. But the console output shows the bbl being read BEFORE =\begin{document}= is reached. This means something in the preamble is causing the bbl to be input.
+
+Could =preamble.tex= contain something that reads the bbl file? Or could there be an =\input= command somewhere in the preamble that's pulling it in?
+
+Actually, let me reconsider the console output. The log shows packages loading, then preamble.tex loading (with all its sub-packages), then:
+
+#+begin_src
+)  %% end of preamble.tex
+\bibdata{internment_refs}
+(./outline.bbl
+#+end_src
+
+Wait, this =\bibdata= is being PROCESSED, not just written to aux. This means =\bibliography= is being called in the preamble somehow.
+
+But looking at the source, =\bibliography{internment_refs}= is clearly after =\begin{document}=.
+
+Unless... there's a mismatch between what the user is showing me in the buffer and what's actually on disk. The buffer content might have been modified but not saved.
+
+Or perhaps the issue is that =preamble.tex= contains =\bibliography{internment_refs}= or something that triggers the bbl reading.
+
+Actually, I think I need to look at this from a different angle. The most common cause of "Missing \begin{document}" error when the bbl file is being read is that the bbl file is being =\input= in the preamble. This could happen if:
+
+1. The =.aux= file from a previous run contains =\input{outline.bbl}= and it's being processed incorrectly
+2. There's an explicit =\input{outline.bbl}= somewhere in the preamble
+
+But actually, the standard LaTeX behavior is that the =.aux= file is read at =\begin{document}=, which is after the preamble. So if the bbl is being read during the preamble, it's not from the aux file.
+
+Hmm, let me look at the terminal output one more time. The sequence after preamble.tex finishes loading its packages is:
+
+#+begin_src
+(/usr/local/texlive/2026/texmf-dist/tex/latex/natbib/natbib.sty)
+\bibdata{internment_refs}
+(./outline.bbl
+#+end_src
+
+Wait - =natbib.sty= is loaded inside =preamble.tex=? Let me check. The main file has:
+- Line 15: =\input{preamble.tex}=
+- Line 27: =\usepackage{natbib}=
+
+So natbib should be loaded AFTER preamble.tex. But in the console, natbib appears during the loading of preamble.tex's packages.
+
+Actually, looking again at the source, natbib IS listed as the last package in the document preamble (line 27), after =\input{preamble.tex}= (line 15). And in the console, natbib is loaded, then =\bibdata= and =outline.bbl= appear.
+
+OH WAIT. I think I see it now. Let me look at the console output sequence more carefully:
+
+#+begin_src
+(./preamble.tex
+...packages from preamble.tex...
+(/usr/local/texlive/2026/texmf-dist/tex/latex/natbib/natbib.sty)
+\bibdata{internment_refs}
+(./outline.bbl
+#+end_src
+
+But natbib is loaded in the MAIN document (line 27), not in preamble.tex. So why is it appearing inside the =(./preamble.tex ...= block?
+
+Unless... preamble.tex ALSO loads natbib! Let me check what preamble.tex contains.
+
+Actually, I don't have the contents of preamble.tex. But the console output seems to show that natbib is loaded during preamble.tex processing. If preamble.tex contains =\usepackage{natbib}= AND =\bibliography{internment_refs}=, that would explain everything.
+
+But wait, the main file also has =\usepackage{natbib}= on line 27. If preamble.tex also loads natbib, that would typically cause a package option clash error, unless they're loaded with the same options.
+
+Hmm, actually the console output might be showing natbib loading from the main file, and the parenthetical nesting in the log might just be misleading.
+
+Let me focus on the key fact: =(./outline.bbl= is being processed, and it contains =\begin{thebibliography}{}= on line 1, which triggers the "Missing \begin{document}" error because we're still in the preamble.
+
+The question is: WHY is outline.bbl being read in the preamble?
+
+Looking at the log again, the =\bibdata{internment_refs}= appears right before =(./outline.bbl=. In standard LaTeX with natbib, =\bibliography{internment_refs}= does two things:
+1. Writes =\bibdata{internment_refs}= to the .aux file
+2. Inputs the .bbl file
+
+If the .bbl is being input during the preamble, it means =\bibliography{internment_refs}= is being called during the preamble.
+
+But in the source code, it's clearly after =\begin{document}=. So either:
+1. The file on disk differs from what's in the buffer
+2. Something in the preamble is calling =\bibliography=
+3. The .aux file from a previous run is being processed in a way that inputs the .bbl early
+
+Actually, I just realized something. Let me re-read the console output. After all the package loading, we have:
+
+#+begin_src
+) (./preamble.tex
+...
+) \bibdata{internment_refs}
+(./outline.bbl
+#+end_src
+
+The =)= before =\bibdata= closes something. Then =\bibdata= and =(./outline.bbl= appear. But where is =\begin{document}= in the console? It should appear after all the preamble stuff.
+
+Wait - could it be that the =\begin{document}= in the source file is not being reached because of an error in the preamble? Or could there be a hidden character issue?
+
+Actually, I think the most likely explanation is simpler than I've been making it. Let me look at the outline.tex source one more time...
+
+Oh! I see the issue now. Looking at the source:
+
+#+begin_src latex
+\usepackage{natbib}
+\begin{document}
+#+end_src
+
+Line 27 is =\usepackage{natbib}= and line 28 is =\begin{document}=. But wait - in the CONSOLE output, after natbib loads, we immediately see =\bibdata{internment_refs}= and =(./outline.bbl=. This means that something between loading natbib and =\begin{document}= is causing the bbl to be read.
+
+But there's nothing between lines 27 and 28! Unless... hmm.
+
+Actually, let me reconsider. The console output is a LOG, and it shows the order of file opens and processing. The =\bibdata{internment_refs}= line in the console is actually being WRITTEN to the aux file by =\bibliography{internment_refs}= inside the document body. The =.bbl= file is being INPUT by =\bibliography{internment_refs}= inside the document body.
+
+But the error says "Missing \begin{document}" at =l.1 \begin{thebibliography}{}= inside =(./outline.bbl=. This means the bbl file is being read before =\begin{document}=.
+
+UNLESS... the bbl file itself is corrupted or doesn't start with =\begin{thebibliography}=. What if the bbl file has some garbage at the beginning?
+
+Actually no, the error message clearly says:
+#+begin_src
+l.1 \begin{thebibliography}{}
+#+end_src
+
+So line 1 of outline.bbl is =\begin{thebibliography}{}=. This is standard for a bbl file. The problem is that it's being read before =\begin{document}=.
+
+OK let me think about this completely differently. What if the issue is with the =.aux= file? When LaTeX starts processing =\begin{document}=, it reads the =.aux= file from the previous run. If that aux file contains =\bibdata{internment_refs}= and =\input{outline.bbl}=, then it might try to input the bbl file during the aux file processing at =\begin{document}=.
+
+But no, =\input{outline.bbl}= wouldn't normally be in the aux file. The aux file would contain =\bibdata= and =\bibstyle= commands for BibTeX to use, but not =\input= of the bbl file.
+
+I'm going in circles. Let me just look at the actual files on disk to figure this out.
+
+Actually, the simplest explanation might be that there's something wrong with the =.bbl= file - perhaps it's being generated incorrectly or there's a file that's being confused with the bbl file.
+
+Or... wait. Could it be that =outline.tex= has some issue where the =\begin{document}= line is not being parsed correctly? For example, if there are invisible characters or encoding issues?
+
+Let me just look at the actual file on disk and the bbl file.
+
+Actually, I think I should just help the user by checking the relevant files. Let me look at the bbl file and the preamble.tex file.
+
+But actually, I think I might have the answer. Let me re-read the console output one more time:
+
+#+begin_src
+(/usr/local/texlive/2026/texmf-dist/tex/latex/natbib/natbib.sty)
+\bibdata{internment_refs}
+(./outline.bbl
+#+end_src
+
+The =\bibdata{internment_refs}= line - this is NOT being processed by LaTeX. This is being WRITTEN to the .aux file by natbib. In LaTeX logs, when natbib processes =\bibliography{internment_refs}=, it writes to the aux file, and that write shows up in the log.
+
+And then =(./outline.bbl= means the bbl file is being opened and read.
+
+So the question remains: why is =\bibliography{internment_refs}= being processed before =\begin{document}=?
+
+Let me look at this from yet another angle. What if =preamble.tex= contains =\bibliography{internment_refs}=? That would explain everything. Or what if =preamble.tex= contains =\input{outline.bbl}=?
+
+I should check the preamble.tex file.
+
+Actually, you know what, I just realized there might be a much simpler explanation. Looking at the natbib loading in the console:
+
+#+begin_src
+(/usr/local/texlive/2026/texmf-dist/tex/latex/natbib/natbib.sty)
+\bibdata{internment_refs}
+#+end_src
+
+After natbib.sty is loaded, =\bibdata{internment_refs}= appears. This is happening because when natbib is loaded, it processes the existing =.aux= file (if any). The aux file from a previous run would contain =\bibdata{internment_refs}=, and when natbib reads this during its initialization, it triggers the bbl input.
+
+No wait, that's not right either. natbib doesn't automatically input bbl files during package loading.
+
+OK, I think the answer might be even simpler. Let me look at what the =.aux= file processing does. At =\begin{document}=, LaTeX reads the aux file. The aux file might contain something that causes the bbl to be read.
+
+But actually, in the log, the bbl is being read BEFORE =\begin{document}= appears in the log. So the aux file reading at =\begin{document}= can't be the cause.
+
+Let me just check the files and give the user a clear answer.
+
+Wait, actually I just had another thought. Could =preamble.tex= contain the bibliography command? Let me check.
+
+Or could the main =.tex= file on disk be different from what's shown in the buffer? The buffer might be showing a modified version that hasn't been saved.
+
+I think the most productive thing to do is check the actual files. Let me look at preamble.tex and outline.bbl.
+
+Actually, rethinking this... the error message and the log output are quite clear. The =.bbl= file is being read before =\begin{document}=. The most common cause is that =\bibliography= is being called in the preamble, either directly or through =\input=.
+
+But looking at the source code the user showed, =\bibliography{internment_refs}= is after =\begin{document}=. So either:
+1. The file on disk is different from the buffer (unsaved changes)
+2. =preamble.tex= contains something that triggers bbl reading
+
+Let me check the preamble.tex file.
+
+Hmm, actually I realize I can just check the files directly. Let me do that.
+
+Wait, but actually, looking at the log output more carefully:
+
+#+begin_src
+(/usr/local/texlive/2026/texmf-dist/tex/latex/natbib/natbib.sty)
+\bibdata{internment_refs}
+(./outline.bbl
+
+! LaTeX Error: Missing \begin{document}.
+#+end_src
+
+The natbib loading happens right before the bbl is read. In the source, natbib is loaded on line 27, just before =\begin{document}= on line 28. So the bbl is being read right after natbib loads but before =\begin{document}= is processed.
+
+This means something between natbib loading and =\begin{document}= is causing the bbl to be read. But looking at the source, there's nothing between them! They're on consecutive lines.
+
+Unless... natbib itself is reading the bbl file? That doesn't make sense.
+
+OH WAIT. I think I finally understand. When =\begin{document}= is executed, LaTeX reads the =.aux= file from the previous run. The aux file may contain a reference to the bbl file. But wait, normally the aux file doesn't contain =\input{bbl}=.
+
+Actually, let me think about what the =.aux= file typically contains for natbib. It would have:
+#+begin_src
+\bibdata{internment_refs}
+\bibstyle{unsrtnat}
+#+end_src
+
+These are just informational for BibTeX. They don't cause the bbl to be input.
+
+Hmm, but what about the =\bibliography= command itself? When =\bibliography{internment_refs}= is called inside the document, it:
+1. Writes =\bibdata= to the aux file
+2. Inputs the =.bbl= file
+
+If this is happening before =\begin{document}=, then =\bibliography= must be called before =\begin{document}=.
+
+I'm now fairly confident that the issue is that the file on disk differs from the buffer, OR =preamble.tex= contains a =\bibliography= command. Let me just check.
+
+Actually, you know what, let me just look at the actual file on disk and the bbl file to give a proper answer.
+
+Let me reconsider one more time. I see this in the console output:
+
+#+begin_src
+(/usr/local/texlive/2026/texmf-dist/tex/latex/natbib/natbib.sty)
+\bibdata{internment_refs}
+(./outline.bbl
+#+end_src
+
+Could it be that =\bibdata{internment_refs}= is being read from the OLD =.aux= file? When LaTeX starts, before =\begin{document}=, it might process some initialization. Actually, no - the aux file is read AT =\begin{document}=, not before.
+
+I'm going to just check the files. But I think the most likely answer is that =preamble.tex= contains something that's causing this, or there's an =.aux= file issue.
+
+Actually, let me reconsider one final time. I now think the answer is simple:
+
+The =.bbl= file starts with =\begin{thebibliography}{}= and this is line 1 of that file. The error says this is happening before =\begin{document}=.
+
+Looking at the log, after natbib is loaded (which is the last package), the next thing is =\bibdata= and then the bbl file. This means =\bibliography{internment_refs}= is being called between natbib loading and =\begin{document}=.
+
+But in the source, there's nothing between them. Unless the file on disk is different.
+
+Wait... could there be an issue with the =\input{preamble.tex}= file? What if preamble.tex has a syntax error that causes LaTeX to skip or misinterpret the =\begin{document}= that follows?
+
+No, that doesn't make sense because the error specifically says "Missing \begin{document}" when processing the bbl file, meaning LaTeX hasn't seen =\begin{document}= yet.
+
+OK I think I need to just look at the actual files. Let me check.
+
+Actually, I just realized something. What if the issue is that =outline.bbl= is being loaded as part of the =.aux= file processing? Some versions of natbib or the LaTeX kernel might read the aux file earlier than =\begin{document}=.
+
+No, that's not standard.
+
+Let me just check the files and give a definitive answer. I think the most likely issue is either:
+1. The preamble.tex file contains =\bibliography{internment_refs}= or =\input{outline.bbl}=
+2. The file on disk is different from the buffer
+3. There's an =.aux= file issue
+
+Let me check.
+#+end_reasoning
+
+Looking at the log output, the key clue is this sequence:
+
+#+begin_src
+(/usr/local/texlive/2026/texmf-dist/tex/latex/natbib/natbib.sty)
+\bibdata{internment_refs}
+(./outline.bbl
+! LaTeX Error: Missing \begin{document}.
+l.1 \begin{thebibliography}{}
+#+end_src
+
+The =.bbl= file is being read /before/ =\begin{document}= is reached. This means =\bibliography{internment_refs}= is being called in the preamble, not in the document body. Let me check =preamble.tex= — that's the most likely culprit.
+
+#+begin_tool (Read :file_path "/Users/dante/man ...)
+(:name "Read" :args (:file_path "/Users/dante/manuscript/preamble.tex"))
+
+error Error: File /Users/dante/manuscript/preamble.tex is not readable
+#+end_tool
+#+begin_tool (Read :file_path "/Users/dante/man ...)
+(:name "Read" :args (:file_path "/Users/dante/manuscript/outline.bbl" :start_line 1 :end_line 5))
+
+error Error: File /Users/dante/manuscript/outline.bbl is not readable
+#+end_tool
+#+begin_tool (Bash :command "find / -name \"preamble.tex\" -path ...)
+(:name "Bash" :args (:command "find / -name \"preamble.tex\" -path \"*/manuscript/*\" 2>/dev/null | head -5"))
+
+/System/Volumes/Data/Users/dante/Documents/Work/Internment/manuscript/preamble.tex
+/Users/dante/Documents/Work/Internment/manuscript/preamble.tex
+
+#+end_tool
+#+begin_tool (Bash :command "find / -name \"outline.bbl\" 2>/dev ...)
+(:name "Bash" :args (:command "find / -name \"outline.bbl\" 2>/dev/null | head -5"))
+
+/System/Volumes/Data/Users/dante/Documents/Work/Internment/manuscript/outline.bbl
+/Users/dante/Documents/Work/Internment/manuscript/outline.bbl
+
+#+end_tool
+#+begin_tool (Read :file_path "/Users/dante/Documents/Work/Inter ...)
+(:name "Read" :args (:file_path "/Users/dante/Documents/Work/Internment/manuscript/outline.bbl" :end_line 5 :start_line 1))
+
+\begin{thebibliography}{}
+
+\end{thebibliography}
+
+#+end_tool
+#+begin_tool (Read :file_path "/Users/dante/Documents/Work/Inter ...)
+(:name "Read" :args (:file_path "/Users/dante/Documents/Work/Internment/manuscript/preamble.tex"))
+
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{amsmath,amsfonts,amsthm,amssymb}
+\usepackage[singlelinecheck=false]{caption}
+\usepackage{enumitem}
+\usepackage{setspace}
+% \onehalfspacing
+\usepackage[normalem]{ulem}
+% \usepackage[inner=1.0in, outer=1.0in, top=1.0in, bottom=1.0in]{geometry}
+\usepackage{hyperref}
+\hypersetup{
+colorlinks = true,
+linkcolor = blue,
+filecolor = magenta,
+urlcolor = cyan,
+citecolor = blue
+}
+
+\usepackage{tikz}
+
+% datasummary tables formatting
+\usepackage{tabularray}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage[normalem]{ulem}
+\UseTblrLibrary{booktabs}
+\UseTblrLibrary{siunitx}
+\newcommand{\tinytableTabularrayUnderline}[1]{\underline{#1}}
+\newcommand{\tinytableTabularrayStrikeout}[1]{\sout{#1}}
+\NewTableCommand{\tinytableDefineColor}[3]{\definecolor{#1}{#2}{#3}}
+
+% for rotating tables
+\usepackage{pdflscape}
+\usepackage{afterpage}
+\usepackage{capt-of}% or use the larger `caption` package
+
+\usepackage{natbib}
+\defcitealias{commissiononwartimerelocationPersonalJusticeDenied1983}{(\textit{Personal Justice Denied})}
+\bibliographystyle{apalike}
+
+% \usepackage[backend=biber, style=authoryear-comp]{biblatex}
+% \addbibresource{internment_refs.bib}
+
+\usepackage{adjustbox}
+
+\setcounter{secnumdepth}{3}
+
+
+#+end_tool
+#+begin_tool (Read :file_path "/Users/dante/Documents/Work/Inter ...)
+(:name "Read" :args (:file_path "/Users/dante/Documents/Work/Internment/manuscript/outline.aux" :end_line 30 :start_line 1))
+
+\relax
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\bibstyle{apalike}
+\citation{commissiononwartimerelocationPersonalJusticeDenied1983}
+\citation{arellano-boverDisplacementDiversityMobility2022,shoagCausalEffectPlace2016}
+\citation{austinEastwardPioneersJapanese2007}
+\providecommand \oddpage@label [2]{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\newlabel{sec:org3911d64}{{1}{1}{Introduction}{section.1}{}}
+\citation{commissiononwartimerelocationPersonalJusticeDenied1983,denshoencyclopediacontributorsResettlementDenshoEncyclopedia2020}
+\citation{imagireArtImagireInterview2008}
+\citation{naitoSamNaitoInterview2003}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Historical Background}{3}{subsection.1.1}\protected@file@percent }
+\newlabel{sec:orga44f40e}{{1.1}{3}{Historical Background}{subsection.1.1}{}}
+\citation{chinLongRunLaborMarket2005}
+\citation{saavedraEarlyChildhoodConditions2013,grossmanIntergenerationalHealthEffects2025}
+\citation{saavedraSchoolQualityEducational2015}
+\citation{shoagCausalEffectPlace2016}
+\citation{arellano-boverDisplacementDiversityMobility2022}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}Motivating Literature}{4}{subsection.1.2}\protected@file@percent }
+\newlabel{sec:org49a55c2}{{1.2}{4}{Motivating Literature}{subsection.1.2}{}}
+\citation{taylorLeavingConcentrationCamps1991}
+\citation{austinEastwardPioneersJapanese2007}
+\citation{glaeserCitiesSkills2001}
+\citation{chettyEffectsExposureBetter2016}
+\citation{chenImpactSkillBasedImmigration2015}
+\citation{chenInstitutionalDiscriminationAssimilation2024}
+\citation{munshiSocialNetworksMigration2020}
+
+#+end_tool
+#+begin_tool (Read :file_path "/Users/dante/Documents/Work/Inter ...)
+(:name "Read" :args (:file_path "/Users/dante/Documents/Work/Internment/manuscript/outline.aux"))
+
+\relax
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\bibstyle{apalike}
+\citation{commissiononwartimerelocationPersonalJusticeDenied1983}
+\citation{arellano-boverDisplacementDiversityMobility2022,shoagCausalEffectPlace2016}
+\citation{austinEastwardPioneersJapanese2007}
+\providecommand \oddpage@label [2]{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\newlabel{sec:org3911d64}{{1}{1}{Introduction}{section.1}{}}
+\citation{commissiononwartimerelocationPersonalJusticeDenied1983,denshoencyclopediacontributorsResettlementDenshoEncyclopedia2020}
+\citation{imagireArtImagireInterview2008}
+\citation{naitoSamNaitoInterview2003}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Historical Background}{3}{subsection.1.1}\protected@file@percent }
+\newlabel{sec:orga44f40e}{{1.1}{3}{Historical Background}{subsection.1.1}{}}
+\citation{chinLongRunLaborMarket2005}
+\citation{saavedraEarlyChildhoodConditions2013,grossmanIntergenerationalHealthEffects2025}
+\citation{saavedraSchoolQualityEducational2015}
+\citation{shoagCausalEffectPlace2016}
+\citation{arellano-boverDisplacementDiversityMobility2022}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}Motivating Literature}{4}{subsection.1.2}\protected@file@percent }
+\newlabel{sec:org49a55c2}{{1.2}{4}{Motivating Literature}{subsection.1.2}{}}
+\citation{taylorLeavingConcentrationCamps1991}
+\citation{austinEastwardPioneersJapanese2007}
+\citation{glaeserCitiesSkills2001}
+\citation{chettyEffectsExposureBetter2016}
+\citation{chenImpactSkillBasedImmigration2015}
+\citation{chenInstitutionalDiscriminationAssimilation2024}
+\citation{munshiSocialNetworksMigration2020}
+\citation{royThoughtsDistributionEarnings1951}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Data}{6}{section.2}\protected@file@percent }
+\newlabel{sec:org9360ad2}{{2}{6}{Data}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}War Relocation Authority Records}{6}{subsection.2.1}\protected@file@percent }
+\newlabel{sec:org5c0b068}{{2.1}{6}{War Relocation Authority Records}{subsection.2.1}{}}
+\citation{rugglesIPUMSAncestryFull2024}
+\citation{rugglesIPUMSMultigenerationalLongitudinal2025}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Linked Census Microdata}{7}{subsection.2.2}\protected@file@percent }
+\newlabel{sec:orgf0de338}{{2.2}{7}{Linked Census Microdata}{subsection.2.2}{}}
+\newlabel{Migration-differences}{{2.2}{8}{Linked Census Microdata}{table.caption.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Income distributions by treatment group and census year}}{9}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:group-incwage-dist}{{1}{9}{Income distributions by treatment group and census year}{figure.caption.4}{}}
+\citation{chinLongRunLaborMarket2005}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Methods}{10}{section.3}\protected@file@percent }
+\newlabel{sec:org9fee0d1}{{3}{10}{Methods}{section.3}{}}
+\citation{arellano-boverDisplacementDiversityMobility2022}
+\citation{chenImpactSkillBasedImmigration2015}
+\citation{dewittjohnl.FinalReportJapanese1943}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Predicted Internment Status}{12}{subsection.3.1}\protected@file@percent }
+\newlabel{sec:orgbecf04c}{{3.1}{12}{Predicted Internment Status}{subsection.3.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces  Proportion of 1940 Japanese population interned}}{13}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:intern_map}{{2}{13}{Proportion of 1940 Japanese population interned}{figure.caption.5}{}}
+\citation{arellano-boverDisplacementDiversityMobility2022}
+
+#+end_tool
+#+begin_tool (Read :file_path "/Users/dante/Documents/Work/Inter ...)
+(:name "Read" :args (:file_path "/Users/dante/Documents/Work/Internment/manuscript/outline.tex" :start_line 1 :end_line 35))
+
+% Created 2026-05-05 Tue 18:12
+% Intended LaTeX compiler: pdflatex
+\documentclass[12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\input{preamble.tex}
+\author{Dante Yasui}
+\date{\today}
+\title{Forced Removal or Moved to Opportunity?\\\medskip
+\large Labor Market and Migration Effects of Japanese Internment}
+\hypersetup{
+ pdfauthor={Dante Yasui},
+ pdftitle={Forced Removal or Moved to Opportunity?},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={},
+ pdflang={English}}
+\usepackage{natbib}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Introduction}
+\label{sec:orgcd60f13}
+
+#+end_tool
+#+begin_tool (Bash :command "grep -n 'bibdata\\|input.*bbl' /Users/dante/Documents/Work/Internment/manuscript/outline.aux")
+(:name "Bash" :args (:command "grep -n 'bibdata\\|input.*bbl' /Users/dante/Documents/Work/Internment/manuscript/outline.aux"))
+
+Command failed with exit code 1:
+STDOUT+STDERR:
+
+#+end_tool
+#+begin_tool (Bash :command "grep -rn 'bibdata\\|\\\\\\\\input.*bbl\\|bibliography\\|\\\\\\\\begin{thebibliography}' /Users/da ...)
+(:name "Bash" :args (:command "grep -rn 'bibdata\\|\\\\\\\\input.*bbl\\|bibliography\\|\\\\\\\\begin{thebibliography}' /Users/dante/Documents/Work/Internment/manuscript/outline.aux | head -10"))
+
+
+#+end_tool
+Found it. The problem is that *=preamble.tex= contains =\bibliographystyle{apalike}=* (line 33 of preamble.tex), and your =.bbl= file is essentially empty — it has =\begin{thebibliography}{}= with no entries.
+
+But the *root cause* is actually a double-loading conflict. Here's what's happening:
+
+1. =preamble.tex= already loads =\usepackage{natbib}= (line 31 of preamble.tex).
+2. =outline.tex= *also* loads =\usepackage{natbib}= (line 27 of outline.tex), /after/ =\input{preamble.tex}=.
+3. =preamble.tex= also calls =\bibliographystyle{apalike}= — in the *preamble* (before =\begin{document}=).
+
+When natbib processes =\bibliographystyle=, it may attempt to read the =.bbl= file. Since your =outline.bbl= starts with =\begin{thebibliography}{}= on line 1, and this is happening *before =\begin{document}=*, LaTeX throws the "Missing =\begin{document}=" error.
+
+*Fix:* Remove the duplicate =\usepackage{natbib}= and the =\bibliographystyle{apalike}= from =preamble.tex=. Keep only the ones in =outline.tex= (where =\bibliographystyle= is already set to =unsrtnat= and =\usepackage{natbib}= is in the preamble before =\begin{document}=).
+
+Specifically, remove these lines from =preamble.tex=:
+- =\usepackage{natbib}= (line 31)
+- =\bibliographystyle{apalike}= (line 33)
+
+You should also delete =outline.bbl= and re-run =bibtex outline= after compiling, since the current =.bbl= is empty (no bibliography entries), likely because the previous bibtex run failed.
+
+:
+* : Help me troubleshoot my org export to pdf workflow.
+I am trying to export my document which starts like this:
+
+#+title: Paper Outline
+#+BIBLIOGRAPHY: internment_refs.bib
+#+options: toc: nil #+LATEX_CLASS: article
+#+LATEX_CLASS_OPTIONS: [12pt]
+#+LATEX_HEADER: \input{preamble.tex}
+#+CITE_EXPORT: natbib
+#+PROPERTY: header-args:R :session *R:internment* :exports results :results silent :colnames yes
+#+STARTUP: hideblocks
+
+#+NAME: R-setup
+#+begin_src R :results silent
+setwd("~/Documents/Work/Internment")
+library(tidyverse)
+library(paletteer)
+library(haven)
+library(ggridges)
+
+library(targets)
+tar_load(c(wra_data, wra_grps))
+
+library(fixest)
+setFixest_etable(
+  style.tex = style.tex("aer"),
+  postprocess.tex = NULL
+)
+
+etable_dict <- c(
+  "reset", # to reset global dict
+  INCWAGE_1950="Income in 1950", INCWAGE_1940="Income in 1940",
+  INCTOT_1950="Total Income", INCBUSFM_1950="Bus./Farm Income", INCOTHER_1950="Other Income",
+  int_prob="$\\hat{E}[I|county,race]$", age_adj_1950="Age",
+  sex_adjMale="Male", race_adjJapanese="Japanese",
+  EDUCD_1950="Education",
+  STATEFIP="State", STATEFIP_1950="State$_{1950}$", STATEFIP_1940="State$_{1940}$",
+  COUNTYICP="County", COUNTYICP_1950="County$_{1950}$", COUNTYICP_1940="County$_{1940}$",
+  HRSWORK1_1950="Hours worked", HRSWORK1_1940="Hours worked$_{1940}$",
+  WKSWORK1_1950="Weeks worked", WKSWORK1_1940="Weeks worked$_{1940}$",
+  OCCSCORE_1950="Occ. score",
+  employed_1950="Employed",
+  change_occ="Occ. change",
+  county_intprop="$\\hat{E}[I|county]$", intprob_AB="$\\hat{E}[I_i|state, bpl, byr, race]$",
+  intprob_full="$\\hat{E}[I|county, sex, bpl, byr, race]$"
+)
+
+#+END_SRC
+
+This points to the file =preamble.tex= which looks like this:
+
+#+begin_src latex
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{amsmath,amsfonts,amsthm,amssymb}
+\usepackage[singlelinecheck=false]{caption}
+\usepackage{enumitem}
+\usepackage{setspace}
+% \onehalfspacing
+\usepackage[normalem]{ulem}
+% \usepackage[inner=1.0in, outer=1.0in, top=1.0in, bottom=1.0in]{geometry}
+\usepackage{hyperref}
+\hypersetup{
+colorlinks = true,
+linkcolor = blue,
+filecolor = magenta,
+urlcolor = cyan,
+citecolor = blue
+}
+
+\usepackage{tikz}
+
+% datasummary tables formatting
+\usepackage{tabularray}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage[normalem]{ulem}
+\UseTblrLibrary{booktabs}
+\UseTblrLibrary{siunitx}
+\newcommand{\tinytableTabularrayUnderline}[1]{\underline{#1}}
+\newcommand{\tinytableTabularrayStrikeout}[1]{\sout{#1}}
+\NewTableCommand{\tinytableDefineColor}[3]{\definecolor{#1}{#2}{#3}}
+
+% for rotating tables
+\usepackage{pdflscape}
+\usepackage{afterpage}
+\usepackage{capt-of}% or use the larger `caption` package
+
+\usepackage{natbib}
+\defcitealias{commissiononwartimerelocationPersonalJusticeDenied1983}{(\textit{Personal Justice Denied})}
+
+\usepackage{adjustbox}
+
+\setcounter{secnumdepth}{3}
+#+end_src
+
+My .bib file was exported from Zotero and looks like this:
+#+begin_src latex
+@article{abramitzkyLeavingEnclaveHistorical2024,
+  title = {Leaving the {{Enclave}}: {{Historical Evidence}} on {{Immigrant Mobility}} from the {{Industrial Removal Office}}},
+  shorttitle = {Leaving the {{Enclave}}},
+  author = {Abramitzky, Ran and Boustan, Leah and Connor, Dylan},
+  date = {2024},
+  journaltitle = {Journal of Economic History},
+  doi = {10.3386/w27372},
+  url = {https://www.cambridge.org/core/journals/journal-of-economic-history/article/leaving-the-enclave-historical-evidence-on-immigrant-mobility-from-the-industrial-removal-office/820BFB74CA7F64E4159E91A37055F645},
+  abstract = {We study a program that funded 39,000 Jewish households in New York City to leave enclave neighborhoods circa 1910. Compared to their neighbors with the same occupation and income score at baseline, program participants earned 4 percent more ten years after removal, and these gains persisted to the next generation. Men who left enclaves also married spouses with less Jewish names, but they did not choose less Jewish names for their children. Gains were largest for men who spent more years outside of an enclave. Our results suggest that leaving ethnic neighborhoods could facilitate economic advancement and assimilation into the broader society, but might make it more difficult to retain cultural identity.},
+  keywords = {19th century,20th century,Age of Migration,assimilation,economic history,economic mobility,enumeration districts,ethnic enclaves,geolocation,Industrial Removal Office (IRO),Jewish Americans,linked data,migration,New York City,OCCSCORE},
+  file = {zotero://open-pdf/library/items/VURK9PKL?Abramitzky et al. - 2024 - Leaving the Enclave Historical Evidence on Immigrant Mobility from the Industrial Removal Office.pdf;zotero://open-pdf/library/items/M7WYRGSB?leaving-the-enclave-historical-evidence-on-immigrant-mobility-from-the-industrial-removal-office.pdf}
+}
+
+@article{arellano-boverDisplacementDiversityMobility2022,
+  title = {Displacement, {{Diversity}}, and {{Mobility}}: {{Career Impacts}} of {{Japanese American Internment}}},
+  shorttitle = {Displacement, {{Diversity}}, and {{Mobility}}},
+  author = {Arellano-Bover, Jaime},
+  date = {2022-03},
+  journaltitle = {The Journal of Economic History},
+  volume = {82},
+  number = {1},
+  pages = {126--174},
+  publisher = {Cambridge University Press},
+  issn = {0022-0507, 1471-6372},
+  doi = {10.1017/S0022050721000565},
+  url = {https://www.cambridge.org/core/journals/journal-of-economic-history/article/displacement-diversity-and-mobility-career-impacts-of-japanese-american-internment/F63443DE6FA168C2D6708D31D91258AC},
+  urldate = {2022-12-09},
+  abstract = {In 1942 more than 110,000 persons of Japanese origin living on the U.S. West Coast were forcibly sent away to ten internment camps for one to three years. This paper studies how internees’ careers were affected in the long run. Combining Census data, camp records, and survey data, I develop a predictor of a person’s internment status based on Census observables. Using a difference-in-differences framework, I find that internment had long-run positive effects on earnings. The evidence is consistent with mechanisms related to increased mobility due to re-optimization of occupation and location choices, possibly facilitated by camps’ high economic diversity.},
+  langid = {english},
+  file = {zotero://open-pdf/library/items/28MA4LYU?Arellano-Bover\_2022\_DisplacementDiversityMobilityCareerImpactsOfJapaneseAmericanInternment.pdf;zotero://open-pdf/library/items/SDID2H6W?Arellano-Bover - Displacement, Diversity, and Mobility Career Impacts of Japanese American Internment.pdf}
+}
+#+end_src
+
+When I try to export to pdf, all of the citations are still broken
+no matter whether I use \citep{} or [cite:@] sytax in the org document
+I looked at the outline.tex file and it seems like the [cite:@] references are being correctly exported as \citep{}'s there, but they all show up as missing (?) in the pdf file.
+
+
+-----
+> I can see the problem. There are actually two issues working together to break your citations:
+
+** Issue 1: Your =.bib= file uses Biblatex format, but you're using Natbib
+
+Your =.bib= file was exported from Zotero in *Biblatex format*. The telltale signs are:
+
+- =date = {2024}= instead of =year = {2024}=
+- =journaltitle = {...}= instead of =journal = {...}=
+
+*Natbib/BibTeX does not understand these fields.* It expects the traditional BibTeX fields (=year=, =journal=, etc.). This is why all references show up as =?= — BibTeX simply can't parse the entries correctly.
+
+** Issue 2: LaTeX compilation pipeline
+
+With =#+CITE_EXPORT: natbib=, Org exports =\citep{}= commands and adds =\bibliography{internment_refs}= to the =.tex= file. The PDF compilation needs to run:
+
+1. =pdflatex=
+2. =bibtex=
+3. =pdflatex=
+4. =pdflatex=
+
+If your =org-latex-pdf-process= only runs =pdflatex= once (or doesn't run =bibtex=), references will remain unresolved.
+
+** Fixes
+
+*** Fix 1 (recommended): Re-export your =.bib= file in BibTeX format
+
+In Zotero, use *Export Collection → Format: BibTeX* (not "BibLaTeX"). This will produce entries with =year=, =journal=, etc. that natbib can handle.
+
+Alternatively, if you want to keep the Biblatex-format =.bib= file, switch your toolchain:
+
+*** Fix 2 (alternative): Switch to Biblatex/Biber instead of Natbib
+
+Change your org file header to:
+#+begin_src org
+#+CITE_EXPORT: biblatex
+#+end_src
+
+And in your =preamble.tex=, replace:
+#+begin_src latex
+\usepackage{natbib}
+#+end_src
+with:
+#+begin_src latex
+\usepackage[backend=biber, style=authoryear]{biblatex}
+\addbibresource{internment_refs.bib}
+#+end_src
+
+And make sure your =org-latex-pdf-process= uses =latexmk= or runs biber:
+#+begin_src elisp
+(setq org-latex-pdf-process '("latexmk -pdf -shell-escape %f"))
+#+end_src
+
+#+RESULTS:
+| latexmk -pdf -shell-escape %f |
+
+*** Fix 3: Verify your compilation command
+
+Let me check your current setting:
+
+#+begin_tool (Eval :expression "org-latex-pdf-process")
+(:name "Eval" :args (:expression "org-latex-pdf-process"))
+
+Result:
+("latexmk -f -pdf -%latex -interaction=nonstopmode -output-directory=%o %f")
+#+end_tool
+I can see the problem. There are actually *two issues* at play here:
+
+** Issue 1: Your =.bib= file uses Biblatex format, but you're exporting with =natbib=
+
+Your =.bib= file was exported from Zotero in *Biblatex format* — notice the =date = {2024}= and =journaltitle = {...}= fields. However, you're using =#+CITE_EXPORT: natbib= which relies on *BibTeX* (via =natbib=).
+
+BibTeX doesn't understand:
+- =date = {2024}= → it needs =year = {2024}=
+- =journaltitle = {...}= → it needs =journal = {...}=
+
+So when BibTeX processes your =.bib= file, it can't find the required fields and the citations come out as =?=.
+
+** Issue 2: =latexmk= should handle the compilation chain, but BibTeX still can't parse the entries
+
+Even though =latexmk= runs BibTeX automatically, BibTeX fails silently on these entries because it doesn't recognize the Biblatex-specific field names.
+
+** Solutions (pick one):
+
+*** Option A: Re-export your =.bib= from Zotero in BibTeX format (recommended with natbib)
+
+In Zotero, go to *File → Export Library* (or right-click a collection → Export) and choose *"BibTeX"* format instead of *"Better BibLaTeX"*. This will give you fields like =year=, =journal=, etc. that BibTeX/natbib understand.
+
+*** Option B: Switch to biblatex in your org file
+
+Change your org header to use =biblatex= instead of =natbib=:
+
+#+begin_src org
+#+CITE_EXPORT: biblatex
+#+end_src
+
+And in your =preamble.tex=, replace:
+#+begin_src latex
+\usepackage{natbib}
+#+end_src
+with:
+#+begin_src latex
+\usepackage[backend=biber]{biblatex}
+\addbibresource{internment_refs.bib}
+#+end_src
+
+And add =\printbibliography= at the end of your document (or use =#+print_bibliography:=).
+
+You'd also need to update =org-latex-pdf-process= to use biber. With =latexmk= this should work automatically if you have a =.latexmkrc= or if latexmk detects biblatex.
+
+*** Option C: Keep natbib but use the =bibtex= export format from Zotero's Better BibTeX plugin
+
+If you use the *Better BibTeX* Zotero plugin, export as *"Better BibTeX"* (not "Better BibLaTeX"). This gives natbib-compatible output.
+
+---
+
+** Quick diagnostic to confirm
+
+Check your LaTeX build log (the =.blg= file next to your =.tex= output). You'll likely see warnings like:
+
+#+begin_src
+Warning--I didn't find a database entry for "abramitzkyLeavingEnclaveHistorical2024"
+#+end_src
+
+or errors about missing =year= fields.
+
+---
+
+*TL;DR*: Your =.bib= file is in Biblatex format (=date=, =journaltitle=) but natbib/BibTeX expects traditional BibTeX format (=year=, =journal=). Either re-export from Zotero as BibTeX, or switch your org config to use =biblatex=+=biber=.
+
+** : I just re-exported from Zotero in BetterBibTex format and replaced the old =internment_refs.bib= file.
+
+-----
+>
+
+Great! Let's verify the export worked and test the full pipeline:
+
+#+begin_tool (Bash :command "head -20 ~/Documents/Work/Internment/ ...)
+(:name "Bash" :args (:command "head -20 ~/Documents/Work/Internment/internment_refs.bib 2>/dev/null || echo \"File not found at that path\""))
+
+File not found at that path
+
+#+end_tool
+#+begin_tool (Bash :command "find ~ -name \"internment_refs.bib\"  ...)
+(:name "Bash" :args (:command "find ~ -name \"internment_refs.bib\" -type f 2>/dev/null | head -5"))
+
+/Users/dante/Documents/Work/Internment/manuscript/internment_refs.bib
+
+#+end_tool
+#+begin_tool (Read :file_path "/Users/dante/Documents/Work/Internm ...)
+(:name "Read" :args (:file_path "/Users/dante/Documents/Work/Internment/manuscript/internment_refs.bib" :start_line 1 :end_line 40))
+
+@article{abramitzkyLeavingEnclaveHistorical2024,
+  title = {Leaving the {{Enclave}}: {{Historical Evidence}} on {{Immigrant Mobility}} from the {{Industrial Removal Office}}},
+  shorttitle = {Leaving the {{Enclave}}},
+  author = {Abramitzky, Ran and Boustan, Leah and Connor, Dylan},
+  date = {2024},
+  journaltitle = {Journal of Economic History},
+  doi = {10.3386/w27372},
+  url = {https://www.cambridge.org/core/journals/journal-of-economic-history/article/leaving-the-enclave-historical-evidence-on-immigrant-mobility-from-the-industrial-removal-office/820BFB74CA7F64E4159E91A37055F645},
+  abstract = {We study a program that funded 39,000 Jewish households in New York City to leave enclave neighborhoods circa 1910. Compared to their neighbors with the same occupation and income score at baseline, program participants earned 4 percent more ten years after removal, and these gains persisted to the next generation. Men who left enclaves also married spouses with less Jewish names, but they did not choose less Jewish names for their children. Gains were largest for men who spent more years outside of an enclave. Our results suggest that leaving ethnic neighborhoods could facilitate economic advancement and assimilation into the broader society, but might make it more difficult to retain cultural identity.},
+  keywords = {19th century,20th century,Age of Migration,assimilation,economic history,economic mobility,enumeration districts,ethnic enclaves,geolocation,Industrial Removal Office (IRO),Jewish Americans,linked data,migration,New York City,OCCSCORE},
+  file = {zotero://open-pdf/library/items/VURK9PKL?Abramitzky et al. - 2024 - Leaving the Enclave Historical Evidence on Immigrant Mobility from the Industrial Removal Office.pdf;zotero://open-pdf/library/items/M7WYRGSB?leaving-the-enclave-historical-evidence-on-immigrant-mobility-from-the-industrial-removal-office.pdf}
+}
+
+@article{arellano-boverDisplacementDiversityMobility2022,
+  title = {Displacement, {{Diversity}}, and {{Mobility}}: {{Career Impacts}} of {{Japanese American Internment}}},
+  shorttitle = {Displacement, {{Diversity}}, and {{Mobility}}},
+  author = {Arellano-Bover, Jaime},
+  date = {2022-03},
+  journaltitle = {The Journal of Economic History},
+  volume = {82},
+  number = {1},
+  pages = {126--174},
+  publisher = {Cambridge University Press},
+  issn = {0022-0507, 1471-6372},
+  doi = {10.1017/S0022050721000565},
+  url = {https://www.cambridge.org/core/journals/journal-of-economic-history/article/displacement-diversity-and-mobility-career-impacts-of-japanese-american-internment/F63443DE6FA168C2D6708D31D91258AC},
+  urldate = {2022-12-09},
+  abstract = {In 1942 more than 110,000 persons of Japanese origin living on the U.S. West Coast were forcibly sent away to ten internment camps for one to three years. This paper studies how internees’ careers were affected in the long run. Combining Census data, camp records, and survey data, I develop a predictor of a person’s internment status based on Census observables. Using a difference-in-differences framework, I find that internment had long-run positive effects on earnings. The evidence is consistent with mechanisms related to increased mobility due to re-optimization of occupation and location choices, possibly facilitated by camps’ high economic diversity.},
+  langid = {english},
+  file = {zotero://open-pdf/library/items/28MA4LYU?Arellano-Bover\_2022\_DisplacementDiversityMobilityCareerImpactsOfJapaneseAmericanInternment.pdf;zotero://open-pdf/library/items/SDID2H6W?Arellano-Bover - Displacement, Diversity, and Mobility Career Impacts of Japanese American Internment.pdf}
+}
+
+@article{austinEastwardPioneersJapanese2007,
+  title = {Eastward {{Pioneers}}: {{Japanese American Resettlement}} during {{World War II}} and the {{Contested Meaning}} of {{Exile}} and {{Incarceration}}},
+  shorttitle = {Eastward {{Pioneers}}},
+  author = {Austin, Allan W.},
+  date = {2007-01-01},
+  journaltitle = {Journal of American Ethnic History},
+  volume = {26},
+  number = {2},
+
+#+end_tool
+This is still in *Biblatex format* — notice =date = {2024}= and =journaltitle = {Journal of Economic History}=. The "Better BibTeX" export from Zotero should have produced =year= and =journal= fields instead.
+
+It looks like you may have exported using "Better BibLaTeX" rather than "Better BibTeX". In Zotero with the Better BibTeX plugin, there are two distinct export formats:
+
+- *Better BibLaTeX* → produces =date=, =journaltitle= (Biblatex format) ❌ for natbib
+- *Better BibTeX* → produces =year=, =journal= (traditional BibTeX format) ✅ for natbib
+
+Try re-exporting again: right-click your collection in Zotero → Export Collection → and make sure the format dropdown says *"Better BibTeX"* (not "Better BibLaTeX").
+
+Alternatively, if you'd rather not re-export, you can switch your org file to use biblatex+biber which /will/ work with this file format. Change in your org file:
+
+#+begin_src org
+#+CITE_EXPORT: biblatex
+#+end_src
+
+And in =preamble.tex=, replace =\usepackage{natbib}= with:
+
+#+begin_src latex
+\usepackage[backend=biber, style=authoryear-comp]{biblatex}
+\addbibresource{internment_refs.bib}
+#+end_src
+
+Then add =#+print_bibliography:= at the end of your org document. Your =latexmk= command should automatically detect biblatex and run =biber= instead of =bibtex=.
+
+* : Why don't my table references export correctly?
+For example:
+
+#+NAME: tbl:wra_demog
+#+begin_export latex
+\begin{table}[h]
+\caption{Summary Statistics for WRA internees}
+\begin{adjustbox}{width=\textwidth, center}
+\begin{tabular}{lr}
+\toprule\toprule
+Dataset & Mean/Share \\
+\midrule
+\multicolumn{2}{l}{\textbf{WRA Data (N= 109,246)}} \\
+\quad Male                                    & 0.55 \\
+\quad Issei (1st generation)                  & 0.35 \\
+\quad Mean (and st. dev.) age in 1942         & 30 (19) \\
+\quad Mean (and st. dev.) immigration year    & 1916 (8) \\
+\\
+\multicolumn{2}{l}{\textbf{Top pre-war states}} \\
+\quad California                              & 0.84 \\
+\quad Washington                              & 0.12 \\
+\quad Oregon                                  & 0.03 \\
+\quad Hawaii                                  & 0.01 \\
+\quad Arizona                                 & <0.01 \\
+\quad Non West-Coast state                    & <0.01
+\\
+\multicolumn{2}{l}{\textbf{Top occupations}} \\
+\quad Not employed/missing                    & 0.48 \\
+\quad Farm hands, vegetables                  & 0.05 \\
+\quad Farm hands, fruit                       & 0.04 \\
+\quad Truck farmers                           & 0.04 \\
+\quad Sales clerks                            & 0.04 \\
+\quad Retail managers                         & 0.03 \\
+\quad Gardeners and groundskeepers            & 0.02 \\
+\quad Maids, general                          & 0.02 \\
+\quad Farm managers and foremen               & 0.02 \\
+\quad Farm managers and foremen               & 0.02 \\
+\quad other                                   & 0.34 \\
+\bottomrule
+\end{tabular}
+
+\end{adjustbox}
+{\footnotesize\emph{Note:}
+
+\emph{Source:} [Japanese-American Internee Data File], 1942 - 1946, National Archives
+}
+\end{table}
+#+end_export
+
+
+Table [[tbl:wra_demog]] doesn't produce a working link in the pdf.
+
+-----
+>
+#+begin_reasoning
+The user has a table defined with =#+NAME: tbl:wra_demog= and references it with =Table [[tbl:wra_demog]]=. The issue is that they're using =#+begin_export latex= which exports raw LaTeX directly. When Org exports raw LaTeX blocks, it doesn't process the internal LaTeX content for Org's cross-reference system.
+
+The problem: =#+NAME:= labels in Org work with Org's internal linking, but when the table content is inside =#+begin_export latex=, Org doesn't generate the corresponding =\label{...}= LaTeX command. So the reference =[[tbl:wra_demog]]= either doesn't resolve, or resolves but points to nothing because there's no =\label{tbl:wra_demog}= in the LaTeX output.
+
+For cross-referencing to work in the PDF, the LaTeX table needs a =\label{tbl:wra_demog}= command (typically placed after =\caption{}=), and the reference needs to produce =\ref{tbl:wra_demog}=.
+
+The fix: Add =\label{tbl:wra_demog}= after the =\caption{...}= line in the LaTeX code. And for the reference, use =[[tbl:wra_demog]]= which should export to =\ref{tbl:wra_demog}= if Org can resolve it, OR just use raw LaTeX =\ref{tbl:wra_demog}= directly.
+
+Wait, let me think more carefully about how Org handles this. When you have =#+NAME: tbl:wra_demog= before a =#+begin_export latex= block, Org should in theory create a label for it. But actually, =#+begin_export latex= blocks are exported verbatim - Org doesn't modify their content. The =#+NAME= might not generate a =\label= in the output because Org doesn't know what's inside the raw LaTeX block.
+
+Actually, let me reconsider. In Org mode:
+- =#+NAME:= before an Org table (=|...|=) works great for cross-references
+- =#+NAME:= before a =#+begin_export latex= block - Org may not be able to insert a =\label= because it doesn't know where in the raw LaTeX to put it
+
+So the solution is to manually add =\label{tbl:wra_demog}= inside the LaTeX code (after =\caption=), and then reference it either with =[[tbl:wra_demog]]= or with raw =\ref{tbl:wra_demog}=.
+
+Actually, let me check: does Org's =[[tbl:wra_demog]]= export to =\ref{tbl:wra_demog}= when there's a =#+NAME: tbl:wra_demog=? I think for export blocks, Org might not be able to automatically insert labels. The =#+NAME= attribute works for internal Org linking but may not produce a LaTeX =\label=.
+
+The core issue is:
+1. No =\label{tbl:wra_demog}= is generated in the LaTeX output (because it's a raw export block, Org doesn't inject labels into it)
+2. =[[tbl:wra_demog]]= in Org might not resolve to =\ref{tbl:wra_demog}= because Org can't find a labeled target
+
+The fix: Add =\label{tbl:wra_demog}= manually after the =\caption= line in the LaTeX code, and use =\ref{tbl:wra_demog}= directly instead of =[[tbl:wra_demog]]=.
+#+end_reasoning
+
+The problem is that =#+NAME:= + =#+begin_export latex= blocks don't play well together for cross-referencing. Org can't inject a =\label{}= into raw LaTeX it doesn't control, so no label ends up in the output, and the reference breaks.
+
+*The fix:* Add =\label{tbl:wra_demog}= manually inside your LaTeX (right after =\caption=), and reference it with raw =\ref{}= instead of Org's =[[...]]=:
+
+#+begin_src org
+#+begin_export latex
+\begin{table}[h]
+\caption{Summary Statistics for WRA internees}
+\label{tbl:wra_demog}          % ← add this
+\begin{adjustbox}{width=\textwidth, center}
+...
+\end{table}
+#+end_export
+#+end_src
+
+Then for the reference, replace:
+
+#+begin_src
+Table [[tbl:wra_demog]]
+#+end_src
+
+with:
+
+#+begin_src
+Table \ref{tbl:wra_demog}
+#+end_src
+
+(or wrap it in =@@latex:\ref{tbl:wra_demog}@@= if you want to stay in Org syntax).
+
+*Why this happens:* =#+NAME:= works great with /Org tables/ (=| col | col |=), because Org controls the export and can automatically insert =\label{}= and =\ref{}= pairs. But with =#+begin_export latex=, Org exports the block verbatim — it doesn't parse or modify the LaTeX inside, so it has nowhere to inject the =\label=. The =#+NAME= only registers the block for Org's internal linking (clickable in Emacs), not for LaTeX cross-referencing in the PDF.
+
+:
