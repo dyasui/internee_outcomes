@@ -68,43 +68,6 @@ include occupational change and later migration decisions.
 \end{abstract}
 #+end_export
 
-* Editing plan :noexport:
-** TODO edit introduction
-- [ ] add literature on discrimination
-  - reason why discrimination important
-    - kept out of industries
-    - housing discrimination?
-  - who has written about Japanese, Chinese economic discrimination?
-    - good resources: [cite/p:@hilgerUpwardMobilityDiscrimination2016], [cite/p:@chiswickAnalysisEarningsEmployment1983]
-  - it matters because chinese are main control group, are they a good counterfactual?
-- [ ] theoretically motivate why Chinese are a good control group
-  - important to motivate methods
-  - very few non-West Coast Japanese to act as counterfactual, but make it clear that they are also included
-- [ ] how do social networks matter for internees?
-  - read [cite/p:@munshiCommunityNetworksProcess2014]
-  - leaving west coast ethnic enclaves might be bad, or new social networks might form in camps
-- [ ] add literature on women working in 1940s
-  - read [cite/p:@goldinLifeCycleLaborForceParticipation1989], [cite/p:@roseRiseFallFemale2018]
-  - how does this relate to non-white women working?
-  - important to give context for higher incomes for interned women in later results
-
-** TODO fix methods
-- [ ] replace equation 2 with diff-in-diff, re-order explanation
-  - people were confused by first method
-  - diff-in-diff is more obvious first approach
-- [ ] introduce voluntary migration as challenge to parallel trends assumption
-  - this connects to motivation for pre-internment income as control
-  - should make it clear why this might be necessary
-  - main reason is that those who were able to escape internment were students, more mobile anyways
-- [ ] motivate advantage that linked data has to control for pre-internment wages
-** TODO fix data
-- [ ] [[Migration-differences]]
-** TODO fix results section
-- [ ] replace table 3 with diff-in-diff version
-- [ ] replace table 4 with diff-in-diff version
-
-
-
 * Introduction
 
 # Internment was major event
@@ -634,7 +597,7 @@ For these reasons, Chinese Americans make a natural comparison group
 to recreate the counterfactual earnings outcomes interned Japanese
 would have had if they had never been interned.
 
-*** Voluntary Migration
+*** <<Voluntary Migration>>
 Although all persons of Japanese descent living on the West Coast
 were ordered to evacuate outside of the Exclusion Zone
 (and no Chinese persons were ordered to evacuate),
@@ -1001,7 +964,6 @@ captures a causal effect of internment and forced relocation
 on the incomes earned in 1950.
 
 * Effects of Internment
-** Descriptive Statistics for Internees and Comparison Groups
 ** Effect of Internment on Earnings
 *** Estimation Strategy
 To measure the effect of internment on earnings,

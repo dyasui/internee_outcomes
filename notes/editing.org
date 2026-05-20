@@ -4,405 +4,83 @@
 :GPTEL_SYSTEM: You are a large language model and a writing assistant. Respond concisely.
 :GPTEL_BOUNDS: ((response (309 310) (328 7191) (7209 10211) (10668 10669) (10687 12603) (12621 15754) (15867 17118) (17136 19925)))
 :END:
-
-*  :
-
-**  
-#+begin_reasoning
-The user wants help drafting their economics research paper. The goal is to write a paper that "clearly tells a story using the data presented" and "showcases my skills as an academic economist." I'll need to analyze the paper section by section, looking for gaps, areas to improve clarity, opportunities to strengthen the narrative, and ways to better demonstrate econometric skills.
-
-Let me analyze this systematically:
-
-*Overall Structure:*
-- Abstract (referenced as input)
-- Introduction with Motivating Literature and Historical Background
-- Data section with two subsections
-- Methods section with three subsections
-- Results section with three subsections
-- Conclusion
-- Appendix
-
-This seems like a reasonable structure for an economics paper. Now let me go through each section and think about suggestions.
-
-*Title:*
-"Forced Removal or Moved to Opportunity? Labor Market and Migration Effects of Japanese Internment"
-- This is good! It clearly frames the research question and indicates the main outcomes studied.
-
-*Abstract (not provided but referenced):*
-- Since I can't see it, I'll suggest having it follow the standard JEL abstract structure: 1) What is the question/problem, 2) What is the method/approach, 3) What are the key findings, 4) What are the implications.
-
-*Introduction:*
-The introduction does a good job of:
-- Setting up the historical context
-- Explaining the research question about proximity to internment camps
-- Mentioning the data sources (census data 1940-1990)
-
-Areas for improvement:
-1. The causal mechanism isn't clearly articulated. Why would proximity to camps matter for migration? Is it information about the area? Networks? Lower moving costs? This needs to be spelled out.
-2. There's a tension between two stories: one about proximity to camps affecting migration (introduced first) and one about internment itself affecting earnings (which becomes the main analysis). This should be clarified or aligned.
-3. The contribution relative to the cited literature could be more explicit. What precisely is new here?
-4. No clear roadmap/statement of what follows in the paper.
-
-*Motivating Literature:*
-Good coverage of relevant literature. Suggestions:
-1. The literature review could be better integrated with the introduction's questions. How does each cited paper relate to your specific research questions about proximity and migration?
-2. Consider adding a paragraph that positions your paper more explicitly in the literature - what gap are you filling?
-3. The connection between the cited studies on "place effects" and your paper could be stronger - how does your paper contribute to this broader literature?
-
-*Historical Background:*
-Good historical context. Suggestions:
-1. The quote about "deghettoization" is very relevant but could be better tied to your hypotheses about migration patterns.
-2. Consider adding more about the specific locations of the camps and any variation in economic conditions across camp locations that might matter for later outcomes.
-3. The connection between this historical section and your empirical strategy could be clearer.
-
-*Data Section:*
-Overall well-described data sources.
-
-IPUMS section:
-1. The sample selection criteria could be justified more. Why born before 1926? Why exclude missing income data (potential selection issue)?
-2. Table 1 (provided in appendix) should be referenced and key takeaways highlighted in text.
-3. The distinction between wage income and other income types is important but could be better motivated.
-
-WRA Records section:
-1. The discussion of Table 2 (in appendix) should be integrated into text - what do these demographics tell us about potential selection?
-2. The age distribution of internees is interesting - could this have implications for your findings?
-3. Need more discussion of how representative the WRA records are of all internees.
-
-*Methods Section:*
-Good discussion of identification challenges.
-
-Predicted Internment Status:
-1. Equation (1) is presented but the identification strategy isn't fully clear. What are the key assumptions?
-2. The concern about changes between 1940-1942 is important but the solution isn't fully developed. Could you use 1940 county characteristics to predict attrition?
-3. The voluntary migration issue is raised but how this affects identification isn't fully explored.
-
-Main Regression:
-1. Why state fixed effects rather than county or more granular geographic fixed effects?
-2. Why not include pre-trends if possible?
-3. What about potential spillover effects? Did the arrival of internees affect labor markets in receiving areas?
-4. No discussion of potential hedging or mitigation strategies (IV, RD, etc.)
-
-*Results Section:*
-The results seem interesting but the story is somewhat fragmented.
-
-Main Results:
-1. Table 1 shows positive effects but this is framed as surprising. Why? What was the prior expectation?
-2. The discussion of potential downward bias from discrimination is good but could be more formal.
-3. The state fixed effects changing the coefficient is interpreted as selection by state, but alternative explanations should be considered (different state policies, etc.)
-
-Mechanisms:
-1. The occupation results are puzzling - higher income but lower employment rates. This needs more exploration/discussion.
-2. The migration results are somewhat disconnected from the initial hypothesis about proximity to camps. How do these relate?
-3. The settlement in ethnic enclaves despite policy attempts is interesting - could connect back to the "deghettoization" quote.
-
-Heterogeneous effects:
-1. The gender differences are striking but underexplored. Why would women benefit more?
-2. Could there be differential selection by gender? Voluntary migration patterns?
-3. How do these results relate to the broader literature on labor markets and migration?
-
-*Conclusion:*
-1. Need to more clearly summarize the key findings.
-2. Should connect back to the initial research questions about proximity and migration.
-3. Could discuss limitations and avenues for future research.
-4. Policy implications could be expanded beyond "lessons for understanding forced migration"
-
-*General Suggestions:*
-1. The narrative thread about proximity to camps starts strong but gets lost. Need to either make this the central story or clarify that the paper evolved to focus on other aspects.
-2. The causal identification could be stronger - consider robustness checks, falsification tests, alternative specifications.
-3. The tables and figures are in the appendix but key takeaways should be highlighted in the text.
-4. The economic mechanisms need more development throughout - why do we observe what we observe?
-5. The contribution to multiple literatures (economic history, labor, migration, place effects) could be clearer.
-
-Let me provide specific suggestions focusing on the most important improvements...
-
-#+end_reasoning
-
-Looking through your manuscript, I think you have compelling research with interesting findings, but the narrative could be stronger and more focused. Here are my suggestions:
-
-*** Structural Issues
-1. *Central Story Tension*: You introduce proximity to camps as the key hypothesis but results focus on internment effects on earnings. Either:
-   - Make proximity the story with camp characteristics as treatment intensity, OR
-   - Reframe the introduction to focus on internment's labor market effects
-
-2. *Missing Roadmap*: Add a final paragraph to introduction outlining paper structure
-
-3. *Contribution Clarity*: Better position your paper relative to Arellano-Bover (2022). Is your contribution the gender dimension? Different identification strategy? Different outcome measures?
-
-*** Methodological Improvements
-1. *Identification Assumptions*: In Section 4.1, explicitly state the key identifying assumptions for your predicted internment measure. Discuss threats to identification more formally.
-
-2. *Robustness Checks*: Add robustness tests:
-   - Alternative specifications (different functional forms)
-   - Placebo tests using pre-treatment periods
-   - Different control groups (e.g., mainland Japanese outside evacuation zone)
-
-3. *State Fixed Effects Interpretation*: Your interpretation seems suspicious - state FE removing significance might reflect state policy differences rather than selection alone.
-
-*** Narrative and Presentation
-1. *Economic Mechanisms*: Develop deeper theoretical discussion:
-   - Why would proximity to camps affect migration decisions? (Information, networks, moving costs?)
-   - Why would internment increase earnings? (Skill upgrading, network effects, geographic arbitrage?)
-
-2. *Key Findings Integration*: The gender results in Section 5.3 feel disconnected. Integrate earlier - this could be your primary contribution!
-
-3. *Result Interpretation*: The "surprising" positive earnings effect needs more context - was this unexpected given the literature? Explain why.
-
-*** Data Presentation
-1. *Summary Table*: Move Table 1 to main text and highlight key takeaways about pre-treatment differences.
-
-2. *Visualization*: Consider adding:
-   - Event study figures showing earnings trends pre/post
-   - Maps of migration flows
-   - Distribution of estimated treatment effects
-
-*** Specific Section Suggestions
-- *Introduction*: Cut the less relevant literature (MTO studies) and focus on Japanese internment studies
-- *Historical Background*: Connect better to your identification strategy - what variation in camp characteristics creates exogenous variation?
-- *Mechanisms Section*: Dig deeper into why women's earnings increased more - consider family structure changes, labor demand shifts, etc.
-
-*** Contribution Emphasis
-Consider making the gender effects your headline finding if robust, as this would clearly differentiate your work from Arellano-Bover (2022).
-
-Would you like me to elaborate on any of these suggestions or help revise specific sections?
-
-*  : I want to better motivate my main regression model
-Right now I am using controls from previous census year.
-But previous studies used difference-in-difference design.
-I wanted to use the linked data to identify the internment effect for individual internees,
-but when I tried to add an individual fixed-effect, I had problems with colinearity.
-How should I discuss how my method is similar and different to a difference-in-difference design?
-
-
-**  
-#+begin_reasoning
-The user is asking for help motivating their main regression model. They mention that they're using controls from the previous census year (likely 1940 income controls) but that previous studies used a difference-in-differences (DiD) design. They tried using individual fixed effects but ran into collinearity issues.
-
-Let me think about this systematically:
-
-1. Why would individual fixed effects cause collinearity in their setup?
-   - If they have a treatment variable that doesn't vary over time for individuals (internment status), then individual fixed effects would be perfectly collinear with the treatment.
-   - This is a classic issue with DiD when treatment doesn't vary within units over time.
-
-2. What's their current approach?
-   - They're controlling for pre-treatment characteristics (like 1940 income) but not using a DiD framework with individual fixed effects.
-   - This is closest to a "control function" or "pre-trends" approach rather than traditional DiD.
-
-3. How should they position this methodologically?
-   - They need to explain why traditional DiD isn't feasible with their data
-   - They should explain how their approach with pre-treatment controls helps address selection concerns
-   - They should discuss the trade-offs clearly
-
-4. What are the key differences between their approach and DiD?
-   - DiD relies on parallel trends assumption across groups
-   - Their approach assumes that conditioning on pre-treatment characteristics addresses selection
-   - DiD uses within-unit variation, they're using cross-sectional variation with rich controls
-
-5. How can they strengthen their approach?
-   - Discuss the control function interpretation
-   - Mention that individual fixed effects would be collinear with time-invariant treatment
-   - Consider alternative ways to show robustness to time-varying concerns
-
-Let me provide a structured response on how to frame this in their paper.
-
-#+end_reasoning
-
-You're facing a common methodological challenge when treatment is time-invariant. Here's how to position your regression model relative to DiD:
-
-** Explain the Methodological Constraint
-
-In your Methods section, add this discussion:
-
-/"A traditional difference-in-differences approach would require within-individual variation in treatment status over time. However, since internment is a one-time historical event - individuals are either interned or not - treatment status is time-invariant. Including individual fixed effects would create perfect collinearity with the treatment indicator, making the classic DiD framework infeasible."/
-
-** Frame Your Approach as a Control Function Model
-
-/"Instead of relying on parallel trends across groups, I adopt a control function approach that explicitly models pre-treatment characteristics. Equation [X] can be interpreted as controlling for the latent earnings trajectory through the inclusion of 1940 income, allowing for heterogeneous pre-treatment trends across individuals."/
-
-** Highlight Key Differences and Trade-offs
-
-| Feature           | DiD                                           | Your Approach                           |
-|-------------------+-----------------------------------------------+-----------------------------------------|
-| *Identification* | Assumes parallel trends                       | Controls for pre-treatment outcomes     |
-| *Key Assumption*    | No differential shocks                        | No omitted variable bias after controls |
-| *Data Requirements* | Multiple time periods                         | Rich pre-treatment data                 |
-| *Advantage*         | Controls for all time-invariant unobservables | Allows heterogeneous pre-trends         |
-
-** Strengthen Your Justification
-
-1. *Pre-treatment Controls Advantage*: /"Controlling for 1940 income directly addresses the concern that individuals with different earnings trajectories self-selected into or out of internment through voluntary migration."/
-
-2. *Richness of Controls*: /"Unlike traditional DiD that relies solely on time trends, I exploit detailed pre-treatment characteristics including income, education, age, and geographic location to construct a more precise counterfactual."/
-
-3. *Address Potential Criticism*: /"While this approach doesn't control for all time-invariant unobservables, the selection threats in this historical context are primarily observable - factors like education, pre-war earnings, and geographic location that determined voluntary migration opportunities."
-
-** Add Robustness Check
-
-/"To strengthen credibility relative to DiD, I verify that pre-treatment characteristics are balanced across predicted treatment intensity levels, providing evidence that selection occurs along observable dimensions that I control for."/
-
-** Consider Alternative Framing
-
-You could also frame this as an /instrumental variables/ approach where predicted internment status instruments for actual internment. This would give you a different identification story altogether.
-
-Would you like me to help draft the specific methodology text for your paper?
-
-*  : I have edited some of the sections we talked about
-What should I focus on next?
-
-**  
-#+begin_reasoning
-Okay, the user has made some edits based on our previous discussion. They're asking what to focus on next. Let me think about the most important next steps for improving this paper.
-
-Looking at the original manuscript, the key areas that still need work are:
-
-1. *The narrative/storyline* - The paper still seems to have two competing stories (proximity to camps vs. internment effects) that aren't well integrated.
-
-2. *The contribution* - It's not crystal clear how this paper differs from and adds to Arellano-Bover (2022) and other related work.
-
-3. *The mechanisms* - The paper finds interesting results (especially the gender differences) but doesn't fully explain why these patterns emerge.
-
-4. *The interpretation of results* - Some findings seem puzzling (higher income but lower employment rates) and need more thoughtful interpretation.
-
-5. *The conclusion* - Needs to better summarize and position the findings.
-
-6. *Robustness and validation* - Could use more checks to strengthen credibility.
-
-Given they've already worked on the methodology section, I think the next priority should be sharpening the overall narrative and contribution. This will help guide revisions to other sections.
-
-Let me provide a prioritized list of next steps.
-#+end_reasoning
-
-
-Great progress! Now I'd recommend focusing on these areas in order of priority:
-
-** 1. *Sharpen Your Core Contribution* (Highest Priority)
-Your paper has two potential contributions that need clearer articulation:
-
-*Option A* - /Gender Effects/: If the gender results are robust, make this your headline finding:
-- Reframe title: "Forced Removal or Moved to Opportunity? Gender-Differentiated Effects of Japanese Internment"
-- Emphasize in introduction: "While previous work has documented average effects, I show that internment primarily benefited women through..."
-
-*Option B* - /Mechanism Exploration/: If you want to focus on mechanisms:
-- Frame as: "Beyond documenting effects, I uncover the channels through which forced displacement altered economic trajectories"
-
-/Action/: Decide which story is stronger and rewrite your introduction/contribution paragraph accordingly.
-
-** 2. *Develop the Economic Mechanism*
-Your results need a clearer theoretical story:
-
-*For Gender Effects*: Why would women benefit more?
-- Labor market restructuring during WWII?
-- Changes in family structure/decision-making?
-- Differential access to new opportunities?
-
-*For Migration Effects*: How does proximity to camps create opportunity?
-- Information networks about destinations?
-- Reduced psychological/moving costs?
-- Skill acquisition in camps?
-
-/Action/: Add a "Theoretical Framework" subsection after literature review explaining these mechanisms.
-
-** 3. *Revise Results Narrative*
-Currently results feel disconnected. Try this structure:
-1. Main effects (internment → earnings)
-2. Heterogeneity (gender differences)
-3. Mechanisms (migration, occupation changes)
-4. Robustness checks
-
-/Action/: Add transition sentences: "Having documented the average effect, I now examine for whom these effects were strongest..."
-
-** 4. *Strengthen Interpretation*
-Some puzzling findings need better explanation:
-
-- Higher income but lower employment rates → Consider income quality vs. quantity, informal sector, family income effects
-- No occupation switching despite higher income → Perhaps same occupations paid better in new locations?
-
-/Action/: Add a "Discussion" subsection interpreting these patterns in historical context.
-
-** 5. *Add Robustness Section*
-Include standard checks to strengthen credibility:
-- Alternative treatment measures
-- Different control groups
-- Placebo tests with pre-treatment outcomes
-- Subsample robustness (by age, region, etc.)
-
-** *Immediate Next Steps*
-1. *First*: Decide on your core contribution (A or B above) and rewrite intro
-2. *Second*: Develop mechanism framework section
-3. *Third*: Restructure results with clearer narrative flow
-
-Which of these resonates most with you? I can help draft specific sections once you decide on your primary contribution story.
-
-*  : Let's start with the results
-I want to add robustness checks using different internment status estimates.
-How should I introduce these and where should I present the results?
-
-I have these results for three different internment statuses.
-The first is the one I originally report on.
-~county_intprop~ is not conditioned on race, so Chinese also get the proportion of Japanese interned from their home state.
-~intprob_AB~ is based on the Bayes' Rule application I describe at the end of the methods section
-and conditions on state in 1940, birthyear, birthplace, and race.
-~intprob_full~ is similar but also adds sex and county in 1940 to predict internment.
-
-| Dependent Var.:   | Income in 1950 | Income in 1950 | Income in 1950 | Income in 1950 |
-|                   |                |                |                |                |
-| Internment Status | 250.7***       |                |                |                |
-|                   | (59.86)        |                |                |                |
-| Age               | 12.45          | 12.78          | 13.0           | 13.04          |
-|                   | (8.210)        | (8.221)        | (8.210)        | (8.210)        |
-| Age square        | -0.3143***     | -0.3189***     | -0.3236***     | -0.3237***     |
-|                   | (0.0835)       | (0.0836)       | (0.0835)       | (0.0835)       |
-| Male              | 487.5***       | 485.0***       | 486.1***       | 499.5***       |
-|                   | (35.14)        | (35.17)        | (35.13)        | (35.30)        |
-| Japanese          | -246.2***      | -44.2          | -268.6***      | -208.1***      |
-|                   | (64.55)        | (39.78)        | (66.73)        | (56.02)        |
-| Income in 1940    | 0.2409***      | 0.2416***      | 0.2391***      | 0.2406***      |
-|                   | (0.0189)       | (0.0189)       | (0.0189)       | (0.0189)       |
-| county_intprop    |                | 2,041.8        |                |                |
-|                   |                | (1,284.3)      |                |                |
-| intprob_AB        |                |                | 282.5***       |                |
-|                   |                |                | (64.33)        |                |
-| intprob_full      |                |                |                | 213.7***       |
-|                   |                |                |                | (48.55)        |
-| Fixed-Effects:    | -------------- | -------------- | -------------- | -------------- |
-| Education         | Yes            | Yes            | Yes            | Yes            |
-| _________________   | ______________   | ______________   | ______________   | ______________   |
-| S.E. type         | IID            | IID            | IID            | IID            |
-| Observations      | 8,136          | 8,136          | 8,136          | 8,136          |
-| R2                | 0.10227        | 0.10061        | 0.10246        | 0.10247        |
-| Within R2         | 0.08326        | 0.08156        | 0.08346        | 0.08346        |
-
-
-
-**  
-#+begin_reasoning
-The user wants to add robustness checks using different internment status estimates. They have three different measures:
-1. county_intprop - county-level proportion, not conditioned on race
-2. intprob_AB - Bayes' Rule application conditioned on state, birthyear, birthplace, race
-3. intprob_full - similar to AB but also conditions on sex and county
-
-They want to know how to introduce these and where to present the results.
-
-Looking at the table, the results seem quite consistent across specifications - all three internment measures show positive and significant effects on 1950 income, with coefficients ranging from ~214 to ~283.
-
-For presentation, I should suggest:
-1. Where to place this in the results section
-2. How to introduce it textually
-3. How to interpret the consistency across specifications
-4. How to frame this as a robustness check
-
-The logical place would be after the main results table, as a robustness check on the treatment measure.
-#+end_reasoning
-
-
-Here's how to structure and present these robustness checks:
-
-* Where to Place This
-Add this as a new subsection after your main results table (Table 1), called something like:
-
-*"Robustness to Alternative Internment Measures"*
-
-* How to Introduce Textually
-
-/"To ensure my results are not driven by the specific construction of the predicted internment measure, I estimate the main specification using three alternative measures of internment probability. The first, =county_intprop=, assigns all individuals in a county the same internment proportion based solely on county-level patterns.
-
-*  :
+#+TITLE: Paper Editing Notes
+#+BIBLIOGRAPHY: ../manuscript/internment_refs.bib
+
+* Reviewer Feedback
+** Prospectus comments (Isabel)
+ - [ ] Theoretically motivate Chinese as control group? Cite/footnote.
+ - [ ] Clarify who/what is "linked" in the sample
+ - [ ] Specify annual earnings only (not wealth)
+ - [ ] Make phrasing of 'evacuation' vs forced removal/forced into encampments, etc. clear
+ - [ ] Make timeline clear:
+        EO 9066 issued in 1942 - forced internment
+        EO 9042 issued in 1946 - release
+
+* Section Drafting
+** Introduction
+*** TODO Add mechanism/theory
+Need to motivate and provide context for this analysis
+with Historical and Sociological research into why people in this period moved
+- [ ] add literature on discrimination
+  - reason why discrimination important
+    - kept out of industries
+    - housing discrimination?
+  - who has written about Japanese, Chinese economic discrimination?
+    - good resources: [cite/p:@hilgerUpwardMobilityDiscrimination2016], [cite/p:@chiswickAnalysisEarningsEmployment1983]
+  - it matters because chinese are main control group, are they a good counterfactual?
+- [ ] theoretically motivate why Chinese are a good control group
+  - important to motivate methods
+  - very few non-West Coast Japanese to act as counterfactual, but make it clear that they are also included
+- [ ] how do social networks matter for internees?
+  - read [cite/p:@munshiCommunityNetworksProcess2014]
+  - leaving west coast ethnic enclaves might be bad, or new social networks might form in camps
+- [ ] add literature on women working in 1940s
+  - read [cite/p:@goldinLifeCycleLaborForceParticipation1989], [cite/p:@roseRiseFallFemale2018]
+  - how does this relate to non-white women working?
+  - important to give context for higher incomes for interned women in later results
+** Data & Sample
+*** WRA Records
+- [X] what are the records, how do I access them
+- [-] Who were the internees, who is not included (voluntary migrants, those in prison system)
+- [X] general demographics [[file:~/Documents/Work/Internment/tables/wra-sumstats.tex][table]]
+- [ ] take out age plot or move to appendix
+- [-] where did internees come from?
+   replace [[file:~/Documents/Work/Internment/tables/cmp-cty_tbl.tex][cmp-cty_tbl]] with [[file:~/Documents/Work/Internment/figures/pr_interned_map.tex][pr_interned_map]]
+
+*** Linked Census Microdata
+- [X] census data come from IPUMS MLP, citations
+- [ ] describe main outcomes
+  - INCWAGE
+  - OCCSCORE
+  - Migration
+        Census asks question differently in 1940 vs 1950 census
+        I also use change in reported county for those linked across years
+*** Comparison Groups
+Identify /likely/ interned Japanese by comparing their demographics against WRA-Census comparison table
+- [X] Why is this necessary? Census doesn't ask about internment
+- [X] cite method from [cite:@arellano-boverDisplacementDiversityMobility2022]
+  - [-] describe how my adapted version is different
+- [ ] Show summary statistics on main dataset comparing groups
+**** Challenges to methods
+- [-] Explain voluntary migration
+- [[file:../manuscript/outline.org::Voluntary Migration][Voluntary Migration section]]
+** Results
+- [ ] replace table 3 with diff-in-diff version
+- [ ] replace table 4 with diff-in-diff version
+- [-] Restructure: [[file:~/Documents/Work/Internment/manuscript/outline.org::Results][Results]] -> [[file:~/Documents/Work/Internment/manuscript/outline.org::Effects of Internment][Effects of Internment]]
+  I got this idea from the stucture of [cite:@abramitzkyLeavingEnclaveHistorical2024] which I like better.
+*** Effects of Internment on Earnings
+- [ ] Desc. stats for internees vs comparison groups
+- [ ] "ABC Table 2": sum stats for WRA [[file:~/Documents/Work/Internment/tables/wra-sumstats.tex][table]]
+*** Effect of Internment on Location
+Describe policies of removal + resettlement
+- Table: macro stats on % migrants of West Coast Japanese vs others
+- Map: Japanese population in 1940 vs 1950
+
+* Presentation Structure
+1. Background: Internment happened, here are where people were sent
+2. Contributions to Literature (don't mention Arellano-Bover paper before this)
+3. Map of internment proportions
+4. Population diff-in-diff (or triple diff) between 1940 and 1950
+5. Effects on linked individuals
